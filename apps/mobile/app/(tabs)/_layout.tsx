@@ -31,6 +31,22 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
+        name="groups"
+        options={{
+          title: t('tabs.groups'),
+          tabBarIcon: ({ focused }) => null,
+          tabBarLabel: `👥 ${t('tabs.groups')}`,
+        }}
+      />
+      <Tabs.Screen
+        name="history"
+        options={{
+          title: t('tabs.history'),
+          tabBarIcon: ({ focused }) => null,
+          tabBarLabel: `📋 ${t('tabs.history')}`,
+        }}
+      />
+      <Tabs.Screen
         name="feed"
         options={{
           title: t('tabs.feed'),

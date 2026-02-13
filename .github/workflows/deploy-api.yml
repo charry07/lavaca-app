@@ -1,0 +1,67 @@
+# ─────────────────────────────────────────────────────────
+# La Vaca 🐄 — Deploy API to Azure App Service
+# ─────────────────────────────────────────────────────────
+name: Deploy API
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'apps/api/**'
+      - 'packages/shared/**'
+      - '.github/workflows/deploy-api.yml'
+  workflow_dispatch: # Permite deploy manual
+
+env:
+  NODE_VERSION: '20'
+  AZURE_WEBAPP_NAME: 'lavaca-api' # Mismo nombre que en infra/setup.sh
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build shared package
+        run: pnpm --filter @lavaca/shared build
+
+      - name: Build API
+        run: pnpm --filter @lavaca/api build
+
+      - name: Prepare deployment package
+        run: |
+          mkdir -p deploy
+          # Copy API dist
+          cp -r apps/api/dist deploy/dist
+          cp apps/api/package.json deploy/
+          # Copy shared package
+          mkdir -p deploy/node_modules/@lavaca/shared
+          cp -r packages/shared/dist deploy/node_modules/@lavaca/shared/dist
+          cp packages/shared/package.json deploy/node_modules/@lavaca/shared/
+          # Install production deps only
+          cd deploy
+          npm install --omit=dev --ignore-scripts
+          # Create startup file
+          echo "node dist/index.js" > startup.sh
+
+      - name: Deploy to Azure App Service
+        uses: azure/webapps-deploy@v3
+        with:
+          app-name: ${{ env.AZURE_WEBAPP_NAME }}
+          publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
+          package: deploy

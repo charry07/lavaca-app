@@ -6,6 +6,7 @@ export interface ThemeColors {
   surfaceBorder: string;
   primary: string;
   primaryDark: string;
+  accent: string;
   text: string;
   textSecondary: string;
   textMuted: string;
@@ -21,6 +22,7 @@ export const darkColors: ThemeColors = {
   surfaceBorder: '#2d3a5e',
   primary: '#4ade80',
   primaryDark: '#22c55e',
+  accent: '#38bdf8',
   text: '#e2e8f0',
   textSecondary: '#94a3b8',
   textMuted: '#64748b',
@@ -36,6 +38,7 @@ export const lightColors: ThemeColors = {
   surfaceBorder: '#e2e8f0',
   primary: '#16a34a',
   primaryDark: '#15803d',
+  accent: '#0284c7',
   text: '#1e293b',
   textSecondary: '#475569',
   textMuted: '#94a3b8',

@@ -10,6 +10,8 @@
     "dev:mobile": "pnpm --filter @lavaca/mobile start",
     "dev:api": "pnpm --filter @lavaca/api dev",
     "build:api": "pnpm --filter @lavaca/api build",
+    "build:shared": "pnpm --filter @lavaca/shared build",
+    "build:web": "pnpm --filter @lavaca/shared build && pnpm --filter @lavaca/mobile build:web",
     "lint": "pnpm -r lint",
     "typecheck": "pnpm -r typecheck",
     "clean": "pnpm -r clean"

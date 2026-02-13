@@ -1,0 +1,63 @@
+# ─────────────────────────────────────────────────────────
+# La Vaca 🐄 — Deploy Web to Azure Static Web Apps
+# ─────────────────────────────────────────────────────────
+name: Deploy Web
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'apps/mobile/**'
+      - 'packages/shared/**'
+      - '.github/workflows/deploy-web.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'apps/mobile/**'
+      - 'packages/shared/**'
+  workflow_dispatch: # Permite deploy manual
+
+env:
+  NODE_VERSION: '20'
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    name: Build and Deploy
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build shared package
+        run: pnpm --filter @lavaca/shared build
+
+      - name: Export Expo web
+        run: |
+          cd apps/mobile
+          EXPO_PUBLIC_API_URL=${{ secrets.REACT_APP_API_URL }} npx expo export --platform web
+        env:
+          EXPO_PUBLIC_API_URL: ${{ secrets.REACT_APP_API_URL }}
+
+      - name: Deploy to Azure Static Web Apps
+        uses: Azure/static-web-apps-deploy@v1
+        with:
+          azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN }}
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          action: 'upload'
+          app_location: 'apps/mobile/dist'
+          skip_app_build: true
+          skip_api_build: true

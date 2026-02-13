@@ -86,6 +86,13 @@ function RootLayoutInner() {
               headerRight: () => <HeaderControls />,
             }}
           />
+          <Stack.Screen
+            name="group/[id]"
+            options={{
+              title: t('tabs.groups'),
+              headerRight: () => <HeaderControls />,
+            }}
+          />
         </Stack>
       </AuthGuard>
     </>

@@ -85,26 +85,43 @@ const es = {
 
   // Tabs
   'tabs.home': 'Inicio',
+  'tabs.groups': 'Grupos',
+  'tabs.history': 'Historial',
   'tabs.feed': 'Actividad',
   'tabs.profile': 'Perfil',
 
-  // Auth
+  // Auth - Phone Step
   'auth.welcome': 'Bienvenido a La Vaca 🐄',
-  'auth.subtitle': 'Completa tus datos para empezar',
+  'auth.phoneSubtitle': 'Ingresa tu numero de celular para comenzar',
+  'auth.phoneLabel': 'Celular',
+  'auth.phonePlaceholder': 'Ej: 3001234567',
+  'auth.sendCode': 'Enviar codigo 📱',
+  'auth.invalidPhone': 'Ingresa un numero valido',
+  'auth.errorSendingOTP': 'No se pudo enviar el codigo',
+  'auth.hint': 'Tu celular es tu identidad. Sin contrasenas, simple y sencillo.',
+
+  // Auth - OTP Step
+  'auth.verifyTitle': 'Verificar numero 📱',
+  'auth.verifySubtitle': 'Ingresa el codigo de 6 digitos enviado a {{phone}}',
+  'auth.verifyButton': 'Verificar',
+  'auth.invalidOTP': 'Ingresa el codigo completo de 6 digitos',
+  'auth.errorVerifyingOTP': 'Codigo invalido o expirado',
+  'auth.changePhone': 'Cambiar numero',
+
+  // Auth - Register Step
+  'auth.registerTitle': 'Completa tu perfil 🐄',
+  'auth.registerSubtitle': 'Numero verificado: {{phone}}',
   'auth.nameLabel': 'Nombre completo',
   'auth.namePlaceholder': 'Ej: Anderson Charry',
   'auth.usernameLabel': 'Nombre de usuario',
   'auth.usernamePlaceholder': 'Ej: anderson.charry',
-  'auth.phoneLabel': 'Celular',
-  'auth.phonePlaceholder': 'Ej: 3001234567',
-  'auth.documentLabel': 'Documento de identidad (opcional)',
+  'auth.documentLabel': 'Documento de identidad (cedula)',
   'auth.documentPlaceholder': 'Ej: 1234567890',
-  'auth.enterButton': 'Entrar \ud83d\udc04',
-  'auth.invalidPhone': 'Ingresa un numero valido',
+  'auth.registerButton': 'Crear cuenta 🐄',
   'auth.invalidUsername': 'El usuario debe tener al menos 3 caracteres',
   'auth.noName': 'Ingresa tu nombre',
+  'auth.noDocument': 'El documento de identidad es obligatorio',
   'auth.errorRegistering': 'No se pudo registrar',
-  'auth.hint': 'Tu celular es tu identidad. Sin contrasenas, simple y sencillo.',
 
   // Feed
   'feed.empty': 'No hay actividad aun',
@@ -122,6 +139,36 @@ const es = {
   'profile.logoutMessage': 'Seguro que quieres salir?',
   'profile.logoutConfirm': 'Salir',
   'profile.cancel': 'Cancelar',
+
+  // Groups
+  'groups.empty': 'No tienes grupos aun',
+  'groups.emptyHint': 'Crea un grupo con tus amigos para dividir cuentas mas rapido',
+  'groups.members': 'miembros',
+  'groups.createTitle': 'Crear grupo',
+  'groups.nameLabel': 'Nombre del grupo',
+  'groups.namePlaceholder': 'Ej: Los parceros',
+  'groups.iconLabel': 'Icono',
+  'groups.createButton': 'Crear grupo 🐄',
+  'groups.noName': 'Ingresa un nombre para el grupo',
+  'groups.deleteTitle': 'Eliminar grupo',
+  'groups.deleteMessage': 'Seguro que quieres eliminar "{{name}}"?',
+  'groups.deleteConfirm': 'Eliminar',
+  'groups.addMembers': 'Agregar miembros',
+  'groups.removeMember': 'Quitar miembro',
+  'groups.removeMessage': 'Quitar a {{name}} del grupo?',
+  'groups.removeConfirm': 'Quitar',
+  'groups.createSession': 'Crear mesa con este grupo',
+  'groups.admin': 'Admin',
+  'groups.noMembers': 'Aun no hay miembros',
+  'groups.groupNotFound': 'Grupo no encontrado',
+
+  // History
+  'history.empty': 'No tienes historial aun',
+  'history.emptyHint': 'Tu historial de mesas y divisiones aparecera aqui',
+  'history.untitled': 'Mesa sin nombre',
+  'history.myPart': 'Mi parte',
+  'history.organizer': 'Organizador',
+  'history.participant': 'Participante',
 };
 
 const en: TranslationKeys = {
@@ -195,26 +242,43 @@ const en: TranslationKeys = {
 
   // Tabs
   'tabs.home': 'Home',
+  'tabs.groups': 'Groups',
+  'tabs.history': 'History',
   'tabs.feed': 'Activity',
   'tabs.profile': 'Profile',
 
-  // Auth
+  // Auth - Phone Step
   'auth.welcome': 'Welcome to La Vaca 🐄',
-  'auth.subtitle': 'Fill in your details to get started',
+  'auth.phoneSubtitle': 'Enter your phone number to get started',
+  'auth.phoneLabel': 'Phone',
+  'auth.phonePlaceholder': 'Ex: 3001234567',
+  'auth.sendCode': 'Send code 📱',
+  'auth.invalidPhone': 'Enter a valid number',
+  'auth.errorSendingOTP': 'Could not send code',
+  'auth.hint': 'Your phone is your identity. No passwords, simple and easy.',
+
+  // Auth - OTP Step
+  'auth.verifyTitle': 'Verify number 📱',
+  'auth.verifySubtitle': 'Enter the 6-digit code sent to {{phone}}',
+  'auth.verifyButton': 'Verify',
+  'auth.invalidOTP': 'Enter the complete 6-digit code',
+  'auth.errorVerifyingOTP': 'Invalid or expired code',
+  'auth.changePhone': 'Change number',
+
+  // Auth - Register Step
+  'auth.registerTitle': 'Complete your profile 🐄',
+  'auth.registerSubtitle': 'Verified number: {{phone}}',
   'auth.nameLabel': 'Full name',
   'auth.namePlaceholder': 'Ex: John Smith',
   'auth.usernameLabel': 'Username',
   'auth.usernamePlaceholder': 'Ex: john.smith',
-  'auth.phoneLabel': 'Phone',
-  'auth.phonePlaceholder': 'Ex: 3001234567',
-  'auth.documentLabel': 'ID document (optional)',
+  'auth.documentLabel': 'ID document (required)',
   'auth.documentPlaceholder': 'Ex: 1234567890',
-  'auth.enterButton': 'Enter 🐄',
-  'auth.invalidPhone': 'Enter a valid number',
+  'auth.registerButton': 'Create account 🐄',
   'auth.invalidUsername': 'Username must be at least 3 characters',
   'auth.noName': 'Enter your name',
+  'auth.noDocument': 'ID document is required',
   'auth.errorRegistering': 'Could not register',
-  'auth.hint': 'Your phone is your identity. No passwords, simple and easy.',
 
   // Feed
   'feed.empty': 'No activity yet',
@@ -232,6 +296,36 @@ const en: TranslationKeys = {
   'profile.logoutMessage': 'Are you sure you want to log out?',
   'profile.logoutConfirm': 'Log out',
   'profile.cancel': 'Cancel',
+
+  // Groups
+  'groups.empty': 'No groups yet',
+  'groups.emptyHint': 'Create a group with your friends to split bills faster',
+  'groups.members': 'members',
+  'groups.createTitle': 'Create group',
+  'groups.nameLabel': 'Group name',
+  'groups.namePlaceholder': 'Ex: The Squad',
+  'groups.iconLabel': 'Icon',
+  'groups.createButton': 'Create group 🐄',
+  'groups.noName': 'Enter a name for the group',
+  'groups.deleteTitle': 'Delete group',
+  'groups.deleteMessage': 'Are you sure you want to delete "{{name}}"?',
+  'groups.deleteConfirm': 'Delete',
+  'groups.addMembers': 'Add members',
+  'groups.removeMember': 'Remove member',
+  'groups.removeMessage': 'Remove {{name}} from the group?',
+  'groups.removeConfirm': 'Remove',
+  'groups.createSession': 'Create table with this group',
+  'groups.admin': 'Admin',
+  'groups.noMembers': 'No members yet',
+  'groups.groupNotFound': 'Group not found',
+
+  // History
+  'history.empty': 'No history yet',
+  'history.emptyHint': 'Your table and split history will appear here',
+  'history.untitled': 'Untitled table',
+  'history.myPart': 'My part',
+  'history.organizer': 'Organizer',
+  'history.participant': 'Participant',
 };
 
 const pt: TranslationKeys = {
@@ -305,26 +399,43 @@ const pt: TranslationKeys = {
 
   // Tabs
   'tabs.home': 'Início',
+  'tabs.groups': 'Grupos',
+  'tabs.history': 'Histórico',
   'tabs.feed': 'Atividade',
   'tabs.profile': 'Perfil',
 
-  // Auth
+  // Auth - Phone Step
   'auth.welcome': 'Bem-vindo ao La Vaca 🐄',
-  'auth.subtitle': 'Preencha seus dados para começar',
+  'auth.phoneSubtitle': 'Insira seu número de celular para começar',
+  'auth.phoneLabel': 'Celular',
+  'auth.phonePlaceholder': 'Ex: 3001234567',
+  'auth.sendCode': 'Enviar código 📱',
+  'auth.invalidPhone': 'Insira um número válido',
+  'auth.errorSendingOTP': 'Não foi possível enviar o código',
+  'auth.hint': 'Seu celular é sua identidade. Sem senhas, simples e fácil.',
+
+  // Auth - OTP Step
+  'auth.verifyTitle': 'Verificar número 📱',
+  'auth.verifySubtitle': 'Insira o código de 6 dígitos enviado para {{phone}}',
+  'auth.verifyButton': 'Verificar',
+  'auth.invalidOTP': 'Insira o código completo de 6 dígitos',
+  'auth.errorVerifyingOTP': 'Código inválido ou expirado',
+  'auth.changePhone': 'Mudar número',
+
+  // Auth - Register Step
+  'auth.registerTitle': 'Complete seu perfil 🐄',
+  'auth.registerSubtitle': 'Número verificado: {{phone}}',
   'auth.nameLabel': 'Nome completo',
   'auth.namePlaceholder': 'Ex: João Silva',
   'auth.usernameLabel': 'Nome de usuário',
   'auth.usernamePlaceholder': 'Ex: joao.silva',
-  'auth.phoneLabel': 'Celular',
-  'auth.phonePlaceholder': 'Ex: 3001234567',
-  'auth.documentLabel': 'Documento de identidade (opcional)',
+  'auth.documentLabel': 'Documento de identidade (obrigatório)',
   'auth.documentPlaceholder': 'Ex: 1234567890',
-  'auth.enterButton': 'Entrar 🐄',
-  'auth.invalidPhone': 'Insira um número válido',
+  'auth.registerButton': 'Criar conta 🐄',
   'auth.invalidUsername': 'O usuário deve ter pelo menos 3 caracteres',
   'auth.noName': 'Insira seu nome',
+  'auth.noDocument': 'O documento de identidade é obrigatório',
   'auth.errorRegistering': 'Não foi possível registrar',
-  'auth.hint': 'Seu celular é sua identidade. Sem senhas, simples e fácil.',
 
   // Feed
   'feed.empty': 'Nenhuma atividade ainda',
@@ -332,16 +443,46 @@ const pt: TranslationKeys = {
 
   // Profile
   'profile.name': 'Nome',
-  'profile.username': 'Usu\u00e1rio',
+  'profile.username': 'Usuário',
   'profile.phone': 'Celular',
   'profile.document': 'Documento',
   'profile.memberSince': 'Membro desde',
-  'profile.permissionNeeded': 'Permiss\u00e3o necess\u00e1ria para acessar suas fotos',
+  'profile.permissionNeeded': 'Permissão necessária para acessar suas fotos',
   'profile.logout': 'Sair',
   'profile.logoutTitle': 'Sair',
   'profile.logoutMessage': 'Tem certeza que quer sair?',
   'profile.logoutConfirm': 'Sair',
   'profile.cancel': 'Cancelar',
+
+  // Groups
+  'groups.empty': 'Nenhum grupo ainda',
+  'groups.emptyHint': 'Crie um grupo com seus amigos para dividir contas mais rápido',
+  'groups.members': 'membros',
+  'groups.createTitle': 'Criar grupo',
+  'groups.nameLabel': 'Nome do grupo',
+  'groups.namePlaceholder': 'Ex: Os amigos',
+  'groups.iconLabel': 'Ícone',
+  'groups.createButton': 'Criar grupo 🐄',
+  'groups.noName': 'Insira um nome para o grupo',
+  'groups.deleteTitle': 'Excluir grupo',
+  'groups.deleteMessage': 'Tem certeza que quer excluir "{{name}}"?',
+  'groups.deleteConfirm': 'Excluir',
+  'groups.addMembers': 'Adicionar membros',
+  'groups.removeMember': 'Remover membro',
+  'groups.removeMessage': 'Remover {{name}} do grupo?',
+  'groups.removeConfirm': 'Remover',
+  'groups.createSession': 'Criar mesa com este grupo',
+  'groups.admin': 'Admin',
+  'groups.noMembers': 'Nenhum membro ainda',
+  'groups.groupNotFound': 'Grupo não encontrado',
+
+  // History
+  'history.empty': 'Nenhum histórico ainda',
+  'history.emptyHint': 'Seu histórico de mesas e divisões aparecerá aqui',
+  'history.untitled': 'Mesa sem nome',
+  'history.myPart': 'Minha parte',
+  'history.organizer': 'Organizador',
+  'history.participant': 'Participante',
 };
 
 export const translations: Record<Locale, TranslationKeys> = { es, en, pt };

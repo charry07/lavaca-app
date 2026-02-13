@@ -1,8 +1,12 @@
 import { PaymentSession, SplitMode, User, FeedEvent, Group } from '@lavaca/shared';
 import { Platform } from 'react-native';
 
-// Android emulator uses 10.0.2.2 to reach host machine
+// Use EXPO_PUBLIC_API_URL for production, fallback to local dev
 const getBaseUrl = () => {
+  // Expo env vars prefixed with EXPO_PUBLIC_ are available at build time
+  const envUrl = process.env.EXPO_PUBLIC_API_URL;
+  if (envUrl) return envUrl;
+  // Dev fallback
   if (Platform.OS === 'android') return 'http://10.0.2.2:3001';
   return 'http://localhost:3001';
 };
