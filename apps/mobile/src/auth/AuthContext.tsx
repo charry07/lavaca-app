@@ -8,10 +8,10 @@ const AUTH_KEY = 'lavaca_user';
 interface AuthContextValue {
   user: User | null;
   isLoading: boolean;
-  register: (phone: string, displayName: string) => Promise<void>;
+  register: (phone: string, displayName: string, username: string, documentId?: string) => Promise<void>;
   login: (phone: string) => Promise<void>;
   logout: () => Promise<void>;
-  updateProfile: (data: { displayName?: string; avatarUrl?: string }) => Promise<void>;
+  updateProfile: (data: { displayName?: string; username?: string; documentId?: string; avatarUrl?: string }) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextValue>({
@@ -49,8 +49,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     await AsyncStorage.setItem(AUTH_KEY, JSON.stringify(u));
   };
 
-  const register = useCallback(async (phone: string, displayName: string) => {
-    const u = await api.register({ phone, displayName });
+  const register = useCallback(async (phone: string, displayName: string, username: string, documentId?: string) => {
+    const u = await api.register({ phone, displayName, username, documentId });
     await persistUser(u);
   }, []);
 
@@ -64,7 +64,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     await AsyncStorage.removeItem(AUTH_KEY);
   }, []);
 
-  const updateProfile = useCallback(async (data: { displayName?: string; avatarUrl?: string }) => {
+  const updateProfile = useCallback(async (data: { displayName?: string; username?: string; documentId?: string; avatarUrl?: string }) => {
     if (!user) return;
     const updated = await api.updateUser(user.id, data);
     await persistUser(updated);

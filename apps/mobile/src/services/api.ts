@@ -29,7 +29,7 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
 export const api = {
   // ── Auth ──────────────────────────────────────────────
   /** Register a new user (or auto-login if phone exists) */
-  register: (data: { phone: string; displayName: string }) =>
+  register: (data: { phone: string; displayName: string; username: string; documentId?: string }) =>
     request<User>('/api/users/register', {
       method: 'POST',
       body: JSON.stringify(data),
@@ -47,7 +47,7 @@ export const api = {
     request<User>(`/api/users/${userId}`),
 
   /** Update user profile */
-  updateUser: (userId: string, data: { displayName?: string; avatarUrl?: string }) =>
+  updateUser: (userId: string, data: { displayName?: string; username?: string; documentId?: string; avatarUrl?: string }) =>
     request<User>(`/api/users/${userId}`, {
       method: 'PUT',
       body: JSON.stringify(data),

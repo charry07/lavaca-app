@@ -17,11 +17,13 @@ import { api } from '../src/services/api';
 import { spacing, borderRadius, fontSize, type ThemeColors } from '../src/constants/theme';
 import { useI18n } from '../src/i18n';
 import { useTheme } from '../src/theme';
+import { useAuth } from '../src/auth';
 
 export default function CreateScreen() {
   const router = useRouter();
   const { t } = useI18n();
   const { colors } = useTheme();
+  const { user } = useAuth();
   const s = createStyles(colors);
   const [amount, setAmount] = useState('');
   const [description, setDescription] = useState('');
@@ -44,7 +46,7 @@ export default function CreateScreen() {
     setLoading(true);
     try {
       const session = await api.createSession({
-        adminId: 'temp-user-' + Date.now(),
+        adminId: user?.id || 'anonymous',
         totalAmount: numAmount,
         splitMode,
         description: description || undefined,

@@ -15,14 +15,16 @@ import { api } from '../src/services/api';
 import { spacing, borderRadius, fontSize, type ThemeColors } from '../src/constants/theme';
 import { useI18n } from '../src/i18n';
 import { useTheme } from '../src/theme';
+import { useAuth } from '../src/auth';
 
 export default function JoinScreen() {
   const router = useRouter();
   const { t } = useI18n();
   const { colors } = useTheme();
+  const { user } = useAuth();
   const s = createStyles(colors);
   const [code, setCode] = useState('');
-  const [name, setName] = useState('');
+  const [name, setName] = useState(user?.displayName || '');
   const [loading, setLoading] = useState(false);
 
   const handleJoin = async () => {
@@ -40,7 +42,7 @@ export default function JoinScreen() {
     try {
       await api.getSession(joinCode);
       await api.joinSession(joinCode, {
-        userId: 'temp-user-' + Date.now(),
+        userId: user?.id || 'anonymous',
         displayName: name.trim(),
       });
 

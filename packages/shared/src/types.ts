@@ -9,6 +9,8 @@ export interface User {
   id: string;
   phone: string;
   displayName: string;
+  username: string;
+  documentId?: string;
   avatarUrl?: string;
   email?: string;
   createdAt: Date;

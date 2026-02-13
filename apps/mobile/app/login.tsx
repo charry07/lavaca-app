@@ -9,6 +9,7 @@ import {
   ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
+  ScrollView,
 } from 'react-native';
 import { spacing, borderRadius, fontSize, type ThemeColors } from '../src/constants/theme';
 import { useI18n } from '../src/i18n';
@@ -24,6 +25,8 @@ export default function LoginScreen() {
 
   const [phone, setPhone] = useState('');
   const [name, setName] = useState('');
+  const [username, setUsername] = useState('');
+  const [documentId, setDocumentId] = useState('');
   const [loading, setLoading] = useState(false);
 
   const handleRegister = async () => {
@@ -36,11 +39,15 @@ export default function LoginScreen() {
       Alert.alert(t('common.error'), t('auth.noName'));
       return;
     }
+    const cleanUsername = username.trim().toLowerCase().replace(/[^a-z0-9._]/g, '');
+    if (!cleanUsername || cleanUsername.length < 3) {
+      Alert.alert(t('common.error'), t('auth.invalidUsername'));
+      return;
+    }
 
     setLoading(true);
     try {
-      await register(cleanPhone, name.trim());
-      // Navigation is automatic — root layout will redirect
+      await register(cleanPhone, name.trim(), cleanUsername, documentId.trim() || undefined);
     } catch (err: any) {
       Alert.alert(t('common.error'), err.message || t('auth.errorRegistering'));
     } finally {
@@ -53,12 +60,37 @@ export default function LoginScreen() {
       style={s.container}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
-      <View style={s.content}>
+      <ScrollView
+        contentContainerStyle={s.content}
+        keyboardShouldPersistTaps="handled"
+      >
         <VacaLogo size="lg" />
 
         <Text style={s.title}>{t('auth.welcome')}</Text>
         <Text style={s.subtitle}>{t('auth.subtitle')}</Text>
 
+        <Text style={s.fieldLabel}>{t('auth.nameLabel')}</Text>
+        <TextInput
+          style={s.input}
+          placeholder={t('auth.namePlaceholder')}
+          placeholderTextColor={colors.textMuted}
+          value={name}
+          onChangeText={setName}
+          autoFocus
+        />
+
+        <Text style={s.fieldLabel}>{t('auth.usernameLabel')}</Text>
+        <TextInput
+          style={s.input}
+          placeholder={t('auth.usernamePlaceholder')}
+          placeholderTextColor={colors.textMuted}
+          value={username}
+          onChangeText={(text) => setUsername(text.toLowerCase().replace(/\s/g, ''))}
+          autoCapitalize="none"
+          autoCorrect={false}
+        />
+
+        <Text style={s.fieldLabel}>{t('auth.phoneLabel')}</Text>
         <TextInput
           style={s.input}
           placeholder={t('auth.phonePlaceholder')}
@@ -66,15 +98,16 @@ export default function LoginScreen() {
           keyboardType="phone-pad"
           value={phone}
           onChangeText={setPhone}
-          autoFocus
         />
 
+        <Text style={s.fieldLabel}>{t('auth.documentLabel')}</Text>
         <TextInput
           style={s.input}
-          placeholder={t('auth.namePlaceholder')}
+          placeholder={t('auth.documentPlaceholder')}
           placeholderTextColor={colors.textMuted}
-          value={name}
-          onChangeText={setName}
+          keyboardType="numeric"
+          value={documentId}
+          onChangeText={setDocumentId}
         />
 
         <TouchableOpacity
@@ -90,7 +123,7 @@ export default function LoginScreen() {
         </TouchableOpacity>
 
         <Text style={s.hint}>{t('auth.hint')}</Text>
-      </View>
+      </ScrollView>
     </KeyboardAvoidingView>
   );
 }
@@ -102,10 +135,11 @@ const createStyles = (colors: ThemeColors) =>
       backgroundColor: colors.background,
     },
     content: {
-      flex: 1,
+      flexGrow: 1,
       padding: spacing.lg,
       justifyContent: 'center',
       alignItems: 'center',
+      paddingBottom: spacing.xxl,
     },
     title: {
       fontSize: fontSize.xl,
@@ -120,6 +154,14 @@ const createStyles = (colors: ThemeColors) =>
       textAlign: 'center',
       marginBottom: spacing.xl,
     },
+    fieldLabel: {
+      fontSize: fontSize.sm,
+      fontWeight: '600',
+      color: colors.textSecondary,
+      alignSelf: 'flex-start',
+      marginBottom: spacing.xs,
+      marginTop: spacing.sm,
+    },
     input: {
       fontSize: fontSize.md,
       color: colors.text,
@@ -129,8 +171,7 @@ const createStyles = (colors: ThemeColors) =>
       borderWidth: 1,
       borderColor: colors.surfaceBorder,
       width: '100%',
-      marginBottom: spacing.md,
-      textAlign: 'center',
+      marginBottom: spacing.sm,
     },
     button: {
       backgroundColor: colors.primary,
@@ -139,7 +180,7 @@ const createStyles = (colors: ThemeColors) =>
       borderRadius: borderRadius.md,
       alignItems: 'center',
       width: '100%',
-      marginTop: spacing.sm,
+      marginTop: spacing.md,
     },
     buttonDisabled: {
       opacity: 0.6,

@@ -82,6 +82,46 @@ const es = {
 
   // Common
   'common.error': 'Error',
+
+  // Tabs
+  'tabs.home': 'Inicio',
+  'tabs.feed': 'Actividad',
+  'tabs.profile': 'Perfil',
+
+  // Auth
+  'auth.welcome': 'Bienvenido a La Vaca 🐄',
+  'auth.subtitle': 'Completa tus datos para empezar',
+  'auth.nameLabel': 'Nombre completo',
+  'auth.namePlaceholder': 'Ej: Anderson Charry',
+  'auth.usernameLabel': 'Nombre de usuario',
+  'auth.usernamePlaceholder': 'Ej: anderson.charry',
+  'auth.phoneLabel': 'Celular',
+  'auth.phonePlaceholder': 'Ej: 3001234567',
+  'auth.documentLabel': 'Documento de identidad (opcional)',
+  'auth.documentPlaceholder': 'Ej: 1234567890',
+  'auth.enterButton': 'Entrar \ud83d\udc04',
+  'auth.invalidPhone': 'Ingresa un numero valido',
+  'auth.invalidUsername': 'El usuario debe tener al menos 3 caracteres',
+  'auth.noName': 'Ingresa tu nombre',
+  'auth.errorRegistering': 'No se pudo registrar',
+  'auth.hint': 'Tu celular es tu identidad. Sin contrasenas, simple y sencillo.',
+
+  // Feed
+  'feed.empty': 'No hay actividad aun',
+  'feed.emptyHint': 'Crea o unete a una mesa para ver actividad aqui',
+
+  // Profile
+  'profile.name': 'Nombre',
+  'profile.username': 'Usuario',
+  'profile.phone': 'Celular',
+  'profile.document': 'Documento',
+  'profile.memberSince': 'Miembro desde',
+  'profile.permissionNeeded': 'Se necesita permiso para acceder a tus fotos',
+  'profile.logout': 'Cerrar sesion',
+  'profile.logoutTitle': 'Cerrar sesion',
+  'profile.logoutMessage': 'Seguro que quieres salir?',
+  'profile.logoutConfirm': 'Salir',
+  'profile.cancel': 'Cancelar',
 };
 
 const en: TranslationKeys = {
@@ -152,6 +192,46 @@ const en: TranslationKeys = {
 
   // Common
   'common.error': 'Error',
+
+  // Tabs
+  'tabs.home': 'Home',
+  'tabs.feed': 'Activity',
+  'tabs.profile': 'Profile',
+
+  // Auth
+  'auth.welcome': 'Welcome to La Vaca 🐄',
+  'auth.subtitle': 'Fill in your details to get started',
+  'auth.nameLabel': 'Full name',
+  'auth.namePlaceholder': 'Ex: John Smith',
+  'auth.usernameLabel': 'Username',
+  'auth.usernamePlaceholder': 'Ex: john.smith',
+  'auth.phoneLabel': 'Phone',
+  'auth.phonePlaceholder': 'Ex: 3001234567',
+  'auth.documentLabel': 'ID document (optional)',
+  'auth.documentPlaceholder': 'Ex: 1234567890',
+  'auth.enterButton': 'Enter 🐄',
+  'auth.invalidPhone': 'Enter a valid number',
+  'auth.invalidUsername': 'Username must be at least 3 characters',
+  'auth.noName': 'Enter your name',
+  'auth.errorRegistering': 'Could not register',
+  'auth.hint': 'Your phone is your identity. No passwords, simple and easy.',
+
+  // Feed
+  'feed.empty': 'No activity yet',
+  'feed.emptyHint': 'Create or join a table to see activity here',
+
+  // Profile
+  'profile.name': 'Name',
+  'profile.username': 'Username',
+  'profile.phone': 'Phone',
+  'profile.document': 'ID Document',
+  'profile.memberSince': 'Member since',
+  'profile.permissionNeeded': 'Permission needed to access your photos',
+  'profile.logout': 'Log out',
+  'profile.logoutTitle': 'Log out',
+  'profile.logoutMessage': 'Are you sure you want to log out?',
+  'profile.logoutConfirm': 'Log out',
+  'profile.cancel': 'Cancel',
 };
 
 const pt: TranslationKeys = {
@@ -222,6 +302,46 @@ const pt: TranslationKeys = {
 
   // Common
   'common.error': 'Erro',
+
+  // Tabs
+  'tabs.home': 'Início',
+  'tabs.feed': 'Atividade',
+  'tabs.profile': 'Perfil',
+
+  // Auth
+  'auth.welcome': 'Bem-vindo ao La Vaca 🐄',
+  'auth.subtitle': 'Preencha seus dados para começar',
+  'auth.nameLabel': 'Nome completo',
+  'auth.namePlaceholder': 'Ex: João Silva',
+  'auth.usernameLabel': 'Nome de usuário',
+  'auth.usernamePlaceholder': 'Ex: joao.silva',
+  'auth.phoneLabel': 'Celular',
+  'auth.phonePlaceholder': 'Ex: 3001234567',
+  'auth.documentLabel': 'Documento de identidade (opcional)',
+  'auth.documentPlaceholder': 'Ex: 1234567890',
+  'auth.enterButton': 'Entrar 🐄',
+  'auth.invalidPhone': 'Insira um número válido',
+  'auth.invalidUsername': 'O usuário deve ter pelo menos 3 caracteres',
+  'auth.noName': 'Insira seu nome',
+  'auth.errorRegistering': 'Não foi possível registrar',
+  'auth.hint': 'Seu celular é sua identidade. Sem senhas, simples e fácil.',
+
+  // Feed
+  'feed.empty': 'Nenhuma atividade ainda',
+  'feed.emptyHint': 'Crie ou entre numa mesa para ver atividade aqui',
+
+  // Profile
+  'profile.name': 'Nome',
+  'profile.username': 'Usu\u00e1rio',
+  'profile.phone': 'Celular',
+  'profile.document': 'Documento',
+  'profile.memberSince': 'Membro desde',
+  'profile.permissionNeeded': 'Permiss\u00e3o necess\u00e1ria para acessar suas fotos',
+  'profile.logout': 'Sair',
+  'profile.logoutTitle': 'Sair',
+  'profile.logoutMessage': 'Tem certeza que quer sair?',
+  'profile.logoutConfirm': 'Sair',
+  'profile.cancel': 'Cancelar',
 };
 
 export const translations: Record<Locale, TranslationKeys> = { es, en, pt };
