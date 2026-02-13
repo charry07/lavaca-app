@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from 'react';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { storage } from '../utils/storage';
 import { darkColors, lightColors, type ThemeColors, type ColorScheme } from '../constants/theme';
 
 const STORAGE_KEY = '@lavaca/theme';
@@ -22,7 +22,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   const [scheme, setScheme] = useState<ColorScheme>('dark');
 
   useEffect(() => {
-    AsyncStorage.getItem(STORAGE_KEY).then((saved) => {
+    storage.getItem(STORAGE_KEY).then((saved) => {
       if (saved === 'light' || saved === 'dark') {
         setScheme(saved);
       }
@@ -32,7 +32,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   const toggleTheme = useCallback(() => {
     setScheme((prev) => {
       const next = prev === 'dark' ? 'light' : 'dark';
-      AsyncStorage.setItem(STORAGE_KEY, next);
+      storage.setItem(STORAGE_KEY, next);
       return next;
     });
   }, []);

@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { storage } from '../utils/storage';
 import { User } from '@lavaca/shared';
 import { api } from '../services/api';
 
@@ -46,7 +46,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     (async () => {
       try {
-        const stored = await AsyncStorage.getItem(AUTH_KEY);
+        const stored = await storage.getItem(AUTH_KEY);
         if (stored) {
           const parsed: User = JSON.parse(stored);
           setUser(parsed);
@@ -63,7 +63,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const persistUser = async (u: User) => {
     setUser(u);
     setAuthStep('done');
-    await AsyncStorage.setItem(AUTH_KEY, JSON.stringify(u));
+    await storage.setItem(AUTH_KEY, JSON.stringify(u));
   };
 
   const sendOTP = useCallback(async (phone: string) => {
@@ -99,7 +99,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setAuthStep('phone');
     setPendingPhone(null);
     setDevCode(null);
-    await AsyncStorage.removeItem(AUTH_KEY);
+    await storage.removeItem(AUTH_KEY);
   }, []);
 
   const updateProfile = useCallback(async (data: { displayName?: string; username?: string; documentId?: string; avatarUrl?: string }) => {

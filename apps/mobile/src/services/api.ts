@@ -2,18 +2,7 @@ import { PaymentSession, SplitMode, User, FeedEvent, Group } from '@lavaca/share
 import { Platform } from 'react-native';
 import Constants from 'expo-constants';
 
-// Use EXPO_PUBLIC_API_URL for production, fallback to local dev
-// In production (Azure), the web frontend is served from the same origin as the API,
-// so we can use '' (empty string = same origin) for relative fetch calls.
 const getBaseUrl = () => {
-  // Expo env vars prefixed with EXPO_PUBLIC_ are available at build time
-  const envUrl = process.env.EXPO_PUBLIC_API_URL;
-  if (envUrl) return envUrl;
-  // Web production: same origin (API + frontend on same App Service)
-  if (Platform.OS === 'web' && typeof window !== 'undefined' && window.location.hostname !== 'localhost') {
-    return '';
-  }
-  // Dev fallback
   if (Platform.OS === 'android') return 'http://10.0.2.2:3001';
 
   // For physical iOS device: extract the dev machine's IP from Expo's debugger host
