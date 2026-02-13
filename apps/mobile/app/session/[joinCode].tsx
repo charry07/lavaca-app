@@ -9,18 +9,28 @@ import {
   ActivityIndicator,
   Share,
   RefreshControl,
+  Modal,
+  Platform,
 } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
-import { PaymentSession, Participant, formatCOP } from '@lavaca/shared';
+import { PaymentSession, Participant, formatCOP, rouletteSelect } from '@lavaca/shared';
 import { api } from '../../src/services/api';
 import { colors, spacing, borderRadius, fontSize } from '../../src/constants/theme';
+import { RouletteWheel } from '../../src/components/RouletteWheel';
+import { QRCode } from '../../src/components/QRCode';
+import { useI18n } from '../../src/i18n';
 
 export default function SessionScreen() {
   const { joinCode } = useLocalSearchParams<{ joinCode: string }>();
+  const { t } = useI18n();
   const [session, setSession] = useState<PaymentSession | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [splitting, setSplitting] = useState(false);
+  const [showRoulette, setShowRoulette] = useState(false);
+  const [rouletteWinner, setRouletteWinner] = useState(-1);
+  const [pendingUpdate, setPendingUpdate] = useState<PaymentSession | null>(null);
+  const [showShareModal, setShowShareModal] = useState(false);
 
   const fetchSession = useCallback(async () => {
     if (!joinCode) return;
@@ -47,6 +57,19 @@ export default function SessionScreen() {
     setSplitting(true);
     try {
       const updated = await api.splitSession(joinCode);
+
+      if (session.splitMode === 'roulette' && updated.participants.length > 1) {
+        // Find the winner index for the animation
+        const winnerIdx = updated.participants.findIndex((p) => p.isRouletteWinner);
+        if (winnerIdx >= 0) {
+          setRouletteWinner(winnerIdx);
+          setPendingUpdate(updated);
+          setShowRoulette(true);
+          setSplitting(false);
+          return;
+        }
+      }
+
       setSession(updated);
     } catch (err: any) {
       Alert.alert('Error', err.message);
@@ -55,13 +78,48 @@ export default function SessionScreen() {
     }
   };
 
-  const handleShare = async () => {
+  const handleRouletteFinish = () => {
+    // After animation ends, apply the actual session update
+    setTimeout(() => {
+      if (pendingUpdate) {
+        setSession(pendingUpdate);
+        setPendingUpdate(null);
+      }
+      setShowRoulette(false);
+    }, 2500);
+  };
+
+  const handleShare = () => {
+    setShowShareModal(true);
+  };
+
+  const getShareLink = () => {
+    if (Platform.OS === 'web') {
+      const origin = typeof window !== 'undefined' ? window.location.origin : 'https://lavaca.app';
+      return `${origin}/join?code=${joinCode}`;
+    }
+    return `https://lavaca.app/join?code=${joinCode}`;
+  };
+
+  const handleTextShare = async () => {
     if (!joinCode) return;
+    const link = getShareLink();
     try {
       await Share.share({
-        message: `Unete a La Vaca! 🐄\n\nCodigo: ${joinCode}\n\nDescarga la app para dividir y pagar la cuenta facilmente.`,
+        message: `Unete a La Vaca! 🐄\n\n${link}\n\nCodigo: ${joinCode}`,
+        url: link,
       });
     } catch {}
+  };
+
+  const handleCopyLink = async () => {
+    const link = getShareLink();
+    if (Platform.OS === 'web' && typeof navigator !== 'undefined' && navigator.clipboard) {
+      await navigator.clipboard.writeText(link);
+      Alert.alert('Copiado!', 'El enlace se copio al portapapeles');
+    } else {
+      await Share.share({ message: link });
+    }
   };
 
   const handleMarkPaid = async (userId: string) => {
@@ -70,7 +128,7 @@ export default function SessionScreen() {
       const updated = await api.markPaid(joinCode, { userId, paymentMethod: 'nequi' });
       setSession(updated);
     } catch (err: any) {
-      Alert.alert('Error', err.message);
+      Alert.alert(t('common.error'), err.message);
     }
   };
 
@@ -85,7 +143,7 @@ export default function SessionScreen() {
   if (!session) {
     return (
       <View style={[styles.container, styles.center]}>
-        <Text style={styles.errorText}>Mesa no encontrada</Text>
+        <Text style={styles.errorText}>{t('session.notFound')}</Text>
       </View>
     );
   }
@@ -96,9 +154,9 @@ export default function SessionScreen() {
 
   const getModeLabel = () => {
     switch (session.splitMode) {
-      case 'equal': return '⚖️ Partes iguales';
-      case 'percentage': return '📊 Porcentajes';
-      case 'roulette': return '🎰 Ruleta';
+      case 'equal': return t('session.equalMode');
+      case 'percentage': return t('session.percentageMode');
+      case 'roulette': return t('session.rouletteMode');
     }
   };
 
@@ -114,7 +172,7 @@ export default function SessionScreen() {
             {isWinner ? ' 🎰' : ''}
           </Text>
           <Text style={styles.participantStatus}>
-            {isPaid ? '✅ Pagado' : '⏳ Pendiente'}
+            {isPaid ? t('session.paid') : t('session.pending')}
           </Text>
         </View>
         <View style={styles.participantRight}>
@@ -126,7 +184,7 @@ export default function SessionScreen() {
               style={styles.payButton}
               onPress={() => handleMarkPaid(item.userId)}
             >
-              <Text style={styles.payButtonText}>Pagar</Text>
+              <Text style={styles.payButtonText}>{t('session.payButton')}</Text>
             </TouchableOpacity>
           )}
         </View>
@@ -139,10 +197,10 @@ export default function SessionScreen() {
       {/* Session Header */}
       <View style={styles.header}>
         <View style={styles.codeRow}>
-          <Text style={styles.joinCodeLabel}>Codigo:</Text>
+          <Text style={styles.joinCodeLabel}>{t('session.code')}</Text>
           <Text style={styles.joinCode}>{session.joinCode}</Text>
           <TouchableOpacity onPress={handleShare} style={styles.shareButton}>
-            <Text style={styles.shareButtonText}>Compartir</Text>
+            <Text style={styles.shareButtonText}>{t('session.share')}</Text>
           </TouchableOpacity>
         </View>
 
@@ -153,15 +211,15 @@ export default function SessionScreen() {
         <View style={styles.statsRow}>
           <View style={styles.stat}>
             <Text style={styles.statValue}>{formatCOP(session.totalAmount)}</Text>
-            <Text style={styles.statLabel}>Total</Text>
+            <Text style={styles.statLabel}>{t('session.total')}</Text>
           </View>
           <View style={styles.stat}>
             <Text style={styles.statValue}>{totalCount}</Text>
-            <Text style={styles.statLabel}>Personas</Text>
+            <Text style={styles.statLabel}>{t('session.people')}</Text>
           </View>
           <View style={styles.stat}>
             <Text style={styles.statValue}>{getModeLabel()}</Text>
-            <Text style={styles.statLabel}>Modo</Text>
+            <Text style={styles.statLabel}>{t('session.mode')}</Text>
           </View>
         </View>
 
@@ -177,7 +235,7 @@ export default function SessionScreen() {
               />
             </View>
             <Text style={styles.progressText}>
-              {paidCount}/{totalCount} pagaron
+              {t('session.paidCount', { paid: paidCount, total: totalCount })}
             </Text>
           </View>
         )}
@@ -193,7 +251,7 @@ export default function SessionScreen() {
           <View style={styles.emptyState}>
             <Text style={styles.emptyEmoji}>👥</Text>
             <Text style={styles.emptyText}>
-              Aun no hay participantes.{'\n'}Comparte el codigo para que se unan!
+              {t('session.noParticipants')}
             </Text>
           </View>
         }
@@ -218,7 +276,7 @@ export default function SessionScreen() {
               <ActivityIndicator color={colors.background} />
             ) : (
               <Text style={styles.splitButtonText}>
-                Dividir Cuenta 🐄
+                {t('session.splitButton')}
               </Text>
             )}
           </TouchableOpacity>
@@ -227,9 +285,74 @@ export default function SessionScreen() {
 
       {session.status === 'closed' && (
         <View style={styles.closedBanner}>
-          <Text style={styles.closedText}>🎉 Todos pagaron! Cuenta cerrada</Text>
+          <Text style={styles.closedText}>{t('session.allPaid')}</Text>
         </View>
       )}
+
+      {/* Roulette Modal */}
+      <Modal
+        visible={showRoulette}
+        animationType="slide"
+        transparent
+        onRequestClose={() => {}}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <RouletteWheel
+              participants={session.participants}
+              winnerIndex={rouletteWinner}
+              onFinish={handleRouletteFinish}
+            />
+          </View>
+        </View>
+      </Modal>
+
+      {/* Share / QR Modal */}
+      <Modal
+        visible={showShareModal}
+        animationType="fade"
+        transparent
+        onRequestClose={() => setShowShareModal(false)}
+      >
+        <TouchableOpacity
+          style={styles.modalOverlay}
+          activeOpacity={1}
+          onPress={() => setShowShareModal(false)}
+        >
+          <View style={styles.modalContent}>
+            <View style={styles.shareModalInner}>
+              <Text style={styles.shareModalTitle}>{t('session.shareTitle')}</Text>
+              <QRCode
+                value={getShareLink()}
+                size={180}
+                label={t('session.scanToJoin')}
+              />
+              <View style={styles.shareCodeBox}>
+                <Text style={styles.shareCodeLabel}>{t('session.code')}</Text>
+                <Text style={styles.shareCodeValue}>{session.joinCode}</Text>
+              </View>
+              <TouchableOpacity
+                style={styles.shareTextButton}
+                onPress={handleTextShare}
+              >
+                <Text style={styles.shareTextButtonLabel}>{t('session.sendMessage')}</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.shareLinkButton}
+                onPress={handleCopyLink}
+              >
+                <Text style={styles.shareLinkButtonLabel}>{t('session.copyLink')}</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.closeModalButton}
+                onPress={() => setShowShareModal(false)}
+              >
+                <Text style={styles.closeModalText}>{t('session.close')}</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </TouchableOpacity>
+      </Modal>
     </View>
   );
 }
@@ -327,7 +450,6 @@ const styles = StyleSheet.create({
   },
   list: {
     padding: spacing.lg,
-    gap: spacing.sm,
   },
   participantCard: {
     backgroundColor: colors.surface,
@@ -338,6 +460,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderWidth: 1,
     borderColor: colors.surfaceBorder,
+    marginBottom: spacing.sm,
   },
   participantPaid: {
     borderColor: colors.primary,
@@ -421,5 +544,88 @@ const styles = StyleSheet.create({
     fontSize: fontSize.lg,
     fontWeight: '700',
     color: colors.background,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.85)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalContent: {
+    backgroundColor: colors.background,
+    borderRadius: borderRadius.lg,
+    maxWidth: 360,
+    width: '90%',
+    overflow: 'hidden',
+  },
+  shareModalInner: {
+    padding: spacing.lg,
+    alignItems: 'center',
+  },
+  shareModalTitle: {
+    fontSize: fontSize.xl,
+    fontWeight: 'bold',
+    color: colors.text,
+    marginBottom: spacing.lg,
+  },
+  shareCodeBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.surface,
+    borderRadius: borderRadius.md,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md,
+    marginTop: spacing.lg,
+    marginBottom: spacing.md,
+    borderWidth: 1,
+    borderColor: colors.surfaceBorder,
+  },
+  shareCodeLabel: {
+    fontSize: fontSize.sm,
+    color: colors.textSecondary,
+    marginRight: spacing.sm,
+  },
+  shareCodeValue: {
+    fontSize: fontSize.lg,
+    fontWeight: 'bold',
+    color: colors.primary,
+    letterSpacing: 2,
+  },
+  shareTextButton: {
+    backgroundColor: colors.primary,
+    borderRadius: borderRadius.md,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.lg,
+    marginBottom: spacing.sm,
+    width: '100%',
+    alignItems: 'center',
+  },
+  shareTextButtonLabel: {
+    fontSize: fontSize.md,
+    fontWeight: '600',
+    color: colors.background,
+  },
+  shareLinkButton: {
+    backgroundColor: colors.surface,
+    borderRadius: borderRadius.md,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.lg,
+    marginBottom: spacing.sm,
+    width: '100%',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: colors.primary,
+  },
+  shareLinkButtonLabel: {
+    fontSize: fontSize.md,
+    fontWeight: '600',
+    color: colors.primary,
+  },
+  closeModalButton: {
+    paddingVertical: spacing.sm,
+  },
+  closeModalText: {
+    fontSize: fontSize.md,
+    color: colors.textSecondary,
   },
 });

@@ -1,43 +1,49 @@
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
-import { Link } from 'expo-router';
+import { useRouter } from 'expo-router';
 import { colors, spacing, borderRadius, fontSize } from '../src/constants/theme';
 import { formatCOP } from '@lavaca/shared';
+import { useI18n } from '../src/i18n';
+import { LanguageSwitcher } from '../src/components/LanguageSwitcher';
+import { VacaLogo } from '../src/components/VacaLogo';
 
 export default function HomeScreen() {
+  const router = useRouter();
+  const { t } = useI18n();
+
   return (
     <View style={styles.container}>
+      <LanguageSwitcher />
+
       <View style={styles.hero}>
-        <Text style={styles.emoji}>🐄</Text>
-        <Text style={styles.logo}>La Vaca</Text>
+        <VacaLogo size="lg" />
         <Text style={styles.tagline}>
-          Simple y sencillo de dividir{'\n'}y pagar cuentas
+          {t('home.tagline')}
         </Text>
       </View>
 
       <View style={styles.card}>
-        <Text style={styles.cardTitle}>Ejemplo rapido</Text>
+        <Text style={styles.cardTitle}>{t('home.quickExample')}</Text>
         <Text style={styles.cardText}>
-          Cuenta total: {formatCOP(35000)}
+          {t('home.totalBill')} {formatCOP(35000)}
         </Text>
         <Text style={styles.cardText}>
-          Entre 7 personas: {formatCOP(5000)} c/u
+          {t('home.perPerson', { count: 7, amount: formatCOP(5000) })}
         </Text>
       </View>
 
       <View style={styles.actions}>
-        <Link href="/create" asChild>
-          <TouchableOpacity style={styles.button}>
-            <Text style={styles.buttonText}>🍽️  Crear Mesa</Text>
-          </TouchableOpacity>
-        </Link>
+        <TouchableOpacity style={styles.button} onPress={() => router.push('/create')}>
+          <Text style={styles.buttonText}>{t('home.createTable')}</Text>
+        </TouchableOpacity>
 
-        <Link href="/join" asChild>
-          <TouchableOpacity style={[styles.button, styles.buttonSecondary]}>
-            <Text style={[styles.buttonText, styles.buttonTextSecondary]}>
-              🔗  Unirme a Mesa
-            </Text>
-          </TouchableOpacity>
-        </Link>
+        <TouchableOpacity
+          style={[styles.button, styles.buttonSecondary]}
+          onPress={() => router.push('/join')}
+        >
+          <Text style={[styles.buttonText, styles.buttonTextSecondary]}>
+            {t('home.joinTable')}
+          </Text>
+        </TouchableOpacity>
       </View>
     </View>
   );
@@ -53,16 +59,6 @@ const styles = StyleSheet.create({
   hero: {
     alignItems: 'center',
     marginBottom: spacing.xl,
-  },
-  emoji: {
-    fontSize: 72,
-    marginBottom: spacing.sm,
-  },
-  logo: {
-    fontSize: fontSize.hero,
-    fontWeight: 'bold',
-    color: colors.primary,
-    marginBottom: spacing.sm,
   },
   tagline: {
     fontSize: fontSize.md,
@@ -90,11 +86,11 @@ const styles = StyleSheet.create({
     marginBottom: spacing.xs,
   },
   actions: {
-    gap: spacing.md,
   },
   button: {
     backgroundColor: colors.primary,
     paddingVertical: spacing.md,
+    marginBottom: spacing.md,
     paddingHorizontal: spacing.xl,
     borderRadius: borderRadius.md,
     alignItems: 'center',

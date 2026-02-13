@@ -10,12 +10,14 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import { api } from '../src/services/api';
 import { colors, spacing, borderRadius, fontSize } from '../src/constants/theme';
+import { useI18n } from '../src/i18n';
 
 export default function JoinScreen() {
   const router = useRouter();
+  const { t } = useI18n();
   const [code, setCode] = useState('');
   const [name, setName] = useState('');
   const [loading, setLoading] = useState(false);
@@ -23,20 +25,17 @@ export default function JoinScreen() {
   const handleJoin = async () => {
     const joinCode = code.toUpperCase().trim();
     if (!joinCode) {
-      Alert.alert('Error', 'Ingresa el codigo de la mesa');
+      Alert.alert(t('common.error'), t('join.noCode'));
       return;
     }
     if (!name.trim()) {
-      Alert.alert('Error', 'Ingresa tu nombre');
+      Alert.alert(t('common.error'), t('join.noName'));
       return;
     }
 
     setLoading(true);
     try {
-      // First check if session exists
       await api.getSession(joinCode);
-
-      // Then join
       await api.joinSession(joinCode, {
         userId: 'temp-user-' + Date.now(),
         displayName: name.trim(),
@@ -44,7 +43,7 @@ export default function JoinScreen() {
 
       router.replace(`/session/${joinCode}`);
     } catch (err: any) {
-      Alert.alert('Error', err.message || 'No se pudo unir a la mesa');
+      Alert.alert(t('common.error'), err.message || t('join.errorJoining'));
     } finally {
       setLoading(false);
     }
@@ -57,9 +56,9 @@ export default function JoinScreen() {
     >
       <View style={styles.content}>
         <Text style={styles.emoji}>🔗</Text>
-        <Text style={styles.title}>Unirme a una mesa</Text>
+        <Text style={styles.title}>{t('join.title')}</Text>
         <Text style={styles.subtitle}>
-          Ingresa el codigo que te compartieron
+          {t('join.subtitle')}
         </Text>
 
         <TextInput
@@ -75,7 +74,7 @@ export default function JoinScreen() {
 
         <TextInput
           style={styles.nameInput}
-          placeholder="Tu nombre"
+          placeholder={t('join.yourName')}
           placeholderTextColor={colors.textMuted}
           value={name}
           onChangeText={setName}
@@ -89,7 +88,7 @@ export default function JoinScreen() {
           {loading ? (
             <ActivityIndicator color={colors.background} />
           ) : (
-            <Text style={styles.joinButtonText}>Unirme 🐄</Text>
+            <Text style={styles.joinButtonText}>{t('join.joinButton')}</Text>
           )}
         </TouchableOpacity>
       </View>

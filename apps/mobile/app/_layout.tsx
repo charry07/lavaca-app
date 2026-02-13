@@ -1,8 +1,11 @@
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { colors } from '../src/constants/theme';
+import { I18nProvider, useI18n } from '../src/i18n';
 
-export default function RootLayout() {
+function RootLayoutInner() {
+  const { t } = useI18n();
+
   return (
     <>
       <StatusBar style="light" />
@@ -21,17 +24,25 @@ export default function RootLayout() {
         />
         <Stack.Screen
           name="create"
-          options={{ title: 'Crear Mesa', presentation: 'modal' }}
+          options={{ title: t('nav.createTable'), presentation: 'modal' }}
         />
         <Stack.Screen
           name="join"
-          options={{ title: 'Unirme a Mesa', presentation: 'modal' }}
+          options={{ title: t('nav.joinTable'), presentation: 'modal' }}
         />
         <Stack.Screen
           name="session/[joinCode]"
-          options={{ title: 'La Mesa' }}
+          options={{ title: t('nav.theTable') }}
         />
       </Stack>
     </>
+  );
+}
+
+export default function RootLayout() {
+  return (
+    <I18nProvider>
+      <RootLayoutInner />
+    </I18nProvider>
   );
 }

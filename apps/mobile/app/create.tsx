@@ -15,30 +15,31 @@ import { useRouter } from 'expo-router';
 import { SplitMode } from '@lavaca/shared';
 import { api } from '../src/services/api';
 import { colors, spacing, borderRadius, fontSize } from '../src/constants/theme';
-
-const SPLIT_MODES: { key: SplitMode; label: string; emoji: string }[] = [
-  { key: 'equal', label: 'Partes iguales', emoji: '⚖️' },
-  { key: 'percentage', label: 'Porcentajes', emoji: '📊' },
-  { key: 'roulette', label: 'Ruleta', emoji: '🎰' },
-];
+import { useI18n } from '../src/i18n';
 
 export default function CreateScreen() {
   const router = useRouter();
+  const { t } = useI18n();
   const [amount, setAmount] = useState('');
   const [description, setDescription] = useState('');
   const [splitMode, setSplitMode] = useState<SplitMode>('equal');
   const [loading, setLoading] = useState(false);
 
+  const SPLIT_MODES: { key: SplitMode; label: string; emoji: string }[] = [
+    { key: 'equal', label: t('create.equalParts'), emoji: '⚖️' },
+    { key: 'percentage', label: t('create.percentage'), emoji: '📊' },
+    { key: 'roulette', label: t('create.roulette'), emoji: '🎰' },
+  ];
+
   const handleCreate = async () => {
     const numAmount = Number(amount.replace(/[^0-9]/g, ''));
     if (!numAmount || numAmount <= 0) {
-      Alert.alert('Error', 'Ingresa un monto valido');
+      Alert.alert(t('common.error'), t('create.invalidAmount'));
       return;
     }
 
     setLoading(true);
     try {
-      // TODO: Replace with real user ID from auth
       const session = await api.createSession({
         adminId: 'temp-user-' + Date.now(),
         totalAmount: numAmount,
@@ -48,7 +49,7 @@ export default function CreateScreen() {
 
       router.replace(`/session/${session.joinCode}`);
     } catch (err: any) {
-      Alert.alert('Error', err.message || 'No se pudo crear la mesa');
+      Alert.alert(t('common.error'), err.message || t('create.errorCreating'));
     } finally {
       setLoading(false);
     }
@@ -63,7 +64,7 @@ export default function CreateScreen() {
         contentContainerStyle={styles.scroll}
         keyboardShouldPersistTaps="handled"
       >
-        <Text style={styles.sectionTitle}>Monto total</Text>
+        <Text style={styles.sectionTitle}>{t('create.totalAmount')}</Text>
         <TextInput
           style={styles.amountInput}
           placeholder="$0"
@@ -74,16 +75,16 @@ export default function CreateScreen() {
           autoFocus
         />
 
-        <Text style={styles.sectionTitle}>Descripcion (opcional)</Text>
+        <Text style={styles.sectionTitle}>{t('create.description')}</Text>
         <TextInput
           style={styles.input}
-          placeholder="Ej: Almuerzo con los parceros"
+          placeholder={t('create.descriptionPlaceholder')}
           placeholderTextColor={colors.textMuted}
           value={description}
           onChangeText={setDescription}
         />
 
-        <Text style={styles.sectionTitle}>Como dividimos?</Text>
+        <Text style={styles.sectionTitle}>{t('create.howToSplit')}</Text>
         <View style={styles.modeContainer}>
           {SPLIT_MODES.map((mode) => (
             <TouchableOpacity
@@ -115,7 +116,7 @@ export default function CreateScreen() {
           {loading ? (
             <ActivityIndicator color={colors.background} />
           ) : (
-            <Text style={styles.createButtonText}>Crear Mesa 🐄</Text>
+            <Text style={styles.createButtonText}>{t('create.createButton')}</Text>
           )}
         </TouchableOpacity>
       </ScrollView>
@@ -161,13 +162,13 @@ const styles = StyleSheet.create({
   },
   modeContainer: {
     flexDirection: 'row',
-    gap: spacing.sm,
   },
   modeButton: {
     flex: 1,
     backgroundColor: colors.surface,
     borderRadius: borderRadius.md,
     padding: spacing.md,
+    marginHorizontal: spacing.xs,
     alignItems: 'center',
     borderWidth: 2,
     borderColor: colors.surfaceBorder,
