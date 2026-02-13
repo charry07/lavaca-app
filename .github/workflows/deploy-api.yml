@@ -76,8 +76,32 @@ jobs:
           npm install --omit=dev --ignore-scripts
 
       - name: Deploy to Azure App Service
-        uses: azure/webapps-deploy@v3
-        with:
-          app-name: ${{ env.AZURE_WEBAPP_NAME }}
-          publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
-          package: deploy
+        run: |
+          # Extract credentials from publish profile
+          PROFILE="${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}"
+          USER=$(echo "$PROFILE" | grep -o 'userName="[^"]*"' | head -1 | sed 's/userName="//;s/"//')
+          PASS=$(echo "$PROFILE" | grep -o 'userPWD="[^"]*"' | head -1 | sed 's/userPWD="//;s/"//')
+
+          # Create zip file from the deploy directory
+          cd deploy
+          zip -r ../deploy.zip . -q
+          cd ..
+
+          # Zip Deploy via Kudu API
+          echo "Deploying to ${{ env.AZURE_WEBAPP_NAME }}..."
+          RESPONSE=$(curl -s -w "%{http_code}" -o /tmp/deploy-response.txt \
+            -X POST \
+            -u "$USER:$PASS" \
+            --data-binary @deploy.zip \
+            -H "Content-Type: application/zip" \
+            "https://${{ env.AZURE_WEBAPP_NAME }}.scm.azurewebsites.net/api/zipdeploy?isAsync=false")
+
+          echo "HTTP Response: $RESPONSE"
+          cat /tmp/deploy-response.txt || true
+
+          if [ "$RESPONSE" -ge 200 ] && [ "$RESPONSE" -lt 300 ]; then
+            echo "✅ Deployment successful!"
+          else
+            echo "❌ Deployment failed with HTTP $RESPONSE"
+            exit 1
+          fi
