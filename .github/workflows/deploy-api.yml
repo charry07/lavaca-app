@@ -1,0 +1,124 @@
+# ─────────────────────────────────────────────────────────
+# La Vaca 🐄 — Deploy to Azure App Service
+# API (Express + Socket.io) + Web (Expo static frontend)
+# Everything runs from a single App Service.
+# ─────────────────────────────────────────────────────────
+name: Deploy La Vaca
+
+on:
+  push:
+    branches: [main, master]
+  workflow_dispatch: # Permite deploy manual
+
+env:
+  NODE_VERSION: '20'
+  AZURE_WEBAPP_NAME: 'lavaca-api' # Mismo nombre que en Azure
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build shared package
+        run: pnpm --filter @lavaca/shared build
+
+      - name: Build API
+        run: pnpm --filter @lavaca/api build
+
+      - name: Build Expo web frontend
+        run: |
+          cd apps/mobile
+          npx expo export --platform web
+
+      - name: Prepare deployment package
+        run: |
+          mkdir -p deploy
+
+          # Copy API compiled code
+          cp -r apps/api/dist deploy/dist
+          cp apps/api/package.json deploy/
+
+          # Remove workspace:* dependency (we copy shared manually)
+          node -e "
+            const pkg = require('./deploy/package.json');
+            delete pkg.dependencies['@lavaca/shared'];
+            delete pkg.devDependencies;
+            require('fs').writeFileSync('./deploy/package.json', JSON.stringify(pkg, null, 2));
+          "
+
+          # Copy Expo web build as static files served by Express
+          cp -r apps/mobile/dist deploy/public
+
+          # Copy shared package for runtime
+          mkdir -p deploy/node_modules/@lavaca/shared
+          cp -r packages/shared/dist deploy/node_modules/@lavaca/shared/dist 2>/dev/null || true
+          cp -r packages/shared/src deploy/node_modules/@lavaca/shared/src
+          cp packages/shared/package.json deploy/node_modules/@lavaca/shared/
+
+          # Install production deps only
+          cd deploy
+          npm install --omit=dev --ignore-scripts
+
+      - name: Deploy to Azure App Service
+        env:
+          PUBLISH_PROFILE: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
+        run: |
+          # Write profile to file to avoid bash escaping issues
+          echo "$PUBLISH_PROFILE" > /tmp/profile.xml
+
+          # Extract credentials from publish profile (ZipDeploy section)
+          USER=$(grep -oP 'publishMethod="ZipDeploy"[^>]*userName="\K[^"]+' /tmp/profile.xml || \
+                 grep -oP 'userName="\K[^"]+' /tmp/profile.xml | head -1)
+          PASS=$(grep -oP 'publishMethod="ZipDeploy"[^>]*userPWD="\K[^"]+' /tmp/profile.xml || \
+                 grep -oP 'userPWD="\K[^"]+' /tmp/profile.xml | head -1)
+
+          if [ -z "$USER" ] || [ -z "$PASS" ]; then
+            echo "❌ Could not extract credentials from publish profile"
+            exit 1
+          fi
+
+          echo "Using credentials for user: ${USER:0:5}..."
+
+          # Create zip file from the deploy directory
+          cd deploy
+          zip -r ../deploy.zip . -q
+          cd ..
+          echo "Zip size: $(du -h deploy.zip | cut -f1)"
+
+          # Zip Deploy via Kudu API
+          echo "Deploying to ${{ env.AZURE_WEBAPP_NAME }}..."
+          RESPONSE=$(curl -s -w "\n%{http_code}" \
+            -X POST \
+            -u "$USER:$PASS" \
+            --data-binary @deploy.zip \
+            -H "Content-Type: application/zip" \
+            "https://${{ env.AZURE_WEBAPP_NAME }}.scm.azurewebsites.net/api/zipdeploy?isAsync=false")
+
+          HTTP_CODE=$(echo "$RESPONSE" | tail -1)
+          BODY=$(echo "$RESPONSE" | sed '$d')
+
+          echo "HTTP Response: $HTTP_CODE"
+
+          if [ "$HTTP_CODE" -ge 200 ] 2>/dev/null && [ "$HTTP_CODE" -lt 300 ] 2>/dev/null; then
+            echo "✅ Deployment successful!"
+          else
+            echo "❌ Deployment failed with HTTP $HTTP_CODE"
+            echo "$BODY"
+            exit 1
+          fi
