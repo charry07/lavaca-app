@@ -52,7 +52,7 @@ export default function CreateScreen() {
         description: description || undefined,
       });
 
-      router.replace(`/session/${session.joinCode}`);
+      router.push(`/session/${session.joinCode}`);
     } catch (err: any) {
       Alert.alert(t('common.error'), err.message || t('create.errorCreating'));
     } finally {

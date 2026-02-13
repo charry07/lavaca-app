@@ -1,21 +1,9 @@
 const { getDefaultConfig } = require('expo/metro-config');
-const path = require('path');
 
-const projectRoot = __dirname;
-const monorepoRoot = path.resolve(projectRoot, '../..');
+// SDK 54+ auto-detects monorepo structure
+const config = getDefaultConfig(__dirname);
 
-const config = getDefaultConfig(projectRoot);
-
-// 1. Watch all files in the monorepo (needed for shared packages)
-config.watchFolders = [monorepoRoot];
-
-// 2. Let Metro resolve packages from both local and root node_modules
-config.resolver.nodeModulesPaths = [
-  path.resolve(projectRoot, 'node_modules'),
-  path.resolve(monorepoRoot, 'node_modules'),
-];
-
-// 3. Ensure the project root is correctly set for the mobile app
-config.projectRoot = projectRoot;
+// Explicitly ensure projectRoot is this app, not the monorepo root
+config.projectRoot = __dirname;
 
 module.exports = config;

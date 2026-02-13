@@ -27,6 +27,13 @@ const es = {
   'home.perPerson': 'Entre {{count}} personas: {{amount}} c/u',
   'home.createTable': '🍽️  Crear Mesa',
   'home.joinTable': '🔗  Unirme a Mesa',
+  'home.myTables': 'Mis Mesas',
+  'home.noTables': 'No tienes mesas activas',
+  'home.noTablesHint': 'Crea una mesa o unete a una para empezar',
+  'home.open': 'Abierta',
+  'home.closed': 'Cerrada',
+  'home.people_one': '{{count}} persona',
+  'home.people_other': '{{count}} personas',
 
   // Create
   'create.totalAmount': 'Monto total',
@@ -184,6 +191,13 @@ const en: TranslationKeys = {
   'home.perPerson': 'Between {{count}} people: {{amount}} each',
   'home.createTable': '🍽️  Create Table',
   'home.joinTable': '🔗  Join Table',
+  'home.myTables': 'My Tables',
+  'home.noTables': 'No active tables',
+  'home.noTablesHint': 'Create a table or join one to get started',
+  'home.open': 'Open',
+  'home.closed': 'Closed',
+  'home.people_one': '{{count}} person',
+  'home.people_other': '{{count}} people',
 
   // Create
   'create.totalAmount': 'Total amount',
@@ -341,6 +355,13 @@ const pt: TranslationKeys = {
   'home.perPerson': 'Entre {{count}} pessoas: {{amount}} cada',
   'home.createTable': '🍽️  Criar Mesa',
   'home.joinTable': '🔗  Entrar na Mesa',
+  'home.myTables': 'Minhas Mesas',
+  'home.noTables': 'Sem mesas ativas',
+  'home.noTablesHint': 'Crie uma mesa ou entre em uma para começar',
+  'home.open': 'Aberta',
+  'home.closed': 'Fechada',
+  'home.people_one': '{{count}} pessoa',
+  'home.people_other': '{{count}} pessoas',
 
   // Create
   'create.totalAmount': 'Valor total',
