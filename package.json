@@ -1,0 +1,21 @@
+{
+  "name": "lavaca-app",
+  "version": "0.1.0",
+  "private": true,
+  "description": "La Vaca 🐄 - Simple y sencillo de dividir y pagar cuentas",
+  "scripts": {
+    "mobile": "pnpm --filter @lavaca/mobile",
+    "api": "pnpm --filter @lavaca/api",
+    "shared": "pnpm --filter @lavaca/shared",
+    "dev:mobile": "pnpm --filter @lavaca/mobile start",
+    "dev:api": "pnpm --filter @lavaca/api dev",
+    "build:api": "pnpm --filter @lavaca/api build",
+    "lint": "pnpm -r lint",
+    "typecheck": "pnpm -r typecheck",
+    "clean": "pnpm -r clean"
+  },
+  "engines": {
+    "node": ">=20.0.0",
+    "pnpm": ">=9.0.0"
+  }
+}
