@@ -1,20 +1,18 @@
 # ─────────────────────────────────────────────────────────
-# La Vaca 🐄 — Deploy API to Azure App Service
+# La Vaca 🐄 — Deploy to Azure App Service
+# API (Express + Socket.io) + Web (Expo static frontend)
+# Everything runs from a single App Service.
 # ─────────────────────────────────────────────────────────
-name: Deploy API
+name: Deploy La Vaca
 
 on:
   push:
-    branches: [main]
-    paths:
-      - 'apps/api/**'
-      - 'packages/shared/**'
-      - '.github/workflows/deploy-api.yml'
+    branches: [main, master]
   workflow_dispatch: # Permite deploy manual
 
 env:
   NODE_VERSION: '20'
-  AZURE_WEBAPP_NAME: 'lavaca-api' # Mismo nombre que en infra/setup.sh
+  AZURE_WEBAPP_NAME: 'lavaca-api' # Mismo nombre que en Azure
 
 jobs:
   build-and-deploy:
@@ -43,21 +41,31 @@ jobs:
       - name: Build API
         run: pnpm --filter @lavaca/api build
 
+      - name: Build Expo web frontend
+        run: |
+          cd apps/mobile
+          npx expo export --platform web
+
       - name: Prepare deployment package
         run: |
           mkdir -p deploy
-          # Copy API dist
+
+          # Copy API compiled code
           cp -r apps/api/dist deploy/dist
           cp apps/api/package.json deploy/
-          # Copy shared package
+
+          # Copy Expo web build as static files served by Express
+          cp -r apps/mobile/dist deploy/public
+
+          # Copy shared package for runtime
           mkdir -p deploy/node_modules/@lavaca/shared
-          cp -r packages/shared/dist deploy/node_modules/@lavaca/shared/dist
+          cp -r packages/shared/dist deploy/node_modules/@lavaca/shared/dist 2>/dev/null || true
+          cp -r packages/shared/src deploy/node_modules/@lavaca/shared/src
           cp packages/shared/package.json deploy/node_modules/@lavaca/shared/
+
           # Install production deps only
           cd deploy
           npm install --omit=dev --ignore-scripts
-          # Create startup file
-          echo "node dist/index.js" > startup.sh
 
       - name: Deploy to Azure App Service
         uses: azure/webapps-deploy@v3

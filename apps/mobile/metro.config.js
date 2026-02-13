@@ -6,13 +6,16 @@ const monorepoRoot = path.resolve(projectRoot, '../..');
 
 const config = getDefaultConfig(projectRoot);
 
-// Watch all files in the monorepo
+// 1. Watch all files in the monorepo (needed for shared packages)
 config.watchFolders = [monorepoRoot];
 
-// Let Metro know where to resolve packages
+// 2. Let Metro resolve packages from both local and root node_modules
 config.resolver.nodeModulesPaths = [
   path.resolve(projectRoot, 'node_modules'),
   path.resolve(monorepoRoot, 'node_modules'),
 ];
+
+// 3. Ensure the project root is correctly set for the mobile app
+config.projectRoot = projectRoot;
 
 module.exports = config;

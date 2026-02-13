@@ -2,8 +2,9 @@
 # ─────────────────────────────────────────────────────────
 # La Vaca 🐄 — Azure Infrastructure Setup
 # ─────────────────────────────────────────────────────────
-# Este script crea todos los recursos necesarios en Azure.
-# Ejecutar UNA SOLA VEZ para crear la infraestructura.
+# Todo corre en UN SOLO App Service:
+#   • Express API + Socket.io
+#   • Expo Web frontend (archivos estáticos servidos por Express)
 #
 # Prerequisitos:
 #   1. Azure CLI instalado (az --version)
@@ -19,11 +20,10 @@ set -euo pipefail
 
 # ── Configuración ────────────────────────────────────────
 RESOURCE_GROUP="rg-lavaca"
-LOCATION="eastus"                    # Cambiar si quieres otra región
+LOCATION="eastus"
 APP_SERVICE_PLAN="plan-lavaca"
-API_APP_NAME="lavaca-api"            # Debe ser único globalmente — cámbialo si está tomado
-SWA_NAME="lavaca-web"                # Static Web App name
-SKU="F1"                             # F1 = Free tier
+APP_NAME="lavaca-api"                # Debe ser único globalmente
+SKU="B1"                             # B1 = Basic (soportado en Azure for Students)
 
 echo "🐄 La Vaca — Creando infraestructura en Azure..."
 echo ""
@@ -33,122 +33,77 @@ echo "📦 Creando Resource Group: $RESOURCE_GROUP en $LOCATION..."
 az group create \
   --name "$RESOURCE_GROUP" \
   --location "$LOCATION" \
-  --output none
+  --output none 2>/dev/null || true
 
-echo "   ✅ Resource Group creado"
+echo "   ✅ Resource Group listo"
 
-# ── 2. App Service Plan (para la API) ───────────────────
-echo "📋 Creando App Service Plan: $APP_SERVICE_PLAN..."
+# ── 2. App Service Plan ─────────────────────────────────
+echo "📋 Creando App Service Plan: $APP_SERVICE_PLAN ($SKU)..."
 az appservice plan create \
   --name "$APP_SERVICE_PLAN" \
   --resource-group "$RESOURCE_GROUP" \
   --sku "$SKU" \
   --is-linux \
-  --output none
+  --output none 2>/dev/null || true
 
-echo "   ✅ App Service Plan creado (Linux, $SKU)"
+echo "   ✅ App Service Plan listo"
 
-# ── 3. Web App para la API ──────────────────────────────
-echo "🚀 Creando Web App para API: $API_APP_NAME..."
+# ── 3. Web App (API + Frontend) ─────────────────────────
+echo "🚀 Creando Web App: $APP_NAME..."
 az webapp create \
-  --name "$API_APP_NAME" \
+  --name "$APP_NAME" \
   --resource-group "$RESOURCE_GROUP" \
   --plan "$APP_SERVICE_PLAN" \
   --runtime "NODE:20-lts" \
-  --output none
+  --output none 2>/dev/null || true
 
-# Habilitar WebSockets (necesario para Socket.io)
+echo "   ✅ Web App lista"
+
+# ── 4. Configurar WebSockets + Startup ──────────────────
+echo "⚙️  Configurando WebSockets y startup..."
 az webapp config set \
-  --name "$API_APP_NAME" \
+  --name "$APP_NAME" \
   --resource-group "$RESOURCE_GROUP" \
   --web-sockets-enabled true \
-  --output none
+  --startup-file "node dist/index.js" \
+  --output none 2>/dev/null || true
 
-# Configurar startup command
-az webapp config set \
-  --name "$API_APP_NAME" \
-  --resource-group "$RESOURCE_GROUP" \
-  --startup-file "node apps/api/dist/index.js" \
-  --output none
-
-echo "   ✅ Web App creada con WebSockets habilitados"
-echo "   🌐 URL: https://$API_APP_NAME.azurewebsites.net"
-
-# ── 4. Static Web App (para el frontend) ────────────────
-echo "🌍 Creando Static Web App: $SWA_NAME..."
-az staticwebapp create \
-  --name "$SWA_NAME" \
-  --resource-group "$RESOURCE_GROUP" \
-  --source "https://github.com/charry07/lavaca-app" \
-  --branch "main" \
-  --app-location "/apps/mobile" \
-  --output-location "dist" \
-  --login-with-github \
-  --output none
-
-echo "   ✅ Static Web App creada"
-
-# Obtener URL del SWA
-SWA_URL=$(az staticwebapp show \
-  --name "$SWA_NAME" \
-  --resource-group "$RESOURCE_GROUP" \
-  --query "defaultHostname" \
-  --output tsv)
-
-echo "   🌐 URL: https://$SWA_URL"
-
-# ── 5. Variables de entorno de la API ────────────────────
-API_URL="https://$API_APP_NAME.azurewebsites.net"
-
-echo "⚙️  Configurando variables de entorno..."
+# Variables de entorno
 az webapp config appsettings set \
-  --name "$API_APP_NAME" \
+  --name "$APP_NAME" \
   --resource-group "$RESOURCE_GROUP" \
-  --settings \
-    NODE_ENV=production \
-    CORS_ORIGIN="https://$SWA_URL" \
-  --output none
+  --settings NODE_ENV=production \
+  --output none 2>/dev/null || true
 
-echo "   ✅ Variables configuradas"
+echo "   ✅ Configuración aplicada"
 
-# ── 6. Deployment credentials para GitHub Actions ────────
-echo ""
-echo "🔑 Obteniendo credenciales para GitHub Actions..."
-
-# API publish profile
+# ── 5. Obtener Publish Profile para GitHub Actions ──────
+echo "🔑 Descargando credenciales de deploy..."
 az webapp deployment list-publishing-profiles \
-  --name "$API_APP_NAME" \
+  --name "$APP_NAME" \
   --resource-group "$RESOURCE_GROUP" \
-  --xml > /tmp/lavaca-api-publish-profile.xml
+  --xml > /tmp/lavaca-publish-profile.xml 2>/dev/null
 
-# SWA deployment token
-SWA_TOKEN=$(az staticwebapp secrets list \
-  --name "$SWA_NAME" \
-  --resource-group "$RESOURCE_GROUP" \
-  --query "properties.apiKey" \
-  --output tsv)
+APP_URL="https://$APP_NAME.azurewebsites.net"
 
 echo ""
 echo "═══════════════════════════════════════════════════"
-echo "🐄 ¡Infraestructura creada exitosamente!"
+echo "🐄 ¡Infraestructura lista!"
 echo "═══════════════════════════════════════════════════"
 echo ""
-echo "📍 Recursos creados:"
-echo "   • Resource Group:  $RESOURCE_GROUP"
-echo "   • API:             https://$API_APP_NAME.azurewebsites.net"
-echo "   • Web:             https://$SWA_URL"
+echo "📍 Tu app estará en:"
+echo "   🌐 $APP_URL"
+echo "   🔌 API:  $APP_URL/api/sessions"
+echo "   💚 Health: $APP_URL/health"
 echo ""
-echo "🔐 SIGUIENTE PASO — Configura estos GitHub Secrets:"
-echo "   Ve a: https://github.com/charry07/lavaca-app/settings/secrets/actions"
+echo "🔐 SIGUIENTE PASO — Configura el GitHub Secret:"
 echo ""
-echo "   1. AZURE_WEBAPP_PUBLISH_PROFILE"
-echo "      Valor: (contenido de /tmp/lavaca-api-publish-profile.xml)"
-echo "      cat /tmp/lavaca-api-publish-profile.xml | pbcopy"
+echo "   1. Ve a: https://github.com/charry07/lavaca-app/settings/secrets/actions"
+echo "   2. Click 'New repository secret'"
+echo "   3. Nombre: AZURE_WEBAPP_PUBLISH_PROFILE"
+echo "   4. Valor: copia el contenido del archivo con este comando:"
 echo ""
-echo "   2. AZURE_STATIC_WEB_APPS_API_TOKEN"
-echo "      Valor: $SWA_TOKEN"
+echo "      cat /tmp/lavaca-publish-profile.xml | pbcopy"
 echo ""
-echo "   3. REACT_APP_API_URL"
-echo "      Valor: $API_URL"
+echo "   5. Haz push a main y el deploy arranca automáticamente"
 echo ""
-echo "═══════════════════════════════════════════════════"

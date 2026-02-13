@@ -1,6 +1,7 @@
 import express from 'express';
 import cors from 'cors';
 import http from 'http';
+import path from 'path';
 import { Server as SocketIOServer } from 'socket.io';
 import { sessionRouter } from './routes/sessions';
 import { userRouter } from './routes/users';
@@ -51,6 +52,16 @@ io.on('connection', (socket) => {
 
 // Make io accessible to routes
 app.set('io', io);
+
+// ── Serve Expo web frontend in production ──────────────
+if (process.env.NODE_ENV === 'production') {
+  const webDir = path.join(__dirname, '..', 'public');
+  app.use(express.static(webDir));
+  // SPA fallback: any non-API route serves index.html
+  app.get('*', (_req, res) => {
+    res.sendFile(path.join(webDir, 'index.html'));
+  });
+}
 
 const PORT = process.env.PORT || 3001;
 
