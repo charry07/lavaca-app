@@ -54,6 +54,14 @@ jobs:
           cp -r apps/api/dist deploy/dist
           cp apps/api/package.json deploy/
 
+          # Remove workspace:* dependency (we copy shared manually)
+          node -e "
+            const pkg = require('./deploy/package.json');
+            delete pkg.dependencies['@lavaca/shared'];
+            delete pkg.devDependencies;
+            require('fs').writeFileSync('./deploy/package.json', JSON.stringify(pkg, null, 2));
+          "
+
           # Copy Expo web build as static files served by Express
           cp -r apps/mobile/dist deploy/public
 
