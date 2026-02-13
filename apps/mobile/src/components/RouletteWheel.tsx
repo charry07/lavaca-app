@@ -7,8 +7,9 @@ import {
   Easing,
 } from 'react-native';
 import { Participant } from '@lavaca/shared';
-import { colors, spacing, borderRadius, fontSize } from '../constants/theme';
+import { spacing, borderRadius, fontSize, type ThemeColors } from '../constants/theme';
 import { useI18n } from '../i18n';
+import { useTheme } from '../theme';
 
 interface RouletteWheelProps {
   participants: Participant[];
@@ -24,6 +25,8 @@ export function RouletteWheel({ participants, winnerIndex, onFinish }: RouletteW
   const scaleAnim = useRef(new Animated.Value(1)).current;
   const opacityAnim = useRef(new Animated.Value(1)).current;
   const { t } = useI18n();
+  const { colors } = useTheme();
+  const s = createStyles(colors);
 
   useEffect(() => {
     const totalSteps = TOTAL_SPINS * participants.length + winnerIndex;
@@ -100,26 +103,26 @@ export function RouletteWheel({ participants, winnerIndex, onFinish }: RouletteW
   const isWinner = finished;
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>{t('roulette.title')}</Text>
-      <Text style={styles.subtitle}>
+    <View style={s.container}>
+      <Text style={s.title}>{t('roulette.title')}</Text>
+      <Text style={s.subtitle}>
         {finished ? t('roulette.result') : t('roulette.spinning')}
       </Text>
 
       {/* The slot window */}
-      <View style={styles.slotContainer}>
-        <View style={styles.slotBorder}>
+      <View style={s.slotContainer}>
+        <View style={s.slotBorder}>
           <Animated.View
             style={[
-              styles.nameCard,
-              isWinner && styles.nameCardWinner,
+              s.nameCard,
+              isWinner && s.nameCardWinner,
               {
                 transform: [{ scale: scaleAnim }],
                 opacity: opacityAnim,
               },
             ]}
           >
-            <Text style={[styles.nameText, isWinner && styles.nameTextWinner]}>
+            <Text style={[s.nameText, isWinner && s.nameTextWinner]}>
               {participant?.displayName ?? '...'}
             </Text>
           </Animated.View>
@@ -127,14 +130,14 @@ export function RouletteWheel({ participants, winnerIndex, onFinish }: RouletteW
       </View>
 
       {/* Participant dots — who's in the roulette */}
-      <View style={styles.dotsRow}>
+      <View style={s.dotsRow}>
         {participants.map((p, i) => (
           <View
             key={p.userId}
             style={[
-              styles.dot,
-              i === currentIndex && styles.dotActive,
-              finished && i === winnerIndex && styles.dotWinner,
+              s.dot,
+              i === currentIndex && s.dotActive,
+              finished && i === winnerIndex && s.dotWinner,
             ]}
           />
         ))}
@@ -142,12 +145,12 @@ export function RouletteWheel({ participants, winnerIndex, onFinish }: RouletteW
 
       {/* Winner banner */}
       {finished && (
-        <View style={styles.winnerBanner}>
-          <Text style={styles.winnerEmoji}>🐄💸</Text>
-          <Text style={styles.winnerText}>
+        <View style={s.winnerBanner}>
+          <Text style={s.winnerEmoji}>🐄💸</Text>
+          <Text style={s.winnerText}>
             {t('roulette.winner', { name: participant?.displayName ?? '' })}
           </Text>
-          <Text style={styles.winnerSubtext}>
+          <Text style={s.winnerSubtext}>
             {t('roulette.betterLuck')}
           </Text>
         </View>
@@ -156,7 +159,7 @@ export function RouletteWheel({ participants, winnerIndex, onFinish }: RouletteW
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ThemeColors) => StyleSheet.create({
   container: {
     alignItems: 'center',
     padding: spacing.lg,
@@ -250,4 +253,4 @@ const styles = StyleSheet.create({
     fontSize: fontSize.md,
     color: colors.textSecondary,
   },
-});
+  });

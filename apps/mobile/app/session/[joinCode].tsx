@@ -15,14 +15,17 @@ import {
 import { useLocalSearchParams } from 'expo-router';
 import { PaymentSession, Participant, formatCOP, rouletteSelect } from '@lavaca/shared';
 import { api } from '../../src/services/api';
-import { colors, spacing, borderRadius, fontSize } from '../../src/constants/theme';
+import { spacing, borderRadius, fontSize, type ThemeColors } from '../../src/constants/theme';
 import { RouletteWheel } from '../../src/components/RouletteWheel';
 import { QRCode } from '../../src/components/QRCode';
 import { useI18n } from '../../src/i18n';
+import { useTheme } from '../../src/theme';
 
 export default function SessionScreen() {
   const { joinCode } = useLocalSearchParams<{ joinCode: string }>();
   const { t } = useI18n();
+  const { colors } = useTheme();
+  const s = createStyles(colors);
   const [session, setSession] = useState<PaymentSession | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -134,7 +137,7 @@ export default function SessionScreen() {
 
   if (loading) {
     return (
-      <View style={[styles.container, styles.center]}>
+      <View style={[s.container, s.center]}>
         <ActivityIndicator size="large" color={colors.primary} />
       </View>
     );
@@ -142,8 +145,8 @@ export default function SessionScreen() {
 
   if (!session) {
     return (
-      <View style={[styles.container, styles.center]}>
-        <Text style={styles.errorText}>{t('session.notFound')}</Text>
+      <View style={[s.container, s.center]}>
+        <Text style={s.errorText}>{t('session.notFound')}</Text>
       </View>
     );
   }
@@ -165,26 +168,26 @@ export default function SessionScreen() {
     const isWinner = item.isRouletteWinner;
 
     return (
-      <View style={[styles.participantCard, isPaid && styles.participantPaid]}>
-        <View style={styles.participantInfo}>
-          <Text style={styles.participantName}>
+      <View style={[s.participantCard, isPaid && s.participantPaid]}>
+        <View style={s.participantInfo}>
+          <Text style={s.participantName}>
             {item.displayName}
             {isWinner ? ' 🎰' : ''}
           </Text>
-          <Text style={styles.participantStatus}>
+          <Text style={s.participantStatus}>
             {isPaid ? t('session.paid') : t('session.pending')}
           </Text>
         </View>
-        <View style={styles.participantRight}>
-          <Text style={[styles.participantAmount, isPaid && styles.amountPaid]}>
+        <View style={s.participantRight}>
+          <Text style={[s.participantAmount, isPaid && s.amountPaid]}>
             {formatCOP(item.amount)}
           </Text>
           {!isPaid && item.amount > 0 && (
             <TouchableOpacity
-              style={styles.payButton}
+              style={s.payButton}
               onPress={() => handleMarkPaid(item.userId)}
             >
-              <Text style={styles.payButtonText}>{t('session.payButton')}</Text>
+              <Text style={s.payButtonText}>{t('session.payButton')}</Text>
             </TouchableOpacity>
           )}
         </View>
@@ -193,48 +196,48 @@ export default function SessionScreen() {
   };
 
   return (
-    <View style={styles.container}>
+    <View style={s.container}>
       {/* Session Header */}
-      <View style={styles.header}>
-        <View style={styles.codeRow}>
-          <Text style={styles.joinCodeLabel}>{t('session.code')}</Text>
-          <Text style={styles.joinCode}>{session.joinCode}</Text>
-          <TouchableOpacity onPress={handleShare} style={styles.shareButton}>
-            <Text style={styles.shareButtonText}>{t('session.share')}</Text>
+      <View style={s.header}>
+        <View style={s.codeRow}>
+          <Text style={s.joinCodeLabel}>{t('session.code')}</Text>
+          <Text style={s.joinCode}>{session.joinCode}</Text>
+          <TouchableOpacity onPress={handleShare} style={s.shareButton}>
+            <Text style={s.shareButtonText}>{t('session.share')}</Text>
           </TouchableOpacity>
         </View>
 
         {session.description && (
-          <Text style={styles.description}>{session.description}</Text>
+          <Text style={s.description}>{session.description}</Text>
         )}
 
-        <View style={styles.statsRow}>
-          <View style={styles.stat}>
-            <Text style={styles.statValue}>{formatCOP(session.totalAmount)}</Text>
-            <Text style={styles.statLabel}>{t('session.total')}</Text>
+        <View style={s.statsRow}>
+          <View style={s.stat}>
+            <Text style={s.statValue}>{formatCOP(session.totalAmount)}</Text>
+            <Text style={s.statLabel}>{t('session.total')}</Text>
           </View>
-          <View style={styles.stat}>
-            <Text style={styles.statValue}>{totalCount}</Text>
-            <Text style={styles.statLabel}>{t('session.people')}</Text>
+          <View style={s.stat}>
+            <Text style={s.statValue}>{totalCount}</Text>
+            <Text style={s.statLabel}>{t('session.people')}</Text>
           </View>
-          <View style={styles.stat}>
-            <Text style={styles.statValue}>{getModeLabel()}</Text>
-            <Text style={styles.statLabel}>{t('session.mode')}</Text>
+          <View style={s.stat}>
+            <Text style={s.statValue}>{getModeLabel()}</Text>
+            <Text style={s.statLabel}>{t('session.mode')}</Text>
           </View>
         </View>
 
         {/* Progress bar */}
         {allSplit && (
-          <View style={styles.progressContainer}>
-            <View style={styles.progressBar}>
+          <View style={s.progressContainer}>
+            <View style={s.progressBar}>
               <View
                 style={[
-                  styles.progressFill,
+                  s.progressFill,
                   { width: `${totalCount > 0 ? (paidCount / totalCount) * 100 : 0}%` },
                 ]}
               />
             </View>
-            <Text style={styles.progressText}>
+            <Text style={s.progressText}>
               {t('session.paidCount', { paid: paidCount, total: totalCount })}
             </Text>
           </View>
@@ -246,11 +249,11 @@ export default function SessionScreen() {
         data={session.participants}
         keyExtractor={(item) => item.userId}
         renderItem={renderParticipant}
-        contentContainerStyle={styles.list}
+        contentContainerStyle={s.list}
         ListEmptyComponent={
-          <View style={styles.emptyState}>
-            <Text style={styles.emptyEmoji}>👥</Text>
-            <Text style={styles.emptyText}>
+          <View style={s.emptyState}>
+            <Text style={s.emptyEmoji}>👥</Text>
+            <Text style={s.emptyText}>
               {t('session.noParticipants')}
             </Text>
           </View>
@@ -266,16 +269,16 @@ export default function SessionScreen() {
 
       {/* Bottom Actions */}
       {!allSplit && totalCount > 0 && (
-        <View style={styles.bottomBar}>
+        <View style={s.bottomBar}>
           <TouchableOpacity
-            style={[styles.splitButton, splitting && styles.splitButtonDisabled]}
+            style={[s.splitButton, splitting && s.splitButtonDisabled]}
             onPress={handleSplit}
             disabled={splitting}
           >
             {splitting ? (
               <ActivityIndicator color={colors.background} />
             ) : (
-              <Text style={styles.splitButtonText}>
+              <Text style={s.splitButtonText}>
                 {t('session.splitButton')}
               </Text>
             )}
@@ -284,8 +287,8 @@ export default function SessionScreen() {
       )}
 
       {session.status === 'closed' && (
-        <View style={styles.closedBanner}>
-          <Text style={styles.closedText}>{t('session.allPaid')}</Text>
+        <View style={s.closedBanner}>
+          <Text style={s.closedText}>{t('session.allPaid')}</Text>
         </View>
       )}
 
@@ -296,8 +299,8 @@ export default function SessionScreen() {
         transparent
         onRequestClose={() => {}}
       >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
+        <View style={s.modalOverlay}>
+          <View style={s.modalContent}>
             <RouletteWheel
               participants={session.participants}
               winnerIndex={rouletteWinner}
@@ -315,39 +318,39 @@ export default function SessionScreen() {
         onRequestClose={() => setShowShareModal(false)}
       >
         <TouchableOpacity
-          style={styles.modalOverlay}
+          style={s.modalOverlay}
           activeOpacity={1}
           onPress={() => setShowShareModal(false)}
         >
-          <View style={styles.modalContent}>
-            <View style={styles.shareModalInner}>
-              <Text style={styles.shareModalTitle}>{t('session.shareTitle')}</Text>
+          <View style={s.modalContent}>
+            <View style={s.shareModalInner}>
+              <Text style={s.shareModalTitle}>{t('session.shareTitle')}</Text>
               <QRCode
                 value={getShareLink()}
                 size={180}
                 label={t('session.scanToJoin')}
               />
-              <View style={styles.shareCodeBox}>
-                <Text style={styles.shareCodeLabel}>{t('session.code')}</Text>
-                <Text style={styles.shareCodeValue}>{session.joinCode}</Text>
+              <View style={s.shareCodeBox}>
+                <Text style={s.shareCodeLabel}>{t('session.code')}</Text>
+                <Text style={s.shareCodeValue}>{session.joinCode}</Text>
               </View>
               <TouchableOpacity
-                style={styles.shareTextButton}
+                style={s.shareTextButton}
                 onPress={handleTextShare}
               >
-                <Text style={styles.shareTextButtonLabel}>{t('session.sendMessage')}</Text>
+                <Text style={s.shareTextButtonLabel}>{t('session.sendMessage')}</Text>
               </TouchableOpacity>
               <TouchableOpacity
-                style={styles.shareLinkButton}
+                style={s.shareLinkButton}
                 onPress={handleCopyLink}
               >
-                <Text style={styles.shareLinkButtonLabel}>{t('session.copyLink')}</Text>
+                <Text style={s.shareLinkButtonLabel}>{t('session.copyLink')}</Text>
               </TouchableOpacity>
               <TouchableOpacity
-                style={styles.closeModalButton}
+                style={s.closeModalButton}
                 onPress={() => setShowShareModal(false)}
               >
-                <Text style={styles.closeModalText}>{t('session.close')}</Text>
+                <Text style={s.closeModalText}>{t('session.close')}</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -357,7 +360,7 @@ export default function SessionScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ThemeColors) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
@@ -628,4 +631,4 @@ const styles = StyleSheet.create({
     fontSize: fontSize.md,
     color: colors.textSecondary,
   },
-});
+  });

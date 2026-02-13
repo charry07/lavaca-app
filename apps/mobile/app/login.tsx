@@ -10,43 +10,39 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
-import { useRouter, useLocalSearchParams } from 'expo-router';
-import { api } from '../src/services/api';
 import { spacing, borderRadius, fontSize, type ThemeColors } from '../src/constants/theme';
 import { useI18n } from '../src/i18n';
 import { useTheme } from '../src/theme';
+import { useAuth } from '../src/auth';
+import { VacaLogo } from '../src/components/VacaLogo';
 
-export default function JoinScreen() {
-  const router = useRouter();
+export default function LoginScreen() {
   const { t } = useI18n();
   const { colors } = useTheme();
+  const { register } = useAuth();
   const s = createStyles(colors);
-  const [code, setCode] = useState('');
+
+  const [phone, setPhone] = useState('');
   const [name, setName] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const handleJoin = async () => {
-    const joinCode = code.toUpperCase().trim();
-    if (!joinCode) {
-      Alert.alert(t('common.error'), t('join.noCode'));
+  const handleRegister = async () => {
+    const cleanPhone = phone.replace(/\s/g, '').trim();
+    if (!cleanPhone || cleanPhone.length < 7) {
+      Alert.alert(t('common.error'), t('auth.invalidPhone'));
       return;
     }
     if (!name.trim()) {
-      Alert.alert(t('common.error'), t('join.noName'));
+      Alert.alert(t('common.error'), t('auth.noName'));
       return;
     }
 
     setLoading(true);
     try {
-      await api.getSession(joinCode);
-      await api.joinSession(joinCode, {
-        userId: 'temp-user-' + Date.now(),
-        displayName: name.trim(),
-      });
-
-      router.replace(`/session/${joinCode}`);
+      await register(cleanPhone, name.trim());
+      // Navigation is automatic — root layout will redirect
     } catch (err: any) {
-      Alert.alert(t('common.error'), err.message || t('join.errorJoining'));
+      Alert.alert(t('common.error'), err.message || t('auth.errorRegistering'));
     } finally {
       setLoading(false);
     }
@@ -58,42 +54,42 @@ export default function JoinScreen() {
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
       <View style={s.content}>
-        <Text style={s.emoji}>🔗</Text>
-        <Text style={s.title}>{t('join.title')}</Text>
-        <Text style={s.subtitle}>
-          {t('join.subtitle')}
-        </Text>
+        <VacaLogo size="lg" />
+
+        <Text style={s.title}>{t('auth.welcome')}</Text>
+        <Text style={s.subtitle}>{t('auth.subtitle')}</Text>
 
         <TextInput
-          style={s.codeInput}
-          placeholder="VACA-XXXX"
+          style={s.input}
+          placeholder={t('auth.phonePlaceholder')}
           placeholderTextColor={colors.textMuted}
-          value={code}
-          onChangeText={(text) => setCode(text.toUpperCase())}
-          autoCapitalize="characters"
+          keyboardType="phone-pad"
+          value={phone}
+          onChangeText={setPhone}
           autoFocus
-          maxLength={9}
         />
 
         <TextInput
-          style={s.nameInput}
-          placeholder={t('join.yourName')}
+          style={s.input}
+          placeholder={t('auth.namePlaceholder')}
           placeholderTextColor={colors.textMuted}
           value={name}
           onChangeText={setName}
         />
 
         <TouchableOpacity
-          style={[s.joinButton, loading && s.joinButtonDisabled]}
-          onPress={handleJoin}
+          style={[s.button, loading && s.buttonDisabled]}
+          onPress={handleRegister}
           disabled={loading}
         >
           {loading ? (
             <ActivityIndicator color={colors.background} />
           ) : (
-            <Text style={s.joinButtonText}>{t('join.joinButton')}</Text>
+            <Text style={s.buttonText}>{t('auth.enterButton')}</Text>
           )}
         </TouchableOpacity>
+
+        <Text style={s.hint}>{t('auth.hint')}</Text>
       </View>
     </KeyboardAvoidingView>
   );
@@ -111,37 +107,20 @@ const createStyles = (colors: ThemeColors) =>
       justifyContent: 'center',
       alignItems: 'center',
     },
-    emoji: {
-      fontSize: 56,
-      marginBottom: spacing.md,
-    },
     title: {
       fontSize: fontSize.xl,
       fontWeight: 'bold',
       color: colors.text,
-      marginBottom: spacing.sm,
+      marginTop: spacing.lg,
+      marginBottom: spacing.xs,
     },
     subtitle: {
       fontSize: fontSize.md,
       color: colors.textSecondary,
+      textAlign: 'center',
       marginBottom: spacing.xl,
-      textAlign: 'center',
     },
-    codeInput: {
-      fontSize: fontSize.xxl,
-      fontWeight: 'bold',
-      color: colors.text,
-      backgroundColor: colors.surface,
-      borderRadius: borderRadius.md,
-      padding: spacing.lg,
-      borderWidth: 1,
-      borderColor: colors.surfaceBorder,
-      textAlign: 'center',
-      width: '100%',
-      marginBottom: spacing.md,
-      letterSpacing: 4,
-    },
-    nameInput: {
+    input: {
       fontSize: fontSize.md,
       color: colors.text,
       backgroundColor: colors.surface,
@@ -149,24 +128,31 @@ const createStyles = (colors: ThemeColors) =>
       padding: spacing.md,
       borderWidth: 1,
       borderColor: colors.surfaceBorder,
-      textAlign: 'center',
       width: '100%',
-      marginBottom: spacing.lg,
+      marginBottom: spacing.md,
+      textAlign: 'center',
     },
-    joinButton: {
+    button: {
       backgroundColor: colors.primary,
       paddingVertical: spacing.md,
       paddingHorizontal: spacing.xxl,
       borderRadius: borderRadius.md,
       alignItems: 'center',
       width: '100%',
+      marginTop: spacing.sm,
     },
-    joinButtonDisabled: {
+    buttonDisabled: {
       opacity: 0.6,
     },
-    joinButtonText: {
+    buttonText: {
       fontSize: fontSize.lg,
       fontWeight: '700',
       color: colors.background,
+    },
+    hint: {
+      fontSize: fontSize.xs,
+      color: colors.textMuted,
+      textAlign: 'center',
+      marginTop: spacing.lg,
     },
   });

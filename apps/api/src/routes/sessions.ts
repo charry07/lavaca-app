@@ -7,7 +7,9 @@ import {
   splitEqual,
   splitByPercentage,
   rouletteSelect,
+  formatCOP,
 } from '@lavaca/shared';
+import { addFeedEvent } from './feed';
 
 const router = Router();
 
@@ -136,6 +138,15 @@ router.post('/:joinCode/split', (req: Request, res: Response) => {
         p.isRouletteWinner = false;
       }
     });
+
+    // Feed event: roulette winner
+    const winner = session.participants[winnerIndex];
+    addFeedEvent({
+      type: 'roulette_win',
+      sessionId: session.id,
+      message: `🎰 ${winner.displayName} perdio la ruleta y paga ${formatCOP(session.totalAmount)}!`,
+      userIds: session.participants.map((p) => p.userId),
+    });
   }
 
   res.json(session);
@@ -165,6 +176,28 @@ router.post('/:joinCode/pay', (req: Request, res: Response) => {
   if (allPaid) {
     session.status = 'closed';
     session.closedAt = new Date();
+
+    // Feed event: session closed
+    addFeedEvent({
+      type: 'session_closed',
+      sessionId: session.id,
+      message: `🎉 Mesa cerrada! ${session.participants.length} personas pagaron ${formatCOP(session.totalAmount)}${session.description ? ' — ' + session.description : ''}`,
+      userIds: session.participants.map((p) => p.userId),
+    });
+  }
+
+  // Feed event: fast payer (paid within 60 seconds of split)
+  const splitTime = session.participants.find((p) => p.amount > 0 && p.paidAt)?.joinedAt;
+  if (participant.paidAt && splitTime) {
+    const secondsSinceSplit = (participant.paidAt.getTime() - splitTime.getTime()) / 1000;
+    if (secondsSinceSplit < 60) {
+      addFeedEvent({
+        type: 'fast_payer',
+        sessionId: session.id,
+        message: `⚡ ${participant.displayName} pago en menos de 1 minuto! Velocidad pura 🏎️`,
+        userIds: [participant.userId],
+      });
+    }
   }
 
   res.json(session);

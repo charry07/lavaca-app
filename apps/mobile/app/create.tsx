@@ -14,12 +14,15 @@ import {
 import { useRouter } from 'expo-router';
 import { SplitMode } from '@lavaca/shared';
 import { api } from '../src/services/api';
-import { colors, spacing, borderRadius, fontSize } from '../src/constants/theme';
+import { spacing, borderRadius, fontSize, type ThemeColors } from '../src/constants/theme';
 import { useI18n } from '../src/i18n';
+import { useTheme } from '../src/theme';
 
 export default function CreateScreen() {
   const router = useRouter();
   const { t } = useI18n();
+  const { colors } = useTheme();
+  const s = createStyles(colors);
   const [amount, setAmount] = useState('');
   const [description, setDescription] = useState('');
   const [splitMode, setSplitMode] = useState<SplitMode>('equal');
@@ -57,16 +60,16 @@ export default function CreateScreen() {
 
   return (
     <KeyboardAvoidingView
-      style={styles.container}
+      style={s.container}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
       <ScrollView
-        contentContainerStyle={styles.scroll}
+        contentContainerStyle={s.scroll}
         keyboardShouldPersistTaps="handled"
       >
-        <Text style={styles.sectionTitle}>{t('create.totalAmount')}</Text>
+        <Text style={s.sectionTitle}>{t('create.totalAmount')}</Text>
         <TextInput
-          style={styles.amountInput}
+          style={s.amountInput}
           placeholder="$0"
           placeholderTextColor={colors.textMuted}
           keyboardType="numeric"
@@ -75,31 +78,31 @@ export default function CreateScreen() {
           autoFocus
         />
 
-        <Text style={styles.sectionTitle}>{t('create.description')}</Text>
+        <Text style={s.sectionTitle}>{t('create.description')}</Text>
         <TextInput
-          style={styles.input}
+          style={s.input}
           placeholder={t('create.descriptionPlaceholder')}
           placeholderTextColor={colors.textMuted}
           value={description}
           onChangeText={setDescription}
         />
 
-        <Text style={styles.sectionTitle}>{t('create.howToSplit')}</Text>
-        <View style={styles.modeContainer}>
+        <Text style={s.sectionTitle}>{t('create.howToSplit')}</Text>
+        <View style={s.modeContainer}>
           {SPLIT_MODES.map((mode) => (
             <TouchableOpacity
               key={mode.key}
               style={[
-                styles.modeButton,
-                splitMode === mode.key && styles.modeButtonActive,
+                s.modeButton,
+                splitMode === mode.key && s.modeButtonActive,
               ]}
               onPress={() => setSplitMode(mode.key)}
             >
-              <Text style={styles.modeEmoji}>{mode.emoji}</Text>
+              <Text style={s.modeEmoji}>{mode.emoji}</Text>
               <Text
                 style={[
-                  styles.modeLabel,
-                  splitMode === mode.key && styles.modeLabelActive,
+                  s.modeLabel,
+                  splitMode === mode.key && s.modeLabelActive,
                 ]}
               >
                 {mode.label}
@@ -109,14 +112,14 @@ export default function CreateScreen() {
         </View>
 
         <TouchableOpacity
-          style={[styles.createButton, loading && styles.createButtonDisabled]}
+          style={[s.createButton, loading && s.createButtonDisabled]}
           onPress={handleCreate}
           disabled={loading}
         >
           {loading ? (
             <ActivityIndicator color={colors.background} />
           ) : (
-            <Text style={styles.createButtonText}>{t('create.createButton')}</Text>
+            <Text style={s.createButtonText}>{t('create.createButton')}</Text>
           )}
         </TouchableOpacity>
       </ScrollView>
@@ -124,85 +127,86 @@ export default function CreateScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.background,
-  },
-  scroll: {
-    padding: spacing.lg,
-    paddingBottom: spacing.xxl,
-  },
-  sectionTitle: {
-    fontSize: fontSize.md,
-    fontWeight: '600',
-    color: colors.textSecondary,
-    marginBottom: spacing.sm,
-    marginTop: spacing.lg,
-  },
-  amountInput: {
-    fontSize: fontSize.xxl,
-    fontWeight: 'bold',
-    color: colors.text,
-    backgroundColor: colors.surface,
-    borderRadius: borderRadius.md,
-    padding: spacing.lg,
-    borderWidth: 1,
-    borderColor: colors.surfaceBorder,
-    textAlign: 'center',
-  },
-  input: {
-    fontSize: fontSize.md,
-    color: colors.text,
-    backgroundColor: colors.surface,
-    borderRadius: borderRadius.md,
-    padding: spacing.md,
-    borderWidth: 1,
-    borderColor: colors.surfaceBorder,
-  },
-  modeContainer: {
-    flexDirection: 'row',
-  },
-  modeButton: {
-    flex: 1,
-    backgroundColor: colors.surface,
-    borderRadius: borderRadius.md,
-    padding: spacing.md,
-    marginHorizontal: spacing.xs,
-    alignItems: 'center',
-    borderWidth: 2,
-    borderColor: colors.surfaceBorder,
-  },
-  modeButtonActive: {
-    borderColor: colors.primary,
-    backgroundColor: colors.background,
-  },
-  modeEmoji: {
-    fontSize: 28,
-    marginBottom: spacing.xs,
-  },
-  modeLabel: {
-    fontSize: fontSize.sm,
-    color: colors.textSecondary,
-    textAlign: 'center',
-  },
-  modeLabelActive: {
-    color: colors.primary,
-    fontWeight: '600',
-  },
-  createButton: {
-    backgroundColor: colors.primary,
-    paddingVertical: spacing.md,
-    borderRadius: borderRadius.md,
-    alignItems: 'center',
-    marginTop: spacing.xl,
-  },
-  createButtonDisabled: {
-    opacity: 0.6,
-  },
-  createButtonText: {
-    fontSize: fontSize.lg,
-    fontWeight: '700',
-    color: colors.background,
-  },
-});
+const createStyles = (colors: ThemeColors) =>
+  StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: colors.background,
+    },
+    scroll: {
+      padding: spacing.lg,
+      paddingBottom: spacing.xxl,
+    },
+    sectionTitle: {
+      fontSize: fontSize.md,
+      fontWeight: '600',
+      color: colors.textSecondary,
+      marginBottom: spacing.sm,
+      marginTop: spacing.lg,
+    },
+    amountInput: {
+      fontSize: fontSize.xxl,
+      fontWeight: 'bold',
+      color: colors.text,
+      backgroundColor: colors.surface,
+      borderRadius: borderRadius.md,
+      padding: spacing.lg,
+      borderWidth: 1,
+      borderColor: colors.surfaceBorder,
+      textAlign: 'center',
+    },
+    input: {
+      fontSize: fontSize.md,
+      color: colors.text,
+      backgroundColor: colors.surface,
+      borderRadius: borderRadius.md,
+      padding: spacing.md,
+      borderWidth: 1,
+      borderColor: colors.surfaceBorder,
+    },
+    modeContainer: {
+      flexDirection: 'row',
+    },
+    modeButton: {
+      flex: 1,
+      backgroundColor: colors.surface,
+      borderRadius: borderRadius.md,
+      padding: spacing.md,
+      marginHorizontal: spacing.xs,
+      alignItems: 'center',
+      borderWidth: 2,
+      borderColor: colors.surfaceBorder,
+    },
+    modeButtonActive: {
+      borderColor: colors.primary,
+      backgroundColor: colors.background,
+    },
+    modeEmoji: {
+      fontSize: 28,
+      marginBottom: spacing.xs,
+    },
+    modeLabel: {
+      fontSize: fontSize.sm,
+      color: colors.textSecondary,
+      textAlign: 'center',
+    },
+    modeLabelActive: {
+      color: colors.primary,
+      fontWeight: '600',
+    },
+    createButton: {
+      backgroundColor: colors.primary,
+      paddingVertical: spacing.md,
+      borderRadius: borderRadius.md,
+      alignItems: 'center',
+      marginTop: spacing.xl,
+    },
+    createButtonDisabled: {
+      opacity: 0.6,
+    },
+    createButtonText: {
+      fontSize: fontSize.lg,
+      fontWeight: '700',
+      color: colors.background,
+    },
+  });

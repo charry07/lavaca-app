@@ -1,5 +1,6 @@
 import { View, Text, StyleSheet } from 'react-native';
-import { colors, spacing, borderRadius } from '../constants/theme';
+import { spacing, borderRadius, type ThemeColors } from '../constants/theme';
+import { useTheme } from '../theme';
 
 interface VacaLogoProps {
   size?: 'sm' | 'md' | 'lg';
@@ -12,81 +13,84 @@ const sizes = {
 };
 
 export function VacaLogo({ size = 'lg' }: VacaLogoProps) {
-  const s = sizes[size];
+  const sz = sizes[size];
+  const { colors } = useTheme();
+  const s = createStyles(colors);
 
   return (
-    <View style={styles.container}>
+    <View style={s.container}>
       {/* Cow + money badge */}
-      <View style={styles.iconWrap}>
-        <Text style={{ fontSize: s.cow }}>🐄</Text>
+      <View style={s.iconWrap}>
+        <Text style={{ fontSize: sz.cow }}>🐄</Text>
         <View
           style={[
-            styles.badge,
+            s.badge,
             {
-              width: s.badge,
-              height: s.badge,
-              borderRadius: s.badge / 2,
-              right: s.offset,
-              bottom: s.offset,
+              width: sz.badge,
+              height: sz.badge,
+              borderRadius: sz.badge / 2,
+              right: sz.offset,
+              bottom: sz.offset,
             },
           ]}
         >
-          <Text style={{ fontSize: s.money, lineHeight: s.money + 4 }}>💸</Text>
+          <Text style={{ fontSize: sz.money, lineHeight: sz.money + 4 }}>💸</Text>
         </View>
       </View>
 
       {/* App name */}
-      <Text style={[styles.name, { fontSize: s.name }]}>La Vaca</Text>
+      <Text style={[s.name, { fontSize: sz.name }]}>La Vaca</Text>
 
       {/* Floating bills decoration */}
       {size === 'lg' && (
-        <View style={styles.decoration}>
-          <Text style={styles.decoLeft}>💵</Text>
-          <Text style={styles.decoRight}>💰</Text>
+        <View style={s.decoration}>
+          <Text style={s.decoLeft}>💵</Text>
+          <Text style={s.decoRight}>💰</Text>
         </View>
       )}
     </View>
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    alignItems: 'center',
-  },
-  iconWrap: {
-    position: 'relative',
-    marginBottom: spacing.sm,
-  },
-  badge: {
-    position: 'absolute',
-    backgroundColor: colors.surface,
-    borderWidth: 2,
-    borderColor: colors.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  name: {
-    fontWeight: 'bold',
-    color: colors.primary,
-    letterSpacing: 1,
-  },
-  decoration: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    width: '100%',
-    position: 'absolute',
-    top: 10,
-  },
-  decoLeft: {
-    fontSize: 22,
-    marginRight: 100,
-    opacity: 0.5,
-    transform: [{ rotate: '-15deg' }],
-  },
-  decoRight: {
-    fontSize: 22,
-    marginLeft: 100,
-    opacity: 0.5,
-    transform: [{ rotate: '15deg' }],
-  },
-});
+const createStyles = (colors: ThemeColors) =>
+  StyleSheet.create({
+    container: {
+      alignItems: 'center',
+    },
+    iconWrap: {
+      position: 'relative',
+      marginBottom: spacing.sm,
+    },
+    badge: {
+      position: 'absolute',
+      backgroundColor: colors.surface,
+      borderWidth: 2,
+      borderColor: colors.primary,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    name: {
+      fontWeight: 'bold',
+      color: colors.primary,
+      letterSpacing: 1,
+    },
+    decoration: {
+      flexDirection: 'row',
+      justifyContent: 'center',
+      width: '100%',
+      position: 'absolute',
+      top: 10,
+    },
+    decoLeft: {
+      fontSize: 22,
+      marginRight: 100,
+      opacity: 0.5,
+      transform: [{ rotate: '-15deg' }],
+    },
+    decoRight: {
+      fontSize: 22,
+      marginLeft: 100,
+      opacity: 0.5,
+      transform: [{ rotate: '15deg' }],
+    },
+  });

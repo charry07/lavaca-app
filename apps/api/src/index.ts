@@ -3,6 +3,8 @@ import cors from 'cors';
 import http from 'http';
 import { Server as SocketIOServer } from 'socket.io';
 import { sessionRouter } from './routes/sessions';
+import { userRouter } from './routes/users';
+import { feedRouter } from './routes/feed';
 
 const app = express();
 const server = http.createServer(app);
@@ -24,6 +26,8 @@ app.get('/health', (_req, res) => {
 
 // Routes
 app.use('/api/sessions', sessionRouter);
+app.use('/api/users', userRouter);
+app.use('/api/feed', feedRouter);
 
 // WebSocket for real-time session updates
 io.on('connection', (socket) => {

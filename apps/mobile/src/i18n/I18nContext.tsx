@@ -1,5 +1,8 @@
-import { createContext, useContext, useState, useCallback, type ReactNode } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { translations, type Locale } from './translations';
+
+const STORAGE_KEY = '@lavaca/locale';
 
 type TranslationKey = keyof typeof translations['es'];
 
@@ -16,7 +19,20 @@ const I18nContext = createContext<I18nContextValue>({
 });
 
 export function I18nProvider({ children }: { children: ReactNode }) {
-  const [locale, setLocale] = useState<Locale>('es');
+  const [locale, setLocaleState] = useState<Locale>('es');
+
+  useEffect(() => {
+    AsyncStorage.getItem(STORAGE_KEY).then((saved) => {
+      if (saved === 'es' || saved === 'en' || saved === 'pt') {
+        setLocaleState(saved);
+      }
+    });
+  }, []);
+
+  const setLocale = useCallback((loc: Locale) => {
+    setLocaleState(loc);
+    AsyncStorage.setItem(STORAGE_KEY, loc);
+  }, []);
 
   const t = useCallback(
     (key: TranslationKey, params?: Record<string, string | number>): string => {
@@ -41,3 +57,4 @@ export function I18nProvider({ children }: { children: ReactNode }) {
 export function useI18n() {
   return useContext(I18nContext);
 }
+

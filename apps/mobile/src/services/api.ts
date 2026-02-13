@@ -1,4 +1,4 @@
-import { PaymentSession, SplitMode } from '@lavaca/shared';
+import { PaymentSession, SplitMode, User, FeedEvent } from '@lavaca/shared';
 import { Platform } from 'react-native';
 
 // Android emulator uses 10.0.2.2 to reach host machine
@@ -27,6 +27,42 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
 }
 
 export const api = {
+  // ── Auth ──────────────────────────────────────────────
+  /** Register a new user (or auto-login if phone exists) */
+  register: (data: { phone: string; displayName: string }) =>
+    request<User>('/api/users/register', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+  /** Login by phone number */
+  login: (phone: string) =>
+    request<User>('/api/users/login', {
+      method: 'POST',
+      body: JSON.stringify({ phone }),
+    }),
+
+  /** Get user by ID */
+  getUser: (userId: string) =>
+    request<User>(`/api/users/${userId}`),
+
+  /** Update user profile */
+  updateUser: (userId: string, data: { displayName?: string; avatarUrl?: string }) =>
+    request<User>(`/api/users/${userId}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    }),
+
+  // ── Feed ──────────────────────────────────────────────
+  /** Get global feed */
+  getFeed: () =>
+    request<FeedEvent[]>('/api/feed'),
+
+  /** Get feed for a specific user */
+  getUserFeed: (userId: string) =>
+    request<FeedEvent[]>(`/api/feed/user/${userId}`),
+
+  // ── Sessions ──────────────────────────────────────────
   /** Health check */
   health: () => request<{ status: string }>('/health'),
 
