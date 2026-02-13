@@ -1,4 +1,4 @@
-import { PaymentSession, SplitMode, User, FeedEvent } from '@lavaca/shared';
+import { PaymentSession, SplitMode, User, FeedEvent, Group } from '@lavaca/shared';
 import { Platform } from 'react-native';
 
 // Android emulator uses 10.0.2.2 to reach host machine
@@ -26,10 +26,37 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
   return res.json();
 }
 
+// ── OTP response type ───────────────────────────────────
+interface OTPSendResponse {
+  success: boolean;
+  message: string;
+  dev_code: string;
+}
+
+interface OTPVerifyResponse {
+  verified: boolean;
+  isRegistered: boolean;
+  user: User | null;
+}
+
 export const api = {
-  // ── Auth ──────────────────────────────────────────────
-  /** Register a new user (or auto-login if phone exists) */
-  register: (data: { phone: string; displayName: string; username: string; documentId?: string }) =>
+  // ── OTP / Auth ────────────────────────────────────────
+  /** Send OTP to phone number */
+  sendOTP: (phone: string) =>
+    request<OTPSendResponse>('/api/users/send-otp', {
+      method: 'POST',
+      body: JSON.stringify({ phone }),
+    }),
+
+  /** Verify OTP code */
+  verifyOTP: (phone: string, code: string) =>
+    request<OTPVerifyResponse>('/api/users/verify-otp', {
+      method: 'POST',
+      body: JSON.stringify({ phone, code }),
+    }),
+
+  /** Register a new user */
+  register: (data: { phone: string; displayName: string; username: string; documentId: string }) =>
     request<User>('/api/users/register', {
       method: 'POST',
       body: JSON.stringify(data),
@@ -53,6 +80,17 @@ export const api = {
       body: JSON.stringify(data),
     }),
 
+  /** Look up users by phone numbers (contacts) */
+  lookupByPhones: (phones: string[]) =>
+    request<User[]>('/api/users/lookup', {
+      method: 'POST',
+      body: JSON.stringify({ phones }),
+    }),
+
+  /** Get user transaction history */
+  getUserHistory: (userId: string) =>
+    request<PaymentSession[]>(`/api/users/${userId}/history`),
+
   // ── Feed ──────────────────────────────────────────────
   /** Get global feed */
   getFeed: () =>
@@ -61,6 +99,48 @@ export const api = {
   /** Get feed for a specific user */
   getUserFeed: (userId: string) =>
     request<FeedEvent[]>(`/api/feed/user/${userId}`),
+
+  // ── Groups ────────────────────────────────────────────
+  /** Create a new group */
+  createGroup: (data: { name: string; icon?: string; memberIds?: string[]; createdBy: string }) =>
+    request<Group>('/api/groups', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+  /** Get all groups for a user */
+  getUserGroups: (userId: string) =>
+    request<(Group & { members: { id: string; displayName: string; username: string; avatarUrl?: string }[] })[]>(`/api/groups/user/${userId}`),
+
+  /** Get a specific group */
+  getGroup: (groupId: string) =>
+    request<Group & { members: { id: string; displayName: string; username: string; avatarUrl?: string; phone: string }[] }>(`/api/groups/${groupId}`),
+
+  /** Update group */
+  updateGroup: (groupId: string, data: { name?: string; icon?: string }) =>
+    request<Group>(`/api/groups/${groupId}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    }),
+
+  /** Add members to group */
+  addGroupMembers: (groupId: string, userIds: string[]) =>
+    request<Group>(`/api/groups/${groupId}/members`, {
+      method: 'POST',
+      body: JSON.stringify({ userIds }),
+    }),
+
+  /** Remove member from group */
+  removeGroupMember: (groupId: string, userId: string) =>
+    request<Group>(`/api/groups/${groupId}/members/${userId}`, {
+      method: 'DELETE',
+    }),
+
+  /** Delete group */
+  deleteGroup: (groupId: string) =>
+    request<{ success: boolean }>(`/api/groups/${groupId}`, {
+      method: 'DELETE',
+    }),
 
   // ── Sessions ──────────────────────────────────────────
   /** Health check */

@@ -5,6 +5,7 @@ import { Server as SocketIOServer } from 'socket.io';
 import { sessionRouter } from './routes/sessions';
 import { userRouter } from './routes/users';
 import { feedRouter } from './routes/feed';
+import { groupRouter } from './routes/groups';
 
 const app = express();
 const server = http.createServer(app);
@@ -28,6 +29,7 @@ app.get('/health', (_req, res) => {
 app.use('/api/sessions', sessionRouter);
 app.use('/api/users', userRouter);
 app.use('/api/feed', feedRouter);
+app.use('/api/groups', groupRouter);
 
 // WebSocket for real-time session updates
 io.on('connection', (socket) => {

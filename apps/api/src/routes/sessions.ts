@@ -203,4 +203,9 @@ router.post('/:joinCode/pay', (req: Request, res: Response) => {
   res.json(session);
 });
 
+/** Helper to get all sessions (used by history endpoint) */
+export function getAllSessions(): PaymentSession[] {
+  return Array.from(sessions.values());
+}
+
 export { router as sessionRouter };
