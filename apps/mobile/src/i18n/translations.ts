@@ -80,6 +80,9 @@ const es = {
   'session.close': 'Cerrar',
   'session.shareMessage': 'Unete a La Vaca! 🐄\n\nCodigo: {{code}}\n\nDescarga la app para dividir y pagar la cuenta facilmente.',
 
+  'session.copied': 'Copiado!',
+  'session.copiedMessage': 'El enlace se copio al portapapeles',
+
   // Roulette
   'roulette.title': '🎰 Ruleta de La Vaca',
   'roulette.spinning': 'Girando...',
@@ -89,6 +92,9 @@ const es = {
 
   // Common
   'common.error': 'Error',
+  'common.now': 'ahora',
+  'common.person': 'persona',
+  'common.people': 'personas',
 
   // Tabs
   'tabs.home': 'Inicio',
@@ -106,6 +112,9 @@ const es = {
   'auth.invalidPhone': 'Ingresa un numero valido',
   'auth.errorSendingOTP': 'No se pudo enviar el codigo',
   'auth.hint': 'Tu celular es tu identidad. Sin contrasenas, simple y sencillo.',
+  'auth.hintDev': '🔧 Modo dev: el codigo se muestra en pantalla. En produccion se envia por SMS.',
+  'auth.selectCountry': 'Seleccionar pais',
+  'auth.searchCountry': 'Buscar pais...',
 
   // Auth - OTP Step
   'auth.verifyTitle': 'Verificar numero 📱',
@@ -161,6 +170,12 @@ const es = {
   'groups.deleteMessage': 'Seguro que quieres eliminar "{{name}}"?',
   'groups.deleteConfirm': 'Eliminar',
   'groups.addMembers': 'Agregar miembros',
+  'groups.searchPlaceholder': 'Buscar por nombre, usuario o telefono',
+  'groups.searchHint': 'Escribe al menos 2 caracteres para buscar',
+  'groups.noResults': 'No se encontraron usuarios',
+  'groups.alreadyMember': 'Ya es miembro',
+  'groups.addButton': 'Agregar',
+  'groups.memberAdded': '{{name}} fue agregado al grupo',
   'groups.removeMember': 'Quitar miembro',
   'groups.removeMessage': 'Quitar a {{name}} del grupo?',
   'groups.removeConfirm': 'Quitar',
@@ -244,6 +259,9 @@ const en: TranslationKeys = {
   'session.close': 'Close',
   'session.shareMessage': 'Join La Vaca! 🐄\n\nCode: {{code}}\n\nDownload the app to split and pay bills easily.',
 
+  'session.copied': 'Copied!',
+  'session.copiedMessage': 'Link copied to clipboard',
+
   // Roulette
   'roulette.title': '🎰 La Vaca Roulette',
   'roulette.spinning': 'Spinning...',
@@ -253,6 +271,9 @@ const en: TranslationKeys = {
 
   // Common
   'common.error': 'Error',
+  'common.now': 'now',
+  'common.person': 'person',
+  'common.people': 'people',
 
   // Tabs
   'tabs.home': 'Home',
@@ -270,6 +291,9 @@ const en: TranslationKeys = {
   'auth.invalidPhone': 'Enter a valid number',
   'auth.errorSendingOTP': 'Could not send code',
   'auth.hint': 'Your phone is your identity. No passwords, simple and easy.',
+  'auth.hintDev': '🔧 Dev mode: code is shown on screen. In production it will be sent via SMS.',
+  'auth.selectCountry': 'Select country',
+  'auth.searchCountry': 'Search country...',
 
   // Auth - OTP Step
   'auth.verifyTitle': 'Verify number 📱',
@@ -325,6 +349,12 @@ const en: TranslationKeys = {
   'groups.deleteMessage': 'Are you sure you want to delete "{{name}}"?',
   'groups.deleteConfirm': 'Delete',
   'groups.addMembers': 'Add members',
+  'groups.searchPlaceholder': 'Search by name, username or phone',
+  'groups.searchHint': 'Type at least 2 characters to search',
+  'groups.noResults': 'No users found',
+  'groups.alreadyMember': 'Already a member',
+  'groups.addButton': 'Add',
+  'groups.memberAdded': '{{name}} was added to the group',
   'groups.removeMember': 'Remove member',
   'groups.removeMessage': 'Remove {{name}} from the group?',
   'groups.removeConfirm': 'Remove',
@@ -408,6 +438,9 @@ const pt: TranslationKeys = {
   'session.close': 'Fechar',
   'session.shareMessage': 'Entre na La Vaca! 🐄\n\nCódigo: {{code}}\n\nBaixe o app para dividir e pagar contas facilmente.',
 
+  'session.copied': 'Copiado!',
+  'session.copiedMessage': 'Link copiado para a área de transferência',
+
   // Roulette
   'roulette.title': '🎰 Roleta da La Vaca',
   'roulette.spinning': 'Girando...',
@@ -417,6 +450,9 @@ const pt: TranslationKeys = {
 
   // Common
   'common.error': 'Erro',
+  'common.now': 'agora',
+  'common.person': 'pessoa',
+  'common.people': 'pessoas',
 
   // Tabs
   'tabs.home': 'Início',
@@ -434,6 +470,9 @@ const pt: TranslationKeys = {
   'auth.invalidPhone': 'Insira um número válido',
   'auth.errorSendingOTP': 'Não foi possível enviar o código',
   'auth.hint': 'Seu celular é sua identidade. Sem senhas, simples e fácil.',
+  'auth.hintDev': '🔧 Modo dev: o código é mostrado na tela. Em produção será enviado por SMS.',
+  'auth.selectCountry': 'Selecionar país',
+  'auth.searchCountry': 'Buscar país...',
 
   // Auth - OTP Step
   'auth.verifyTitle': 'Verificar número 📱',
@@ -489,6 +528,12 @@ const pt: TranslationKeys = {
   'groups.deleteMessage': 'Tem certeza que quer excluir "{{name}}"?',
   'groups.deleteConfirm': 'Excluir',
   'groups.addMembers': 'Adicionar membros',
+  'groups.searchPlaceholder': 'Buscar por nome, usuário ou celular',
+  'groups.searchHint': 'Digite pelo menos 2 caracteres',
+  'groups.noResults': 'Nenhum usuário encontrado',
+  'groups.alreadyMember': 'Já é membro',
+  'groups.addButton': 'Adicionar',
+  'groups.memberAdded': '{{name}} foi adicionado ao grupo',
   'groups.removeMember': 'Remover membro',
   'groups.removeMessage': 'Remover {{name}} do grupo?',
   'groups.removeConfirm': 'Remover',

@@ -3,9 +3,7 @@ import { Platform } from 'react-native';
 import Constants from 'expo-constants';
 
 const getBaseUrl = () => {
-  if (Platform.OS === 'android') return 'http://10.0.2.2:3001';
-
-  // For physical iOS device: extract the dev machine's IP from Expo's debugger host
+  // Extract the dev machine's IP from Expo Go (works on both iOS & Android physical devices)
   const debuggerHost =
     Constants.expoGoConfig?.debuggerHost ??
     Constants.expoConfig?.hostUri;
@@ -15,6 +13,9 @@ const getBaseUrl = () => {
       return `http://${ip}:3001`;
     }
   }
+
+  // Fallback: Android emulator uses 10.0.2.2 to reach host machine
+  if (Platform.OS === 'android') return 'http://10.0.2.2:3001';
 
   return 'http://localhost:3001';
 };
@@ -91,6 +92,10 @@ export const api = {
       method: 'PUT',
       body: JSON.stringify(data),
     }),
+
+  /** Search users by name, username, or phone */
+  searchUsers: (query: string) =>
+    request<User[]>(`/api/users/search?q=${encodeURIComponent(query)}`),
 
   /** Look up users by phone numbers (contacts) */
   lookupByPhones: (phones: string[]) =>

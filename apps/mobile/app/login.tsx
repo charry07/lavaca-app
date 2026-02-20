@@ -10,12 +10,46 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
+  Modal,
+  FlatList,
 } from 'react-native';
 import { spacing, borderRadius, fontSize, type ThemeColors } from '../src/constants/theme';
 import { useI18n } from '../src/i18n';
 import { useTheme } from '../src/theme';
 import { useAuth } from '../src/auth';
 import { VacaLogo } from '../src/components/VacaLogo';
+import { HeaderControls } from '../src/components/HeaderControls';
+
+// ── Country data ────────────────────────────────────────
+interface Country {
+  flag: string;
+  name: string;
+  dial: string;
+}
+
+const COUNTRIES: Country[] = [
+  { flag: '🇨🇴', name: 'Colombia', dial: '+57' },
+  { flag: '🇲🇽', name: 'México', dial: '+52' },
+  { flag: '🇦🇷', name: 'Argentina', dial: '+54' },
+  { flag: '🇨🇱', name: 'Chile', dial: '+56' },
+  { flag: '🇵🇪', name: 'Perú', dial: '+51' },
+  { flag: '🇪🇨', name: 'Ecuador', dial: '+593' },
+  { flag: '🇻🇪', name: 'Venezuela', dial: '+58' },
+  { flag: '🇧🇷', name: 'Brasil', dial: '+55' },
+  { flag: '🇧🇴', name: 'Bolivia', dial: '+591' },
+  { flag: '🇵🇾', name: 'Paraguay', dial: '+595' },
+  { flag: '🇺🇾', name: 'Uruguay', dial: '+598' },
+  { flag: '🇵🇦', name: 'Panamá', dial: '+507' },
+  { flag: '🇨🇷', name: 'Costa Rica', dial: '+506' },
+  { flag: '🇬🇹', name: 'Guatemala', dial: '+502' },
+  { flag: '🇭🇳', name: 'Honduras', dial: '+504' },
+  { flag: '🇸🇻', name: 'El Salvador', dial: '+503' },
+  { flag: '🇳🇮', name: 'Nicaragua', dial: '+505' },
+  { flag: '🇩🇴', name: 'Rep. Dominicana', dial: '+1' },
+  { flag: '🇨🇺', name: 'Cuba', dial: '+53' },
+  { flag: '🇺🇸', name: 'Estados Unidos', dial: '+1' },
+  { flag: '🇪🇸', name: 'España', dial: '+34' },
+];
 
 // ── Phone Step ──────────────────────────────────────────
 function PhoneStep() {
@@ -26,17 +60,29 @@ function PhoneStep() {
 
   const [phone, setPhone] = useState('');
   const [loading, setLoading] = useState(false);
+  const [country, setCountry] = useState<Country>(COUNTRIES[0]); // Default: Colombia 🇨🇴
+  const [showPicker, setShowPicker] = useState(false);
+  const [search, setSearch] = useState('');
+
+  const filteredCountries = search.trim()
+    ? COUNTRIES.filter(c =>
+        c.name.toLowerCase().includes(search.toLowerCase()) ||
+        c.dial.includes(search)
+      )
+    : COUNTRIES;
 
   const handleSendOTP = async () => {
-    const cleanPhone = phone.replace(/\s/g, '').trim();
+    const cleanPhone = phone.replace(/\s/g, '').replace(/^0+/, '').trim();
     if (!cleanPhone || cleanPhone.length < 7) {
       Alert.alert(t('common.error'), t('auth.invalidPhone'));
       return;
     }
 
+    const fullPhone = `${country.dial}${cleanPhone}`;
+
     setLoading(true);
     try {
-      await sendOTP(cleanPhone);
+      await sendOTP(fullPhone);
     } catch (err: any) {
       Alert.alert(t('common.error'), err.message || t('auth.errorSendingOTP'));
     } finally {
@@ -50,15 +96,30 @@ function PhoneStep() {
       <Text style={s.subtitle}>{t('auth.phoneSubtitle')}</Text>
 
       <Text style={s.fieldLabel}>{t('auth.phoneLabel')}</Text>
-      <TextInput
-        style={s.input}
-        placeholder={t('auth.phonePlaceholder')}
-        placeholderTextColor={colors.textMuted}
-        keyboardType="phone-pad"
-        value={phone}
-        onChangeText={setPhone}
-        autoFocus
-      />
+
+      <View style={s.phoneRow}>
+        {/* Country code selector */}
+        <TouchableOpacity
+          style={s.countryButton}
+          onPress={() => setShowPicker(true)}
+          activeOpacity={0.7}
+        >
+          <Text style={s.countryFlag}>{country.flag}</Text>
+          <Text style={s.countryDial}>{country.dial}</Text>
+          <Text style={s.countryArrow}>▼</Text>
+        </TouchableOpacity>
+
+        {/* Phone input */}
+        <TextInput
+          style={s.phoneInput}
+          placeholder={t('auth.phonePlaceholder')}
+          placeholderTextColor={colors.textMuted}
+          keyboardType="phone-pad"
+          value={phone}
+          onChangeText={setPhone}
+          autoFocus
+        />
+      </View>
 
       <TouchableOpacity
         style={[s.button, loading && s.buttonDisabled]}
@@ -73,6 +134,52 @@ function PhoneStep() {
       </TouchableOpacity>
 
       <Text style={s.hint}>{t('auth.hint')}</Text>
+      <Text style={s.hintDev}>{t('auth.hintDev')}</Text>
+
+      {/* Country picker modal */}
+      <Modal visible={showPicker} animationType="slide" transparent>
+        <View style={s.modalOverlay}>
+          <View style={s.modalContainer}>
+            <View style={s.modalHeader}>
+              <Text style={s.modalTitle}>{t('auth.selectCountry')}</Text>
+              <TouchableOpacity onPress={() => { setShowPicker(false); setSearch(''); }}>
+                <Text style={s.modalClose}>✕</Text>
+              </TouchableOpacity>
+            </View>
+
+            <TextInput
+              style={s.modalSearch}
+              placeholder={t('auth.searchCountry')}
+              placeholderTextColor={colors.textMuted}
+              value={search}
+              onChangeText={setSearch}
+              autoFocus
+            />
+
+            <FlatList
+              data={filteredCountries}
+              keyExtractor={(item) => `${item.flag}-${item.dial}-${item.name}`}
+              renderItem={({ item }) => (
+                <TouchableOpacity
+                  style={[
+                    s.countryItem,
+                    item.name === country.name && item.dial === country.dial && s.countryItemSelected,
+                  ]}
+                  onPress={() => {
+                    setCountry(item);
+                    setShowPicker(false);
+                    setSearch('');
+                  }}
+                >
+                  <Text style={s.countryItemFlag}>{item.flag}</Text>
+                  <Text style={s.countryItemName}>{item.name}</Text>
+                  <Text style={s.countryItemDial}>{item.dial}</Text>
+                </TouchableOpacity>
+              )}
+            />
+          </View>
+        </View>
+      </Modal>
     </>
   );
 }
@@ -303,6 +410,10 @@ export default function LoginScreen() {
         contentContainerStyle={s.content}
         keyboardShouldPersistTaps="handled"
       >
+        <View style={s.headerControls}>
+          <HeaderControls />
+        </View>
+
         <VacaLogo size="lg" />
 
         {authStep === 'phone' && <PhoneStep />}
@@ -325,6 +436,11 @@ const createStyles = (colors: ThemeColors) =>
       justifyContent: 'center',
       alignItems: 'center',
       paddingBottom: spacing.xxl,
+    },
+    headerControls: {
+      position: 'absolute',
+      top: spacing.xl,
+      right: 0,
     },
     title: {
       fontSize: fontSize.xl,
@@ -380,6 +496,120 @@ const createStyles = (colors: ThemeColors) =>
       color: colors.textMuted,
       textAlign: 'center',
       marginTop: spacing.lg,
+    },
+    hintDev: {
+      fontSize: fontSize.xs,
+      color: colors.accent,
+      textAlign: 'center',
+      marginTop: spacing.xs,
+      fontStyle: 'italic',
+    },
+    // Phone row with country picker
+    phoneRow: {
+      flexDirection: 'row',
+      width: '100%',
+      marginBottom: spacing.sm,
+    },
+    countryButton: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: colors.surface,
+      borderRadius: borderRadius.md,
+      borderWidth: 1,
+      borderColor: colors.surfaceBorder,
+      paddingHorizontal: spacing.sm,
+      paddingVertical: spacing.md,
+      marginRight: spacing.xs,
+    },
+    countryFlag: {
+      fontSize: 22,
+      marginRight: 4,
+    },
+    countryDial: {
+      fontSize: fontSize.md,
+      color: colors.text,
+      fontWeight: '600',
+      marginRight: 4,
+    },
+    countryArrow: {
+      fontSize: 10,
+      color: colors.textMuted,
+    },
+    phoneInput: {
+      flex: 1,
+      fontSize: fontSize.md,
+      color: colors.text,
+      backgroundColor: colors.surface,
+      borderRadius: borderRadius.md,
+      padding: spacing.md,
+      borderWidth: 1,
+      borderColor: colors.surfaceBorder,
+    },
+    // Country picker modal
+    modalOverlay: {
+      flex: 1,
+      backgroundColor: 'rgba(0,0,0,0.5)',
+      justifyContent: 'flex-end',
+    },
+    modalContainer: {
+      backgroundColor: colors.background,
+      borderTopLeftRadius: 20,
+      borderTopRightRadius: 20,
+      maxHeight: '70%',
+      paddingBottom: spacing.xxl,
+    },
+    modalHeader: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      padding: spacing.lg,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.surfaceBorder,
+    },
+    modalTitle: {
+      fontSize: fontSize.lg,
+      fontWeight: '700',
+      color: colors.text,
+    },
+    modalClose: {
+      fontSize: fontSize.lg,
+      color: colors.textMuted,
+      padding: spacing.xs,
+    },
+    modalSearch: {
+      fontSize: fontSize.md,
+      color: colors.text,
+      backgroundColor: colors.surface,
+      borderRadius: borderRadius.md,
+      padding: spacing.md,
+      margin: spacing.md,
+      borderWidth: 1,
+      borderColor: colors.surfaceBorder,
+    },
+    countryItem: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingVertical: spacing.md,
+      paddingHorizontal: spacing.lg,
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: colors.surfaceBorder,
+    },
+    countryItemSelected: {
+      backgroundColor: colors.primary + '15',
+    },
+    countryItemFlag: {
+      fontSize: 24,
+      marginRight: spacing.md,
+    },
+    countryItemName: {
+      flex: 1,
+      fontSize: fontSize.md,
+      color: colors.text,
+    },
+    countryItemDial: {
+      fontSize: fontSize.md,
+      color: colors.textSecondary,
+      fontWeight: '600',
     },
     // OTP styles
     otpContainer: {

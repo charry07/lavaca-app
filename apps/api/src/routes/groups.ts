@@ -1,27 +1,39 @@
 import { Router, Request, Response } from 'express';
 import { Group } from '@lavaca/shared';
-import { users } from './users';
+import db from '../db';
 
 const router = Router();
 
-// In-memory group store
-const groups = new Map<string, Group>();
-const userGroupsIndex = new Map<string, string[]>(); // userId -> groupId[]
+// ── Prepared statements ─────────────────────────────────
+const stmts = {
+  insertGroup: db.prepare(`INSERT INTO groups (id, name, icon, createdBy, createdAt) VALUES (?, ?, ?, ?, ?)`),
+  addMember: db.prepare(`INSERT OR IGNORE INTO group_members (groupId, userId) VALUES (?, ?)`),
+  removeMember: db.prepare(`DELETE FROM group_members WHERE groupId = ? AND userId = ?`),
+  getGroup: db.prepare(`SELECT * FROM groups WHERE id = ?`),
+  getGroupMembers: db.prepare(`SELECT userId FROM group_members WHERE groupId = ?`),
+  getGroupsForUser: db.prepare(`SELECT g.* FROM groups g JOIN group_members gm ON g.id = gm.groupId WHERE gm.userId = ?`),
+  getMemberDetails: db.prepare(`SELECT id, displayName, username, avatarUrl, phone FROM users WHERE id = ?`),
+  updateGroup: db.prepare(`UPDATE groups SET name = ?, icon = ? WHERE id = ?`),
+  deleteGroup: db.prepare(`DELETE FROM groups WHERE id = ?`),
+  deleteGroupMembers: db.prepare(`DELETE FROM group_members WHERE groupId = ?`),
+};
 
-function addToUserIndex(userId: string, groupId: string) {
-  const existing = userGroupsIndex.get(userId) || [];
-  if (!existing.includes(groupId)) {
-    existing.push(groupId);
-    userGroupsIndex.set(userId, existing);
-  }
+function buildGroupWithMembers(groupRow: any): any {
+  const memberRows = stmts.getGroupMembers.all(groupRow.id) as any[];
+  const memberIds = memberRows.map((m: any) => m.userId);
+  const members = memberIds
+    .map((uid: string) => stmts.getMemberDetails.get(uid))
+    .filter(Boolean);
+
+  return {
+    ...groupRow,
+    memberIds,
+    createdAt: new Date(groupRow.createdAt),
+    members,
+  };
 }
 
-function removeFromUserIndex(userId: string, groupId: string) {
-  const existing = userGroupsIndex.get(userId) || [];
-  userGroupsIndex.set(userId, existing.filter((id) => id !== groupId));
-}
-
-// POST /api/groups — Create a new group
+// POST /api/groups
 router.post('/', (req: Request, res: Response) => {
   const { name, icon, memberIds, createdBy } = req.body;
 
@@ -30,88 +42,63 @@ router.post('/', (req: Request, res: Response) => {
     return;
   }
 
-  const group: Group = {
-    id: 'grp-' + Math.random().toString(36).substring(2, 10),
-    name: name.trim(),
-    icon: icon || undefined,
-    memberIds: [createdBy, ...(memberIds || [])],
-    createdBy,
-    createdAt: new Date(),
-  };
+  const groupId = 'grp-' + Math.random().toString(36).substring(2, 10);
+  const now = new Date().toISOString();
 
-  // Deduplicate member IDs
-  group.memberIds = [...new Set(group.memberIds)];
+  const allMembers = [...new Set([createdBy, ...(memberIds || [])])];
 
-  groups.set(group.id, group);
+  const insertAll = db.transaction(() => {
+    stmts.insertGroup.run(groupId, name.trim(), icon || null, createdBy, now);
+    for (const uid of allMembers) {
+      stmts.addMember.run(groupId, uid);
+    }
+  });
+  insertAll();
 
-  // Update user index
-  group.memberIds.forEach((uid) => addToUserIndex(uid, group.id));
-
-  res.status(201).json(group);
+  const group = stmts.getGroup.get(groupId) as any;
+  res.status(201).json(buildGroupWithMembers(group));
 });
 
-// GET /api/groups/user/:userId — Get all groups for a user
+// GET /api/groups/user/:userId
 router.get('/user/:userId', (req: Request, res: Response) => {
   const { userId } = req.params;
-  const groupIds = userGroupsIndex.get(userId) || [];
-
-  const result = groupIds
-    .map((gid) => groups.get(gid))
-    .filter(Boolean)
-    .map((group) => {
-      const members = group!.memberIds
-        .map((uid) => {
-          const u = users.get(uid);
-          return u
-            ? { id: u.id, displayName: u.displayName, username: u.username, avatarUrl: u.avatarUrl }
-            : null;
-        })
-        .filter(Boolean);
-
-      return { ...group!, members };
-    });
-
+  const groups = stmts.getGroupsForUser.all(userId) as any[];
+  const result = groups.map(buildGroupWithMembers);
   res.json(result);
 });
 
-// GET /api/groups/:id — Get a specific group
+// GET /api/groups/:id
 router.get('/:id', (req: Request, res: Response) => {
-  const group = groups.get(req.params.id);
+  const group = stmts.getGroup.get(req.params.id) as any;
   if (!group) {
     res.status(404).json({ error: 'Group not found' });
     return;
   }
-
-  const members = group.memberIds
-    .map((uid) => {
-      const u = users.get(uid);
-      return u
-        ? { id: u.id, displayName: u.displayName, username: u.username, avatarUrl: u.avatarUrl, phone: u.phone }
-        : null;
-    })
-    .filter(Boolean);
-
-  res.json({ ...group, members });
+  res.json(buildGroupWithMembers(group));
 });
 
-// PUT /api/groups/:id — Update group name/icon
+// PUT /api/groups/:id
 router.put('/:id', (req: Request, res: Response) => {
-  const group = groups.get(req.params.id);
+  const group = stmts.getGroup.get(req.params.id) as any;
   if (!group) {
     res.status(404).json({ error: 'Group not found' });
     return;
   }
 
   const { name, icon } = req.body;
-  if (name) group.name = name.trim();
-  if (icon !== undefined) group.icon = icon;
+  stmts.updateGroup.run(
+    name ? name.trim() : group.name,
+    icon !== undefined ? icon : group.icon,
+    req.params.id
+  );
 
-  res.json(group);
+  const updated = stmts.getGroup.get(req.params.id) as any;
+  res.json(buildGroupWithMembers(updated));
 });
 
-// POST /api/groups/:id/members — Add members to a group
+// POST /api/groups/:id/members
 router.post('/:id/members', (req: Request, res: Response) => {
-  const group = groups.get(req.params.id);
+  const group = stmts.getGroup.get(req.params.id) as any;
   if (!group) {
     res.status(404).json({ error: 'Group not found' });
     return;
@@ -123,44 +110,47 @@ router.post('/:id/members', (req: Request, res: Response) => {
     return;
   }
 
-  for (const uid of userIds) {
-    if (!group.memberIds.includes(uid)) {
-      group.memberIds.push(uid);
-      addToUserIndex(uid, group.id);
+  const addAll = db.transaction(() => {
+    for (const uid of userIds) {
+      stmts.addMember.run(req.params.id, uid);
     }
-  }
+  });
+  addAll();
 
-  res.json(group);
+  const updated = stmts.getGroup.get(req.params.id) as any;
+  res.json(buildGroupWithMembers(updated));
 });
 
-// DELETE /api/groups/:id/members/:userId — Remove member from group
+// DELETE /api/groups/:id/members/:userId
 router.delete('/:id/members/:userId', (req: Request, res: Response) => {
-  const group = groups.get(req.params.id);
+  const group = stmts.getGroup.get(req.params.id) as any;
   if (!group) {
     res.status(404).json({ error: 'Group not found' });
     return;
   }
 
-  const { userId } = req.params;
-  group.memberIds = group.memberIds.filter((id) => id !== userId);
-  removeFromUserIndex(userId, group.id);
+  stmts.removeMember.run(req.params.id, req.params.userId);
 
-  res.json(group);
+  const updated = stmts.getGroup.get(req.params.id) as any;
+  res.json(buildGroupWithMembers(updated));
 });
 
-// DELETE /api/groups/:id — Delete a group
+// DELETE /api/groups/:id
 router.delete('/:id', (req: Request, res: Response) => {
-  const group = groups.get(req.params.id);
+  const group = stmts.getGroup.get(req.params.id) as any;
   if (!group) {
     res.status(404).json({ error: 'Group not found' });
     return;
   }
 
-  // Clean up user indexes
-  group.memberIds.forEach((uid) => removeFromUserIndex(uid, group.id));
-  groups.delete(group.id);
+  const deleteAll = db.transaction(() => {
+    stmts.deleteGroupMembers.run(req.params.id);
+    stmts.deleteGroup.run(req.params.id);
+  });
+  deleteAll();
 
   res.json({ success: true });
 });
 
 export { router as groupRouter };
+

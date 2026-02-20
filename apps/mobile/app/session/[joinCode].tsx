@@ -109,7 +109,7 @@ export default function SessionScreen() {
     const link = getShareLink();
     try {
       await Share.share({
-        message: `Unete a La Vaca! 🐄\n\n${link}\n\nCodigo: ${joinCode}`,
+        message: t('session.shareMessage', { code: joinCode }),
         url: link,
       });
     } catch {}
@@ -119,7 +119,7 @@ export default function SessionScreen() {
     const link = getShareLink();
     if (Platform.OS === 'web' && typeof navigator !== 'undefined' && navigator.clipboard) {
       await navigator.clipboard.writeText(link);
-      Alert.alert('Copiado!', 'El enlace se copio al portapapeles');
+      Alert.alert(t('session.copied'), t('session.copiedMessage'));
     } else {
       await Share.share({ message: link });
     }

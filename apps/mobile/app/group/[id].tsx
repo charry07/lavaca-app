@@ -2,14 +2,17 @@ import { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
+  TextInput,
   TouchableOpacity,
   StyleSheet,
   Alert,
   FlatList,
+  Modal,
   ActivityIndicator,
   RefreshControl,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import { User } from '@lavaca/shared';
 import { spacing, borderRadius, fontSize, type ThemeColors } from '../../src/constants/theme';
 import { useI18n } from '../../src/i18n';
 import { useTheme } from '../../src/theme';
@@ -45,6 +48,13 @@ export default function GroupDetailScreen() {
   const [group, setGroup] = useState<GroupDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+
+  // Add member modal state
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState<User[]>([]);
+  const [searching, setSearching] = useState(false);
+  const [addingId, setAddingId] = useState<string | null>(null);
 
   const fetchGroup = useCallback(async () => {
     if (!id) return;
@@ -87,8 +97,49 @@ export default function GroupDetailScreen() {
   };
 
   const handleCreateSession = () => {
-    // Navigate to create screen — in the future we can pre-fill with group members
     router.push('/create');
+  };
+
+  // ── Search users to add ───────────────────────────────
+  useEffect(() => {
+    if (searchQuery.trim().length < 2) {
+      setSearchResults([]);
+      return;
+    }
+    const timer = setTimeout(async () => {
+      setSearching(true);
+      try {
+        const results = await api.searchUsers(searchQuery.trim());
+        setSearchResults(results);
+      } catch {
+        setSearchResults([]);
+      } finally {
+        setSearching(false);
+      }
+    }, 300); // debounce
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+
+  const handleAddMember = async (userToAdd: User) => {
+    if (!group) return;
+    setAddingId(userToAdd.id);
+    try {
+      await api.addGroupMembers(group.id, [userToAdd.id]);
+      await fetchGroup();
+      // Remove from search results
+      setSearchResults((prev) => prev.filter((u) => u.id !== userToAdd.id));
+      Alert.alert('✅', t('groups.memberAdded', { name: userToAdd.displayName }));
+    } catch (err: any) {
+      Alert.alert(t('common.error'), err.message);
+    } finally {
+      setAddingId(null);
+    }
+  };
+
+  const openAddModal = () => {
+    setSearchQuery('');
+    setSearchResults([]);
+    setShowAddModal(true);
   };
 
   const isAdmin = group?.createdBy === user?.id;
@@ -158,6 +209,87 @@ export default function GroupDetailScreen() {
         <Text style={s.createSessionText}>{t('groups.createSession')} 🐄</Text>
       </TouchableOpacity>
 
+      <TouchableOpacity style={s.addMemberBtn} onPress={openAddModal}>
+        <Text style={s.addMemberBtnText}>➕ {t('groups.addMembers')}</Text>
+      </TouchableOpacity>
+
+      {/* ── Add Member Modal ────────────────────────── */}
+      <Modal visible={showAddModal} animationType="slide" transparent>
+        <View style={s.modalOverlay}>
+          <View style={s.modalContent}>
+            <View style={s.modalHeader}>
+              <Text style={s.modalTitle}>{t('groups.addMembers')}</Text>
+              <TouchableOpacity onPress={() => setShowAddModal(false)}>
+                <Text style={s.modalClose}>✕</Text>
+              </TouchableOpacity>
+            </View>
+
+            <TextInput
+              style={s.searchInput}
+              placeholder={t('groups.searchPlaceholder')}
+              placeholderTextColor={colors.textMuted}
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+              autoFocus
+              autoCapitalize="none"
+              autoCorrect={false}
+            />
+
+            {searching && (
+              <ActivityIndicator size="small" color={colors.primary} style={{ marginVertical: spacing.md }} />
+            )}
+
+            {!searching && searchQuery.length < 2 && (
+              <Text style={s.searchHint}>{t('groups.searchHint')}</Text>
+            )}
+
+            {!searching && searchQuery.length >= 2 && searchResults.length === 0 && (
+              <Text style={s.searchHint}>{t('groups.noResults')}</Text>
+            )}
+
+            <FlatList
+              data={searchResults}
+              keyExtractor={(item) => item.id}
+              keyboardShouldPersistTaps="handled"
+              renderItem={({ item: searchUser }) => {
+                const isMember = group?.memberIds.includes(searchUser.id);
+                const isAdding = addingId === searchUser.id;
+                return (
+                  <View style={s.searchResultCard}>
+                    <View style={s.avatar}>
+                      <Text style={s.avatarText}>
+                        {searchUser.displayName.charAt(0).toUpperCase()}
+                      </Text>
+                    </View>
+                    <View style={s.memberInfo}>
+                      <Text style={s.memberName}>{searchUser.displayName}</Text>
+                      <Text style={s.memberUsername}>@{searchUser.username}</Text>
+                    </View>
+                    {isMember ? (
+                      <View style={s.alreadyBadge}>
+                        <Text style={s.alreadyText}>{t('groups.alreadyMember')}</Text>
+                      </View>
+                    ) : (
+                      <TouchableOpacity
+                        style={s.addBtn}
+                        onPress={() => handleAddMember(searchUser)}
+                        disabled={isAdding}
+                      >
+                        {isAdding ? (
+                          <ActivityIndicator size="small" color={colors.background} />
+                        ) : (
+                          <Text style={s.addBtnText}>{t('groups.addButton')}</Text>
+                        )}
+                      </TouchableOpacity>
+                    )}
+                  </View>
+                );
+              }}
+            />
+          </View>
+        </View>
+      </Modal>
+
       <FlatList
         data={group.members}
         keyExtractor={(item) => item.id}
@@ -218,6 +350,97 @@ const createStyles = (colors: ThemeColors) =>
     createSessionText: {
       fontSize: fontSize.md,
       fontWeight: '700',
+      color: colors.background,
+    },
+    addMemberBtn: {
+      backgroundColor: 'transparent',
+      borderWidth: 2,
+      borderColor: colors.primary,
+      paddingVertical: spacing.sm,
+      paddingHorizontal: spacing.xl,
+      borderRadius: borderRadius.md,
+      marginHorizontal: spacing.md,
+      marginBottom: spacing.md,
+      alignItems: 'center',
+    },
+    addMemberBtnText: {
+      fontSize: fontSize.md,
+      fontWeight: '600',
+      color: colors.primary,
+    },
+    // ── Modal ──
+    modalOverlay: {
+      flex: 1,
+      backgroundColor: 'rgba(0,0,0,0.5)',
+      justifyContent: 'flex-end',
+    },
+    modalContent: {
+      backgroundColor: colors.background,
+      borderTopLeftRadius: 20,
+      borderTopRightRadius: 20,
+      padding: spacing.lg,
+      maxHeight: '80%',
+    },
+    modalHeader: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      marginBottom: spacing.md,
+    },
+    modalTitle: {
+      fontSize: fontSize.xl,
+      fontWeight: '700',
+      color: colors.text,
+    },
+    modalClose: {
+      fontSize: 22,
+      color: colors.textMuted,
+      padding: spacing.xs,
+    },
+    searchInput: {
+      backgroundColor: colors.surface,
+      borderRadius: borderRadius.md,
+      padding: spacing.md,
+      fontSize: fontSize.md,
+      color: colors.text,
+      borderWidth: 1,
+      borderColor: colors.surfaceBorder,
+      marginBottom: spacing.sm,
+    },
+    searchHint: {
+      fontSize: fontSize.sm,
+      color: colors.textMuted,
+      textAlign: 'center',
+      paddingVertical: spacing.lg,
+    },
+    searchResultCard: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingVertical: spacing.sm,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.surfaceBorder,
+    },
+    alreadyBadge: {
+      backgroundColor: colors.surfaceBorder,
+      paddingHorizontal: spacing.sm,
+      paddingVertical: 4,
+      borderRadius: borderRadius.sm,
+    },
+    alreadyText: {
+      fontSize: fontSize.xs,
+      color: colors.textMuted,
+    },
+    addBtn: {
+      backgroundColor: colors.primary,
+      paddingHorizontal: spacing.md,
+      paddingVertical: 6,
+      borderRadius: borderRadius.sm,
+      minWidth: 70,
+      alignItems: 'center',
+    },
+    addBtnText: {
+      fontSize: fontSize.sm,
+      fontWeight: '600',
       color: colors.background,
     },
     list: { padding: spacing.md },

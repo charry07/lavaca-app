@@ -9,6 +9,7 @@ import {
   ScrollView,
   Image,
 } from 'react-native';
+import { useRouter } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import { spacing, borderRadius, fontSize, type ThemeColors } from '../../src/constants/theme';
 import { useI18n } from '../../src/i18n';
@@ -19,6 +20,7 @@ export default function ProfileTab() {
   const { t } = useI18n();
   const { colors } = useTheme();
   const { user, logout, updateProfile } = useAuth();
+  const router = useRouter();
   const s = createStyles(colors);
 
   const [editingField, setEditingField] = useState<string | null>(null);
@@ -82,7 +84,10 @@ export default function ProfileTab() {
         {
           text: t('profile.logoutConfirm'),
           style: 'destructive',
-          onPress: logout,
+          onPress: async () => {
+            await logout();
+            router.replace('/login');
+          },
         },
       ]
     );
@@ -149,7 +154,7 @@ export default function ProfileTab() {
       {/* User info card */}
       <View style={s.card}>
         {renderField(t('profile.name'), 'displayName', user.displayName)}
-        {renderField(t('profile.username'), 'username', user.username ? `@${user.username}` : '', true)}
+        {renderField(t('profile.username'), 'username', user.username || '', true)}
         {renderField(t('profile.phone'), 'phone', user.phone, false)}
         {renderField(t('profile.document'), 'documentId', user.documentId || '', true)}
 

@@ -1,29 +1,46 @@
 import { Router, Request, Response } from 'express';
 import { User } from '@lavaca/shared';
-import { getAllSessions } from './sessions';
+import db from '../db';
 
 const router = Router();
 
-// In-memory user store
-export const users = new Map<string, User>();
-const phoneIndex = new Map<string, string>(); // phone -> userId
-const usernameIndex = new Map<string, string>(); // username -> userId
-const documentIndex = new Map<string, string>(); // documentId -> userId
+// ── Prepared statements ─────────────────────────────────
+const stmts = {
+  // OTP
+  upsertOTP: db.prepare(`INSERT OR REPLACE INTO otps (phone, code, expiresAt, verified) VALUES (?, ?, ?, 0)`),
+  getOTP: db.prepare(`SELECT * FROM otps WHERE phone = ?`),
+  markOTPVerified: db.prepare(`UPDATE otps SET verified = 1 WHERE phone = ?`),
+  deleteOTP: db.prepare(`DELETE FROM otps WHERE phone = ?`),
 
-// ── OTP store ───────────────────────────────────────────
-interface OTPEntry {
-  code: string;
-  phone: string;
-  expiresAt: number;
-  verified: boolean;
-}
-const otpStore = new Map<string, OTPEntry>(); // phone -> OTPEntry
+  // Users
+  insertUser: db.prepare(`INSERT INTO users (id, phone, displayName, username, documentId, avatarUrl, email, createdAt) VALUES (@id, @phone, @displayName, @username, @documentId, @avatarUrl, @email, @createdAt)`),
+  getUserById: db.prepare(`SELECT * FROM users WHERE id = ?`),
+  getUserByPhone: db.prepare(`SELECT * FROM users WHERE phone = ?`),
+  getUserByUsername: db.prepare(`SELECT * FROM users WHERE username = ?`),
+  getUserByDocument: db.prepare(`SELECT * FROM users WHERE documentId = ?`),
+  searchUsers: db.prepare(`SELECT id, displayName, username, phone, avatarUrl FROM users WHERE lower(displayName) LIKE ? OR lower(username) LIKE ? OR phone LIKE ? LIMIT 20`),
+  lookupByPhone: db.prepare(`SELECT id, phone, displayName, username, avatarUrl, createdAt FROM users WHERE phone = ?`),
+  updateUser: db.prepare(`UPDATE users SET displayName = @displayName, username = @username, documentId = @documentId, avatarUrl = @avatarUrl WHERE id = @id`),
+};
 
 function generateOTP(): string {
   return Math.floor(100000 + Math.random() * 900000).toString();
 }
 
-// POST /api/users/send-otp — Send OTP to phone (mock: logs to console)
+function rowToUser(row: any): User {
+  return {
+    ...row,
+    createdAt: new Date(row.createdAt),
+  };
+}
+
+// Helper export for other routes
+export function getUserById(id: string): User | undefined {
+  const row = stmts.getUserById.get(id) as any;
+  return row ? rowToUser(row) : undefined;
+}
+
+// POST /api/users/send-otp
 router.post('/send-otp', (req: Request, res: Response) => {
   const { phone } = req.body;
   if (!phone) {
@@ -33,17 +50,16 @@ router.post('/send-otp', (req: Request, res: Response) => {
 
   const cleanPhone = phone.replace(/[^0-9+]/g, '');
   const code = generateOTP();
-  const expiresAt = Date.now() + 5 * 60 * 1000; // 5 minutes
+  const expiresAt = Date.now() + 5 * 60 * 1000;
 
-  otpStore.set(cleanPhone, { code, phone: cleanPhone, expiresAt, verified: false });
+  stmts.upsertOTP.run(cleanPhone, code, expiresAt);
 
-  // In production, send via Twilio/SMS. For dev, log to console.
   console.log(`\n📱 OTP for ${cleanPhone}: ${code}\n`);
 
   res.json({ success: true, message: 'OTP sent', dev_code: code });
 });
 
-// POST /api/users/verify-otp — Verify OTP and check if user exists
+// POST /api/users/verify-otp
 router.post('/verify-otp', (req: Request, res: Response) => {
   const { phone, code } = req.body;
   if (!phone || !code) {
@@ -52,7 +68,7 @@ router.post('/verify-otp', (req: Request, res: Response) => {
   }
 
   const cleanPhone = phone.replace(/[^0-9+]/g, '');
-  const entry = otpStore.get(cleanPhone);
+  const entry = stmts.getOTP.get(cleanPhone) as any;
 
   if (!entry) {
     res.status(400).json({ error: 'No OTP sent for this phone. Request a new one.' });
@@ -60,34 +76,28 @@ router.post('/verify-otp', (req: Request, res: Response) => {
   }
 
   if (Date.now() > entry.expiresAt) {
-    otpStore.delete(cleanPhone);
+    stmts.deleteOTP.run(cleanPhone);
     res.status(400).json({ error: 'OTP expired. Request a new one.' });
     return;
   }
 
-  // Dev bypass: code "123456" always works
   if (code !== entry.code && code !== '123456') {
     res.status(400).json({ error: 'Invalid OTP code' });
     return;
   }
 
-  entry.verified = true;
+  stmts.markOTPVerified.run(cleanPhone);
 
-  // Check if user exists (login vs register)
-  const existingUserId = phoneIndex.get(cleanPhone);
-  if (existingUserId) {
-    const existingUser = users.get(existingUserId);
-    if (existingUser) {
-      res.json({ verified: true, isRegistered: true, user: existingUser });
-      return;
-    }
+  const existingUser = stmts.getUserByPhone.get(cleanPhone) as any;
+  if (existingUser) {
+    res.json({ verified: true, isRegistered: true, user: rowToUser(existingUser) });
+    return;
   }
 
-  // Phone verified but not registered yet
   res.json({ verified: true, isRegistered: false, user: null });
 });
 
-// POST /api/users/register — Register new user (phone must be OTP-verified)
+// POST /api/users/register
 router.post('/register', (req: Request, res: Response) => {
   const { phone, displayName, username, documentId } = req.body;
 
@@ -110,83 +120,80 @@ router.post('/register', (req: Request, res: Response) => {
     return;
   }
 
-  // Verify OTP was completed for this phone
-  const otp = otpStore.get(cleanPhone);
+  const otp = stmts.getOTP.get(cleanPhone) as any;
   if (!otp || !otp.verified) {
     res.status(403).json({ error: 'Phone number not verified. Complete OTP first.' });
     return;
   }
 
-  // Check if phone already registered
-  const existingId = phoneIndex.get(cleanPhone);
-  if (existingId) {
-    const existingUser = users.get(existingId);
-    if (existingUser) {
-      // Return existing user (auto-login)
-      res.json(existingUser);
-      return;
-    }
+  const existingByPhone = stmts.getUserByPhone.get(cleanPhone) as any;
+  if (existingByPhone) {
+    res.json(rowToUser(existingByPhone));
+    return;
   }
 
-  // Check username uniqueness
-  if (usernameIndex.has(cleanUsername)) {
+  const existingByUsername = stmts.getUserByUsername.get(cleanUsername) as any;
+  if (existingByUsername) {
     res.status(409).json({ error: 'Username already taken' });
     return;
   }
 
-  // Check documentId uniqueness
-  if (documentIndex.has(cleanDocumentId)) {
+  const existingByDoc = stmts.getUserByDocument.get(cleanDocumentId) as any;
+  if (existingByDoc) {
     res.status(409).json({ error: 'Document ID already registered' });
     return;
   }
 
-  const user: User = {
+  const user = {
     id: 'user-' + Math.random().toString(36).substring(2, 10),
     phone: cleanPhone,
     displayName: displayName.trim(),
     username: cleanUsername,
     documentId: cleanDocumentId,
-    createdAt: new Date(),
+    avatarUrl: null,
+    email: null,
+    createdAt: new Date().toISOString(),
   };
 
-  users.set(user.id, user);
-  phoneIndex.set(cleanPhone, user.id);
-  usernameIndex.set(cleanUsername, user.id);
-  documentIndex.set(cleanDocumentId, user.id);
+  stmts.insertUser.run(user);
+  stmts.deleteOTP.run(cleanPhone);
 
-  // Clean up OTP
-  otpStore.delete(cleanPhone);
-
-  res.status(201).json(user);
+  res.status(201).json(rowToUser({ ...user }));
 });
 
-// POST /api/users/login — Login by phone (must be OTP-verified)
+// POST /api/users/login
 router.post('/login', (req: Request, res: Response) => {
   const { phone } = req.body;
-
   if (!phone) {
     res.status(400).json({ error: 'phone is required' });
     return;
   }
 
   const cleanPhone = phone.replace(/[^0-9+]/g, '');
-  const userId = phoneIndex.get(cleanPhone);
+  const user = stmts.getUserByPhone.get(cleanPhone) as any;
 
-  if (!userId) {
+  if (!user) {
     res.status(404).json({ error: 'User not found. Please register first.' });
     return;
   }
 
-  const user = users.get(userId);
-  if (!user) {
-    res.status(404).json({ error: 'User not found' });
+  res.json(rowToUser(user));
+});
+
+// GET /api/users/search?q=...
+router.get('/search', (req: Request, res: Response) => {
+  const q = (req.query.q as string || '').trim().toLowerCase();
+  if (!q || q.length < 2) {
+    res.json([]);
     return;
   }
 
-  res.json(user);
+  const pattern = `%${q}%`;
+  const results = stmts.searchUsers.all(pattern, pattern, pattern);
+  res.json(results);
 });
 
-// POST /api/users/lookup — Find users by phone numbers (for contacts)
+// POST /api/users/lookup
 router.post('/lookup', (req: Request, res: Response) => {
   const { phones } = req.body;
   if (!phones || !Array.isArray(phones)) {
@@ -194,23 +201,12 @@ router.post('/lookup', (req: Request, res: Response) => {
     return;
   }
 
-  const found: User[] = [];
+  const found: any[] = [];
   for (const phone of phones) {
     const cleanPhone = phone.replace(/[^0-9+]/g, '');
-    const userId = phoneIndex.get(cleanPhone);
-    if (userId) {
-      const user = users.get(userId);
-      if (user) {
-        // Don't expose full user data — just public info
-        found.push({
-          id: user.id,
-          phone: user.phone,
-          displayName: user.displayName,
-          username: user.username,
-          avatarUrl: user.avatarUrl,
-          createdAt: user.createdAt,
-        } as User);
-      }
+    const user = stmts.lookupByPhone.get(cleanPhone) as any;
+    if (user) {
+      found.push({ ...user, createdAt: new Date(user.createdAt) });
     }
   }
 
@@ -219,82 +215,96 @@ router.post('/lookup', (req: Request, res: Response) => {
 
 // GET /api/users/:id
 router.get('/:id', (req: Request, res: Response) => {
-  const user = users.get(req.params.id);
+  const user = stmts.getUserById.get(req.params.id) as any;
   if (!user) {
     res.status(404).json({ error: 'User not found' });
     return;
   }
-  res.json(user);
+  res.json(rowToUser(user));
 });
 
-// GET /api/users/:id/history — Get user's transaction history
+// GET /api/users/:id/history
 router.get('/:id/history', (req: Request, res: Response) => {
-  const user = users.get(req.params.id);
+  const user = stmts.getUserById.get(req.params.id) as any;
   if (!user) {
     res.status(404).json({ error: 'User not found' });
     return;
   }
 
-  // Get user's transaction history from sessions
-  const allSessions = getAllSessions();
-  const userSessions = allSessions.filter((s) =>
-    s.adminId === req.params.id || s.participants.some((p) => p.userId === req.params.id)
-  );
+  // Get sessions where user is admin or participant
+  const sessions = db.prepare(`
+    SELECT DISTINCT s.* FROM sessions s
+    LEFT JOIN participants p ON p.joinCode = s.joinCode
+    WHERE s.adminId = ? OR p.userId = ?
+    ORDER BY s.createdAt DESC
+  `).all(req.params.id, req.params.id) as any[];
 
-  // Sort by creation date descending
-  userSessions.sort((a, b) =>
-    new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-  );
+  const result = sessions.map((s: any) => {
+    const participants = db.prepare(`SELECT * FROM participants WHERE joinCode = ?`).all(s.joinCode) as any[];
+    return {
+      ...s,
+      createdAt: new Date(s.createdAt),
+      closedAt: s.closedAt ? new Date(s.closedAt) : undefined,
+      participants: participants.map((p: any) => ({
+        ...p,
+        isRouletteWinner: !!p.isRouletteWinner,
+        isRouletteCoward: !!p.isRouletteCoward,
+        joinedAt: new Date(p.joinedAt),
+        paidAt: p.paidAt ? new Date(p.paidAt) : undefined,
+      })),
+    };
+  });
 
-  res.json(userSessions);
+  res.json(result);
 });
 
 // PUT /api/users/:id
 router.put('/:id', (req: Request, res: Response) => {
-  const user = users.get(req.params.id);
-  if (!user) {
+  const existing = stmts.getUserById.get(req.params.id) as any;
+  if (!existing) {
     res.status(404).json({ error: 'User not found' });
     return;
   }
 
-  const { displayName, username, documentId, avatarUrl } = req.body;
-  if (displayName) user.displayName = displayName.trim();
-  if (username) {
-    const cleanUsername = username.trim().toLowerCase().replace(/[^a-z0-9._]/g, '');
+  let displayName = existing.displayName;
+  let username = existing.username;
+  let documentId = existing.documentId;
+  let avatarUrl = existing.avatarUrl;
+
+  if (req.body.displayName) displayName = req.body.displayName.trim();
+
+  if (req.body.username) {
+    const cleanUsername = req.body.username.trim().toLowerCase().replace(/[^a-z0-9._]/g, '');
     if (cleanUsername.length >= 3) {
-      // Remove old username index
-      if (user.username) usernameIndex.delete(user.username);
-      // Check new username availability
-      const takenBy = usernameIndex.get(cleanUsername);
-      if (takenBy && takenBy !== user.id) {
+      const takenBy = stmts.getUserByUsername.get(cleanUsername) as any;
+      if (takenBy && takenBy.id !== req.params.id) {
         res.status(409).json({ error: 'Username already taken' });
         return;
       }
-      user.username = cleanUsername;
-      usernameIndex.set(cleanUsername, user.id);
+      username = cleanUsername;
     }
   }
-  if (documentId !== undefined) {
-    const cleanDoc = documentId.trim();
+
+  if (req.body.documentId !== undefined) {
+    const cleanDoc = req.body.documentId.trim();
     if (cleanDoc) {
-      // Check uniqueness
-      const takenBy = documentIndex.get(cleanDoc);
-      if (takenBy && takenBy !== user.id) {
+      const takenBy = stmts.getUserByDocument.get(cleanDoc) as any;
+      if (takenBy && takenBy.id !== req.params.id) {
         res.status(409).json({ error: 'Document ID already registered' });
         return;
       }
-      // Remove old index
-      if (user.documentId) documentIndex.delete(user.documentId);
-      user.documentId = cleanDoc;
-      documentIndex.set(cleanDoc, user.id);
+      documentId = cleanDoc;
     } else {
-      if (user.documentId) documentIndex.delete(user.documentId);
-      user.documentId = undefined;
+      documentId = null;
     }
   }
-  if (avatarUrl !== undefined) user.avatarUrl = avatarUrl;
 
-  res.json(user);
+  if (req.body.avatarUrl !== undefined) avatarUrl = req.body.avatarUrl;
+
+  stmts.updateUser.run({ id: req.params.id, displayName, username, documentId, avatarUrl });
+
+  const updated = stmts.getUserById.get(req.params.id) as any;
+  res.json(rowToUser(updated));
 });
 
 export { router as userRouter };

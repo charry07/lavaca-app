@@ -35,7 +35,7 @@ function formatCurrency(amount: number, currency: string = 'COP'): string {
   return `${currency} ${amount.toLocaleString()}`;
 }
 
-function timeAgo(date: Date | string): string {
+function timeAgo(date: Date | string, nowLabel: string = 'now'): string {
   const now = new Date().getTime();
   const then = new Date(date).getTime();
   const diff = now - then;
@@ -43,7 +43,7 @@ function timeAgo(date: Date | string): string {
   const hrs = Math.floor(diff / 3600000);
   const days = Math.floor(diff / 86400000);
 
-  if (mins < 1) return 'ahora';
+  if (mins < 1) return nowLabel;
   if (mins < 60) return `${mins}m`;
   if (hrs < 24) return `${hrs}h`;
   if (days < 30) return `${days}d`;
@@ -94,7 +94,7 @@ export default function HistoryTab() {
             <Text style={s.cardTitle} numberOfLines={1}>
               {item.description || t('history.untitled')}
             </Text>
-            <Text style={s.cardTime}>{timeAgo(item.createdAt)}</Text>
+            <Text style={s.cardTime}>{timeAgo(item.createdAt, t('common.now'))}</Text>
           </View>
           <Text style={s.modeEmoji}>{MODE_EMOJI[item.splitMode] || '⚖️'}</Text>
         </View>

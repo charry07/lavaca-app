@@ -64,7 +64,7 @@ export default function HomeTab() {
         <View style={s.sessionCardBody}>
           <Text style={s.sessionAmount}>{formatCOP(item.totalAmount)}</Text>
           <Text style={s.sessionMeta}>
-            {participantCount} {participantCount === 1 ? 'persona' : 'personas'} · {item.joinCode}
+            {participantCount} {participantCount === 1 ? t('common.person') : t('common.people')} · {item.joinCode}
           </Text>
         </View>
       </TouchableOpacity>
@@ -127,14 +127,12 @@ const createStyles = (colors: ThemeColors) =>
   StyleSheet.create({
     container: {
       paddingHorizontal: spacing.lg,
-      paddingTop: spacing.xxl + spacing.lg,
+      paddingTop: spacing.lg,
       paddingBottom: spacing.xxl,
     },
     header: {
-      position: 'absolute',
-      top: 0,
-      right: 0,
-      zIndex: 10,
+      alignItems: 'flex-end',
+      marginBottom: spacing.lg,
     },
     hero: {
       alignItems: 'center',
