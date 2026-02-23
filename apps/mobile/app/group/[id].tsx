@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useLayoutEffect } from 'react';
 import {
   View,
   Text,
@@ -11,7 +11,7 @@ import {
   ActivityIndicator,
   RefreshControl,
 } from 'react-native';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useLocalSearchParams, useNavigation, useRouter } from 'expo-router';
 import { User } from '@lavaca/shared';
 import { spacing, borderRadius, fontSize, type ThemeColors } from '../../src/constants/theme';
 import { useI18n } from '../../src/i18n';
@@ -43,6 +43,7 @@ export default function GroupDetailScreen() {
   const { colors } = useTheme();
   const { user } = useAuth();
   const router = useRouter();
+  const navigation = useNavigation();
   const s = createStyles(colors);
 
   const [group, setGroup] = useState<GroupDetail | null>(null);
@@ -55,6 +56,27 @@ export default function GroupDetailScreen() {
   const [searchResults, setSearchResults] = useState<User[]>([]);
   const [searching, setSearching] = useState(false);
   const [addingId, setAddingId] = useState<string | null>(null);
+
+  useLayoutEffect(() => {
+    navigation.setOptions({
+      headerBackVisible: false,
+      headerLeft: () => (
+        <TouchableOpacity
+          onPress={() => {
+            if (router.canGoBack()) {
+              router.back();
+              return;
+            }
+            router.replace('/(tabs)/groups');
+          }}
+          style={s.headerBackButton}
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+        >
+          <Text style={s.headerBackText}>←</Text>
+        </TouchableOpacity>
+      ),
+    });
+  }, [navigation, router, s.headerBackButton, s.headerBackText]);
 
   const fetchGroup = useCallback(async () => {
     if (!id) return;
@@ -508,5 +530,17 @@ const createStyles = (colors: ThemeColors) =>
       color: colors.textMuted,
       textAlign: 'center',
       padding: spacing.xl,
+    },
+    headerBackButton: {
+      paddingHorizontal: spacing.sm,
+      paddingVertical: spacing.xs,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    headerBackText: {
+      fontSize: 26,
+      lineHeight: 28,
+      color: colors.primary,
+      fontWeight: '700',
     },
   });

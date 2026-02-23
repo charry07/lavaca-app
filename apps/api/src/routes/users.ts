@@ -18,7 +18,7 @@ const stmts = {
   getUserByPhone: db.prepare(`SELECT * FROM users WHERE phone = ?`),
   getUserByUsername: db.prepare(`SELECT * FROM users WHERE username = ?`),
   getUserByDocument: db.prepare(`SELECT * FROM users WHERE documentId = ?`),
-  searchUsers: db.prepare(`SELECT id, displayName, username, phone, avatarUrl FROM users WHERE lower(displayName) LIKE ? OR lower(username) LIKE ? OR phone LIKE ? LIMIT 20`),
+  searchUsers: db.prepare(`SELECT id, displayName, username, phone, avatarUrl FROM users WHERE lower(displayName) LIKE ? OR lower(username) LIKE ? OR phone LIKE ? OR documentId LIKE ? OR lower(COALESCE(email, '')) LIKE ? LIMIT 20`),
   lookupByPhone: db.prepare(`SELECT id, phone, displayName, username, avatarUrl, createdAt FROM users WHERE phone = ?`),
   updateUser: db.prepare(`UPDATE users SET displayName = @displayName, username = @username, documentId = @documentId, avatarUrl = @avatarUrl WHERE id = @id`),
 };
@@ -189,7 +189,7 @@ router.get('/search', (req: Request, res: Response) => {
   }
 
   const pattern = `%${q}%`;
-  const results = stmts.searchUsers.all(pattern, pattern, pattern);
+  const results = stmts.searchUsers.all(pattern, pattern, pattern, pattern, pattern);
   res.json(results);
 });
 

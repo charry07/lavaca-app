@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback } from 'react';
 import {
   View,
   Text,
+  TextInput,
   TouchableOpacity,
   StyleSheet,
   FlatList,
@@ -13,7 +14,7 @@ import {
   Platform,
 } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
-import { PaymentSession, Participant, formatCOP, rouletteSelect } from '@lavaca/shared';
+import { PaymentSession, Participant, User, formatCOP } from '@lavaca/shared';
 import { api } from '../../src/services/api';
 import { spacing, borderRadius, fontSize, type ThemeColors } from '../../src/constants/theme';
 import { RouletteWheel } from '../../src/components/RouletteWheel';
@@ -39,6 +40,11 @@ export default function SessionScreen() {
   const [rouletteWinner, setRouletteWinner] = useState(-1);
   const [pendingUpdate, setPendingUpdate] = useState<PaymentSession | null>(null);
   const [showShareModal, setShowShareModal] = useState(false);
+  const [showAddParticipantModal, setShowAddParticipantModal] = useState(false);
+  const [participantSearchQuery, setParticipantSearchQuery] = useState('');
+  const [participantResults, setParticipantResults] = useState<User[]>([]);
+  const [searchingUsers, setSearchingUsers] = useState(false);
+  const [addingParticipantId, setAddingParticipantId] = useState<string | null>(null);
 
   const fetchSession = useCallback(async () => {
     if (!joinCode) return;
@@ -59,6 +65,31 @@ export default function SessionScreen() {
     const interval = setInterval(fetchSession, 3000);
     return () => clearInterval(interval);
   }, [fetchSession]);
+
+  useEffect(() => {
+    if (!showAddParticipantModal) return;
+
+    const query = participantSearchQuery.trim();
+    if (query.length < 2) {
+      setParticipantResults([]);
+      setSearchingUsers(false);
+      return;
+    }
+
+    const timer = setTimeout(async () => {
+      setSearchingUsers(true);
+      try {
+        const results = await api.searchUsers(query);
+        setParticipantResults(results);
+      } catch {
+        setParticipantResults([]);
+      } finally {
+        setSearchingUsers(false);
+      }
+    }, 300);
+
+    return () => clearTimeout(timer);
+  }, [participantSearchQuery, showAddParticipantModal]);
 
   const handleSplit = async () => {
     if (!joinCode || !session) return;
@@ -181,6 +212,31 @@ export default function SessionScreen() {
     );
   };
 
+  const openAddParticipantModal = () => {
+    setParticipantSearchQuery('');
+    setParticipantResults([]);
+    setSearchingUsers(false);
+    setShowAddParticipantModal(true);
+  };
+
+  const handleAddParticipant = async (userToAdd: User) => {
+    if (!joinCode) return;
+    setAddingParticipantId(userToAdd.id);
+    try {
+      const updated = await api.joinSession(joinCode, {
+        userId: userToAdd.id,
+        displayName: userToAdd.displayName,
+      });
+      setSession(updated);
+      setParticipantResults((prev) => prev.filter((u) => u.id !== userToAdd.id));
+      showSuccess(t('session.memberAdded', { name: userToAdd.displayName }));
+    } catch (err: any) {
+      showError(err.message || t('common.error'));
+    } finally {
+      setAddingParticipantId(null);
+    }
+  };
+
   if (loading) {
     return (
       <View style={[s.container, s.center]}>
@@ -200,6 +256,8 @@ export default function SessionScreen() {
   const paidCount = session.participants.filter((p) => p.status === 'confirmed').length;
   const totalCount = session.participants.length;
   const allSplit = session.participants.some((p) => p.amount > 0);
+  const isAdmin = user?.id === session.adminId;
+  const canAddParticipants = session.status === 'open' && isAdmin;
 
   const getModeLabel = () => {
     switch (session.splitMode) {
@@ -290,6 +348,12 @@ export default function SessionScreen() {
             </Text>
           </View>
         )}
+
+        {canAddParticipants && (
+          <TouchableOpacity style={s.addParticipantButton} onPress={openAddParticipantModal}>
+            <Text style={s.addParticipantButtonText}>➕ {t('session.addParticipants')}</Text>
+          </TouchableOpacity>
+        )}
       </View>
 
       {/* Participants List */}
@@ -370,6 +434,93 @@ export default function SessionScreen() {
               winnerIndex={rouletteWinner}
               onFinish={handleRouletteFinish}
             />
+          </View>
+        </View>
+      </Modal>
+
+      {/* Add Participant Modal */}
+      <Modal
+        visible={showAddParticipantModal}
+        animationType="slide"
+        transparent
+        onRequestClose={() => setShowAddParticipantModal(false)}
+      >
+        <View style={s.modalOverlay}>
+          <View style={s.modalContent}>
+            <View style={s.searchModalInner}>
+              <View style={s.searchModalHeader}>
+                <Text style={s.shareModalTitle}>{t('session.addParticipants')}</Text>
+                <TouchableOpacity onPress={() => setShowAddParticipantModal(false)}>
+                  <Text style={s.searchModalClose}>✕</Text>
+                </TouchableOpacity>
+              </View>
+
+              <TextInput
+                style={s.searchInput}
+                placeholder={t('session.searchPeoplePlaceholder')}
+                placeholderTextColor={colors.textMuted}
+                value={participantSearchQuery}
+                onChangeText={setParticipantSearchQuery}
+                autoFocus
+                autoCapitalize="none"
+                autoCorrect={false}
+              />
+
+              {searchingUsers && (
+                <ActivityIndicator size="small" color={colors.primary} style={s.searchLoading} />
+              )}
+
+              {!searchingUsers && participantSearchQuery.trim().length < 2 && (
+                <Text style={s.searchHintText}>{t('session.searchPeopleHint')}</Text>
+              )}
+
+              {!searchingUsers && participantSearchQuery.trim().length >= 2 && participantResults.length === 0 && (
+                <Text style={s.searchHintText}>{t('session.noUserResults')}</Text>
+              )}
+
+              <FlatList
+                data={participantResults}
+                keyExtractor={(item) => item.id}
+                keyboardShouldPersistTaps="handled"
+                renderItem={({ item: foundUser }) => {
+                  const alreadyInTable = session.participants.some((p) => p.userId === foundUser.id);
+                  const isAdding = addingParticipantId === foundUser.id;
+
+                  return (
+                    <View style={s.searchResultCard}>
+                      <View style={s.avatarBadge}>
+                        <Text style={s.avatarBadgeText}>
+                          {foundUser.displayName.charAt(0).toUpperCase()}
+                        </Text>
+                      </View>
+
+                      <View style={s.searchUserInfo}>
+                        <Text style={s.searchUserName}>{foundUser.displayName}</Text>
+                        <Text style={s.searchUserMeta}>@{foundUser.username} · {foundUser.phone}</Text>
+                      </View>
+
+                      {alreadyInTable ? (
+                        <View style={s.alreadyInTableBadge}>
+                          <Text style={s.alreadyInTableText}>{t('session.alreadyInTable')}</Text>
+                        </View>
+                      ) : (
+                        <TouchableOpacity
+                          style={s.addUserButton}
+                          onPress={() => handleAddParticipant(foundUser)}
+                          disabled={isAdding}
+                        >
+                          {isAdding ? (
+                            <ActivityIndicator size="small" color={colors.background} />
+                          ) : (
+                            <Text style={s.addUserButtonText}>{t('groups.addButton')}</Text>
+                          )}
+                        </TouchableOpacity>
+                      )}
+                    </View>
+                  );
+                }}
+              />
+            </View>
           </View>
         </View>
       </Modal>
@@ -515,6 +666,20 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     color: colors.textSecondary,
     marginTop: spacing.xs,
   },
+  addParticipantButton: {
+    marginTop: spacing.md,
+    borderWidth: 1,
+    borderColor: colors.primary,
+    borderRadius: borderRadius.md,
+    paddingVertical: spacing.sm,
+    alignItems: 'center',
+    backgroundColor: colors.surface,
+  },
+  addParticipantButtonText: {
+    fontSize: fontSize.sm,
+    fontWeight: '700',
+    color: colors.primary,
+  },
   list: {
     padding: spacing.lg,
   },
@@ -641,6 +806,96 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     padding: spacing.lg,
     alignItems: 'center',
   },
+  searchModalInner: {
+    padding: spacing.lg,
+  },
+  searchModalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: spacing.md,
+  },
+  searchModalClose: {
+    fontSize: 22,
+    color: colors.textMuted,
+    paddingHorizontal: spacing.xs,
+  },
+  searchInput: {
+    backgroundColor: colors.surface,
+    borderRadius: borderRadius.md,
+    padding: spacing.md,
+    fontSize: fontSize.md,
+    color: colors.text,
+    borderWidth: 1,
+    borderColor: colors.surfaceBorder,
+    marginBottom: spacing.sm,
+  },
+  searchLoading: {
+    marginVertical: spacing.md,
+  },
+  searchHintText: {
+    fontSize: fontSize.sm,
+    color: colors.textMuted,
+    textAlign: 'center',
+    paddingVertical: spacing.md,
+  },
+  searchResultCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: spacing.sm,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.surfaceBorder,
+  },
+  avatarBadge: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: colors.primary + '33',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: spacing.md,
+  },
+  avatarBadgeText: {
+    fontSize: fontSize.md,
+    fontWeight: '700',
+    color: colors.primary,
+  },
+  searchUserInfo: {
+    flex: 1,
+  },
+  searchUserName: {
+    fontSize: fontSize.md,
+    fontWeight: '600',
+    color: colors.text,
+  },
+  searchUserMeta: {
+    fontSize: fontSize.xs,
+    color: colors.textMuted,
+    marginTop: 2,
+  },
+  alreadyInTableBadge: {
+    backgroundColor: colors.surfaceBorder,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 4,
+    borderRadius: borderRadius.sm,
+  },
+  alreadyInTableText: {
+    fontSize: fontSize.xs,
+    color: colors.textMuted,
+  },
+  addUserButton: {
+    backgroundColor: colors.primary,
+    paddingHorizontal: spacing.md,
+    paddingVertical: 6,
+    borderRadius: borderRadius.sm,
+    minWidth: 70,
+    alignItems: 'center',
+  },
+  addUserButtonText: {
+    fontSize: fontSize.sm,
+    fontWeight: '700',
+    color: colors.background,
+  },
   shareModalTitle: {
     fontSize: fontSize.xl,
     fontWeight: 'bold',
@@ -707,4 +962,4 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     fontSize: fontSize.md,
     color: colors.textSecondary,
   },
-  });
+});

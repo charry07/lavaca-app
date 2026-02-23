@@ -88,6 +88,12 @@ const es = {
   'session.closeConfirmTitle': 'Cerrar mesa',
   'session.closeConfirmMsg': 'Hay pagos pendientes. ¿Cerrar de todas formas?',
   'session.closeConfirmBtn': 'Sí, cerrar',
+  'session.addParticipants': 'Agregar participantes',
+  'session.searchPeoplePlaceholder': 'Buscar por nombre, usuario, celular, cédula o correo',
+  'session.searchPeopleHint': 'Escribe al menos 2 caracteres para buscar',
+  'session.noUserResults': 'No se encontraron usuarios',
+  'session.alreadyInTable': 'Ya está en la mesa',
+  'session.memberAdded': '{{name}} fue agregado a la mesa',
 
   // Roulette
   'roulette.title': '🎰 Ruleta de La Vaca',
@@ -289,6 +295,12 @@ const en: TranslationKeys = {
   'session.closeConfirmTitle': 'Close table',
   'session.closeConfirmMsg': 'There are pending payments. Close anyway?',
   'session.closeConfirmBtn': 'Yes, close',
+  'session.addParticipants': 'Add participants',
+  'session.searchPeoplePlaceholder': 'Search by name, username, phone, ID, or email',
+  'session.searchPeopleHint': 'Type at least 2 characters to search',
+  'session.noUserResults': 'No users found',
+  'session.alreadyInTable': 'Already in table',
+  'session.memberAdded': '{{name}} was added to the table',
 
   // Roulette
   'roulette.title': '🎰 La Vaca Roulette',
@@ -490,6 +502,12 @@ const pt: TranslationKeys = {
   'session.closeConfirmTitle': 'Fechar mesa',
   'session.closeConfirmMsg': 'Há pagamentos pendentes. Fechar mesmo assim?',
   'session.closeConfirmBtn': 'Sim, fechar',
+  'session.addParticipants': 'Adicionar participantes',
+  'session.searchPeoplePlaceholder': 'Buscar por nome, usuário, celular, documento ou e-mail',
+  'session.searchPeopleHint': 'Digite pelo menos 2 caracteres para buscar',
+  'session.noUserResults': 'Nenhum usuário encontrado',
+  'session.alreadyInTable': 'Já está na mesa',
+  'session.memberAdded': '{{name}} foi adicionado à mesa',
 
   // Roulette
   'roulette.title': '🎰 Roleta da La Vaca',

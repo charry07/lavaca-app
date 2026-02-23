@@ -99,7 +99,7 @@ export const api = {
       method: 'DELETE',
     }),
 
-  /** Search users by name, username, or phone */
+  /** Search users by name, username, phone, document ID, or email */
   searchUsers: (query: string) =>
     request<User[]>(`/api/users/search?q=${encodeURIComponent(query)}`),
 

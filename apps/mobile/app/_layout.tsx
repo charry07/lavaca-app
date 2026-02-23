@@ -98,6 +98,7 @@ function RootLayoutInner() {
             name="group/[id]"
             options={{
               title: t('tabs.groups'),
+              headerBackVisible: true,
               headerRight: () => <HeaderControls />,
             }}
           />

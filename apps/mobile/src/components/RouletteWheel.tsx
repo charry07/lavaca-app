@@ -17,90 +17,83 @@ interface RouletteWheelProps {
   onFinish: () => void;
 }
 
-const TOTAL_SPINS = 4; // Full cycles before landing
+const TOTAL_SPINS = 6;
+const WHEEL_SIZE = 280;
+const LABEL_RADIUS = 110;
 
 export function RouletteWheel({ participants, winnerIndex, onFinish }: RouletteWheelProps) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [finished, setFinished] = useState(false);
+  const [winnerPulse, setWinnerPulse] = useState(false);
+  const rotation = useRef(new Animated.Value(0)).current;
   const scaleAnim = useRef(new Animated.Value(1)).current;
-  const opacityAnim = useRef(new Animated.Value(1)).current;
   const { t } = useI18n();
   const { colors } = useTheme();
   const s = createStyles(colors);
 
+  const count = participants.length;
+  const segmentAngle = count > 0 ? 360 / count : 360;
+
   useEffect(() => {
-    const totalSteps = TOTAL_SPINS * participants.length + winnerIndex;
-    let step = 0;
-    let timer: ReturnType<typeof setTimeout>;
+    if (count === 0 || winnerIndex < 0 || winnerIndex >= count) {
+      return;
+    }
 
-    const tick = () => {
-      const nextIndex = (step + 1) % participants.length;
-      step++;
+    rotation.setValue(0);
+    setFinished(false);
+    setWinnerPulse(false);
 
-      // Pulse animation on each name change
-      Animated.parallel([
-        Animated.sequence([
-          Animated.timing(scaleAnim, {
-            toValue: 1.15,
-            duration: 30,
-            useNativeDriver: true,
-          }),
-          Animated.timing(scaleAnim, {
-            toValue: 1,
-            duration: 30,
-            useNativeDriver: true,
-          }),
-        ]),
-        Animated.sequence([
-          Animated.timing(opacityAnim, {
-            toValue: 0.5,
-            duration: 20,
-            useNativeDriver: true,
-          }),
-          Animated.timing(opacityAnim, {
-            toValue: 1,
-            duration: 30,
-            useNativeDriver: true,
-          }),
-        ]),
+    const finalOffset = (360 - winnerIndex * segmentAngle) % 360;
+    const finalRotation = TOTAL_SPINS * 360 + finalOffset;
+
+    const listenerId = rotation.addListener(({ value }) => {
+      const normalized = ((value % 360) + 360) % 360;
+      const index = Math.round(((360 - normalized) % 360) / segmentAngle) % count;
+      setCurrentIndex(index);
+    });
+
+    Animated.timing(rotation, {
+      toValue: finalRotation,
+      duration: 5600,
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: true,
+    }).start(({ finished: animationFinished }) => {
+      if (!animationFinished) return;
+
+      setCurrentIndex(winnerIndex);
+      setFinished(true);
+
+      Animated.sequence([
+        Animated.spring(scaleAnim, {
+          toValue: 1.2,
+          friction: 4,
+          useNativeDriver: true,
+        }),
+        Animated.spring(scaleAnim, {
+          toValue: 1,
+          friction: 5,
+          useNativeDriver: true,
+        }),
       ]).start();
 
-      setCurrentIndex(nextIndex);
+      setWinnerPulse(true);
+      onFinish();
+    });
 
-      if (step >= totalSteps) {
-        // Winner landed — big reveal animation
-        setTimeout(() => {
-          Animated.spring(scaleAnim, {
-            toValue: 1.3,
-            friction: 3,
-            useNativeDriver: true,
-          }).start(() => {
-            Animated.spring(scaleAnim, {
-              toValue: 1,
-              friction: 5,
-              useNativeDriver: true,
-            }).start();
-          });
-          setFinished(true);
-          onFinish();
-        }, 200);
-        return;
-      }
-
-      // Deceleration: starts fast (50ms), ends slow (~500ms)
-      const progress = step / totalSteps;
-      const delay = 50 + progress * progress * 500;
-      timer = setTimeout(tick, delay);
+    return () => {
+      rotation.removeListener(listenerId);
+      rotation.stopAnimation();
     };
+  }, [count, winnerIndex, segmentAngle, rotation, scaleAnim, onFinish]);
 
-    // Start after a brief pause
-    timer = setTimeout(tick, 300);
-
-    return () => clearTimeout(timer);
-  }, []);
+  const wheelRotation = rotation.interpolate({
+    inputRange: [0, 360],
+    outputRange: ['0deg', '360deg'],
+    extrapolate: 'extend',
+  });
 
   const participant = participants[currentIndex];
-  const isWinner = finished;
+  const winner = winnerIndex >= 0 ? participants[winnerIndex] : null;
 
   return (
     <View style={s.container}>
@@ -109,27 +102,60 @@ export function RouletteWheel({ participants, winnerIndex, onFinish }: RouletteW
         {finished ? t('roulette.result') : t('roulette.spinning')}
       </Text>
 
-      {/* The slot window */}
-      <View style={s.slotContainer}>
-        <View style={s.slotBorder}>
-          <Animated.View
-            style={[
-              s.nameCard,
-              isWinner && s.nameCardWinner,
-              {
-                transform: [{ scale: scaleAnim }],
-                opacity: opacityAnim,
-              },
-            ]}
-          >
-            <Text style={[s.nameText, isWinner && s.nameTextWinner]}>
-              {participant?.displayName ?? '...'}
-            </Text>
-          </Animated.View>
-        </View>
+      <View style={s.wheelContainer}>
+        <View style={s.pointer} />
+
+        <Animated.View
+          style={[
+            s.wheel,
+            {
+              transform: [{ rotate: wheelRotation }],
+            },
+          ]}
+        >
+          {participants.map((p, i) => {
+            const angle = i * segmentAngle;
+            return (
+              <View
+                key={p.userId}
+                style={[
+                  s.segmentLabelWrap,
+                  {
+                    transform: [
+                      { rotate: `${angle}deg` },
+                      { translateY: -LABEL_RADIUS },
+                      { rotate: `${-angle}deg` },
+                    ],
+                  },
+                ]}
+              >
+                <Text numberOfLines={1} style={s.segmentLabel}>
+                  {p.displayName}
+                </Text>
+              </View>
+            );
+          })}
+
+          <View style={s.wheelHub}>
+            <Text style={s.hubText}>🎰</Text>
+          </View>
+        </Animated.View>
       </View>
 
-      {/* Participant dots — who's in the roulette */}
+      <Animated.View
+        style={[
+          s.nameCard,
+          finished && s.nameCardWinner,
+          {
+            transform: [{ scale: scaleAnim }],
+          },
+        ]}
+      >
+        <Text style={[s.nameText, finished && s.nameTextWinner]}>
+          {participant?.displayName ?? '...'}
+        </Text>
+      </Animated.View>
+
       <View style={s.dotsRow}>
         {participants.map((p, i) => (
           <View
@@ -143,12 +169,11 @@ export function RouletteWheel({ participants, winnerIndex, onFinish }: RouletteW
         ))}
       </View>
 
-      {/* Winner banner */}
-      {finished && (
-        <View style={s.winnerBanner}>
+      {finished && winner && (
+        <View style={[s.winnerBanner, winnerPulse && s.winnerBannerPulse]}>
           <Text style={s.winnerEmoji}>🐄💸</Text>
           <Text style={s.winnerText}>
-            {t('roulette.winner', { name: participant?.displayName ?? '' })}
+            {t('roulette.winner', { name: winner.displayName })}
           </Text>
           <Text style={s.winnerSubtext}>
             {t('roulette.betterLuck')}
@@ -175,34 +200,87 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     color: colors.textSecondary,
     marginBottom: spacing.lg,
   },
-  slotContainer: {
+  wheelContainer: {
+    width: WHEEL_SIZE,
+    height: WHEEL_SIZE,
     marginBottom: spacing.lg,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
-  slotBorder: {
+  wheel: {
+    width: WHEEL_SIZE,
+    height: WHEEL_SIZE,
+    borderRadius: WHEEL_SIZE / 2,
     borderWidth: 2,
     borderColor: colors.primary,
-    borderRadius: borderRadius.lg,
-    padding: spacing.xs,
     backgroundColor: colors.surface,
     shadowColor: colors.primary,
     shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 0.3,
     shadowRadius: 12,
     elevation: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  segmentLabelWrap: {
+    position: 'absolute',
+    top: WHEEL_SIZE / 2,
+    left: WHEEL_SIZE / 2 - 45,
+    width: 90,
+    alignItems: 'center',
+  },
+  segmentLabel: {
+    fontSize: fontSize.sm,
+    fontWeight: '700',
+    color: colors.text,
+    backgroundColor: colors.background,
+    borderRadius: borderRadius.full,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 2,
+  },
+  pointer: {
+    position: 'absolute',
+    top: -4,
+    width: 0,
+    height: 0,
+    borderLeftWidth: 11,
+    borderRightWidth: 11,
+    borderBottomWidth: 20,
+    borderLeftColor: 'transparent',
+    borderRightColor: 'transparent',
+    borderBottomColor: colors.warning,
+    zIndex: 3,
+  },
+  wheelHub: {
+    width: 62,
+    height: 62,
+    borderRadius: 31,
+    backgroundColor: colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: colors.background,
+  },
+  hubText: {
+    fontSize: 28,
   },
   nameCard: {
     backgroundColor: colors.background,
     borderRadius: borderRadius.md,
-    paddingVertical: spacing.lg,
+    paddingVertical: spacing.md,
     paddingHorizontal: spacing.xxl,
-    minWidth: 220,
+    minWidth: 240,
     alignItems: 'center',
+    marginBottom: spacing.md,
+    borderWidth: 1,
+    borderColor: colors.surfaceBorder,
   },
   nameCardWinner: {
     backgroundColor: colors.primary,
+    borderColor: colors.primary,
   },
   nameText: {
-    fontSize: 28,
+    fontSize: fontSize.xl,
     fontWeight: 'bold',
     color: colors.text,
   },
@@ -238,6 +316,10 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     padding: spacing.lg,
     borderWidth: 1,
     borderColor: colors.primary,
+    width: '100%',
+  },
+  winnerBannerPulse: {
+    transform: [{ scale: 1.02 }],
   },
   winnerEmoji: {
     fontSize: 48,
@@ -253,4 +335,4 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     fontSize: fontSize.md,
     color: colors.textSecondary,
   },
-  });
+});
