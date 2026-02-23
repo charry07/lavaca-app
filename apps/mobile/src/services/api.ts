@@ -206,6 +206,20 @@ export const api = {
       body: JSON.stringify(data),
     }),
 
+  /** Participant reports payment; admin must approve */
+  reportPaid: (joinCode: string, data: { userId: string; reporterId: string; paymentMethod?: string }) =>
+    request<PaymentSession>(`/api/sessions/${joinCode}/pay/report`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+  /** Admin approves a reported payment */
+  approvePaid: (joinCode: string, data: { userId: string; adminId: string; paymentMethod?: string }) =>
+    request<PaymentSession>(`/api/sessions/${joinCode}/pay/approve`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
   /** Manually close a session (admin) */
   closeSession: (joinCode: string) =>
     request<PaymentSession>(`/api/sessions/${joinCode}/close`, {

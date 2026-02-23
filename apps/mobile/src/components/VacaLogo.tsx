@@ -1,9 +1,10 @@
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet, ViewStyle } from 'react-native';
 import { spacing, borderRadius, type ThemeColors } from '../constants/theme';
 import { useTheme } from '../theme';
 
 interface VacaLogoProps {
   size?: 'sm' | 'md' | 'lg';
+  style?: ViewStyle;
 }
 
 const sizes = {
@@ -12,13 +13,13 @@ const sizes = {
   lg: { cow: 90, money: 40, badge: 50, name: 48, offset: -20 },
 };
 
-export function VacaLogo({ size = 'lg' }: VacaLogoProps) {
+export function VacaLogo({ size = 'lg', style }: VacaLogoProps) {
   const sz = sizes[size];
   const { colors } = useTheme();
   const s = createStyles(colors);
 
   return (
-    <View style={s.container}>
+    <View style={[s.container, style]}>
       {/* Cow + money badge */}
       <View style={s.iconWrap}>
         <Text style={{ fontSize: sz.cow }}>🐄</Text>

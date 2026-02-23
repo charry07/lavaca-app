@@ -23,7 +23,8 @@ const stmts = {
   getParticipant: db.prepare(`SELECT * FROM participants WHERE joinCode = ? AND userId = ?`),
   insertParticipant: db.prepare(`INSERT INTO participants (joinCode, userId, displayName, amount, status, joinedAt) VALUES (?, ?, ?, 0, 'pending', ?)`),
   updateParticipantAmount: db.prepare(`UPDATE participants SET amount = ?, percentage = ?, isRouletteWinner = ?, isRouletteCoward = ? WHERE joinCode = ? AND userId = ?`),
-  markParticipantPaid: db.prepare(`UPDATE participants SET status = 'confirmed', paymentMethod = ?, paidAt = ? WHERE joinCode = ? AND userId = ?`),
+  reportParticipantPaid: db.prepare(`UPDATE participants SET status = 'reported', paymentMethod = ?, paidAt = NULL WHERE joinCode = ? AND userId = ?`),
+  approveParticipantPaid: db.prepare(`UPDATE participants SET status = 'confirmed', paymentMethod = COALESCE(?, paymentMethod), paidAt = ? WHERE joinCode = ? AND userId = ?`),
   closeSession: db.prepare(`UPDATE sessions SET status = 'closed', closedAt = ? WHERE joinCode = ?`),
 };
 
@@ -187,7 +188,124 @@ router.post('/:joinCode/split', (req: Request, res: Response) => {
   res.json(buildSession(stmts.getSession.get(req.params.joinCode) as any));
 });
 
+function closeSessionIfAllPaid(session: any, joinCode: string, now: string): void {
+  const allParticipants = stmts.getParticipants.all(joinCode) as any[];
+  const allPaid = allParticipants.length > 0 && allParticipants.every((p: any) => p.status === 'confirmed');
+
+  if (!allPaid) return;
+
+  stmts.closeSession.run(now, joinCode);
+  addFeedEvent({
+    type: 'session_closed',
+    sessionId: session.id,
+    message: `🎉 Mesa cerrada! ${allParticipants.length} personas pagaron ${formatCOP(session.totalAmount)}${session.description ? ' — ' + session.description : ''}`,
+    userIds: allParticipants.map((p: any) => p.userId),
+  });
+}
+
+// POST /api/sessions/:joinCode/pay/report
+router.post('/:joinCode/pay/report', (req: Request, res: Response) => {
+  const session = stmts.getSession.get(req.params.joinCode) as any;
+  if (!session) {
+    res.status(404).json({ error: 'Session not found' });
+    return;
+  }
+
+  if (session.status !== 'open') {
+    res.status(400).json({ error: 'Session is not open' });
+    return;
+  }
+
+  const { userId, reporterId, paymentMethod } = req.body;
+  if (!userId || !reporterId) {
+    res.status(400).json({ error: 'userId and reporterId are required' });
+    return;
+  }
+
+  if (userId !== reporterId) {
+    res.status(403).json({ error: 'Only the participant can report their own payment' });
+    return;
+  }
+
+  const participant = stmts.getParticipant.get(req.params.joinCode, userId) as any;
+  if (!participant) {
+    res.status(404).json({ error: 'Participant not found' });
+    return;
+  }
+
+  if (participant.status === 'confirmed') {
+    res.json(buildSession(session));
+    return;
+  }
+
+  stmts.reportParticipantPaid.run(paymentMethod || participant.paymentMethod || 'other', req.params.joinCode, userId);
+  const updatedSession = stmts.getSession.get(req.params.joinCode) as any;
+  res.json(buildSession(updatedSession));
+});
+
+// POST /api/sessions/:joinCode/pay/approve
+router.post('/:joinCode/pay/approve', (req: Request, res: Response) => {
+  const session = stmts.getSession.get(req.params.joinCode) as any;
+  if (!session) {
+    res.status(404).json({ error: 'Session not found' });
+    return;
+  }
+
+  if (session.status !== 'open') {
+    res.status(400).json({ error: 'Session is not open' });
+    return;
+  }
+
+  const { userId, adminId, paymentMethod } = req.body;
+  if (!userId || !adminId) {
+    res.status(400).json({ error: 'userId and adminId are required' });
+    return;
+  }
+
+  if (adminId !== session.adminId) {
+    res.status(403).json({ error: 'Only admin can approve payments' });
+    return;
+  }
+
+  const participant = stmts.getParticipant.get(req.params.joinCode, userId) as any;
+  if (!participant) {
+    res.status(404).json({ error: 'Participant not found' });
+    return;
+  }
+
+  if (participant.status === 'confirmed') {
+    res.json(buildSession(session));
+    return;
+  }
+
+  if (participant.status !== 'reported') {
+    res.status(400).json({ error: 'Participant has not reported payment yet' });
+    return;
+  }
+
+  const now = new Date().toISOString();
+  stmts.approveParticipantPaid.run(paymentMethod || null, now, req.params.joinCode, userId);
+  closeSessionIfAllPaid(session, req.params.joinCode, now);
+
+  // Feed event: fast payer
+  const paidAt = new Date(now);
+  const joinedAt = new Date(participant.joinedAt);
+  const secondsSinceJoin = (paidAt.getTime() - joinedAt.getTime()) / 1000;
+  if (secondsSinceJoin < 60) {
+    addFeedEvent({
+      type: 'fast_payer',
+      sessionId: session.id,
+      message: `⚡ ${participant.displayName} pago en menos de 1 minuto! Velocidad pura 🏎️`,
+      userIds: [userId],
+    });
+  }
+
+  const updatedSession = stmts.getSession.get(req.params.joinCode) as any;
+  res.json(buildSession(updatedSession));
+});
+
 // POST /api/sessions/:joinCode/pay
+// Legacy endpoint: directly confirms payment (kept for backward compatibility)
 router.post('/:joinCode/pay', (req: Request, res: Response) => {
   const session = stmts.getSession.get(req.params.joinCode) as any;
   if (!session) {
@@ -203,35 +321,8 @@ router.post('/:joinCode/pay', (req: Request, res: Response) => {
   }
 
   const now = new Date().toISOString();
-  stmts.markParticipantPaid.run(paymentMethod || 'other', now, req.params.joinCode, userId);
-
-  // Check if all paid
-  const allParticipants = stmts.getParticipants.all(req.params.joinCode) as any[];
-  const allPaid = allParticipants.every((p: any) => p.status === 'confirmed' || (p.userId === userId));
-
-  if (allPaid) {
-    stmts.closeSession.run(now, req.params.joinCode);
-
-    addFeedEvent({
-      type: 'session_closed',
-      sessionId: session.id,
-      message: `🎉 Mesa cerrada! ${allParticipants.length} personas pagaron ${formatCOP(session.totalAmount)}${session.description ? ' — ' + session.description : ''}`,
-      userIds: allParticipants.map((p: any) => p.userId),
-    });
-  }
-
-  // Feed event: fast payer
-  const paidAt = new Date(now);
-  const joinedAt = new Date(participant.joinedAt);
-  const secondsSinceJoin = (paidAt.getTime() - joinedAt.getTime()) / 1000;
-  if (secondsSinceJoin < 60) {
-    addFeedEvent({
-      type: 'fast_payer',
-      sessionId: session.id,
-      message: `⚡ ${participant.displayName} pago en menos de 1 minuto! Velocidad pura 🏎️`,
-      userIds: [userId],
-    });
-  }
+  stmts.approveParticipantPaid.run(paymentMethod || 'other', now, req.params.joinCode, userId);
+  closeSessionIfAllPaid(session, req.params.joinCode, now);
 
   const updatedSession = stmts.getSession.get(req.params.joinCode) as any;
   res.json(buildSession(updatedSession));

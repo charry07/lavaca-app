@@ -463,7 +463,7 @@ export default function LoginScreen() {
           <HeaderControls />
         </View>
 
-        <VacaLogo size="lg" />
+        <VacaLogo size="lg" style={{ marginTop: spacing.xxl }} />
 
         {authStep === 'phone' && <PhoneStep />}
         {authStep === 'otp' && <OTPStep />}

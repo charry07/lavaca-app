@@ -1,7 +1,7 @@
 // La Vaca - Domain Types
 
 export type SplitMode = 'equal' | 'percentage' | 'roulette';
-export type PaymentStatus = 'pending' | 'confirmed' | 'failed' | 'rejected';
+export type PaymentStatus = 'pending' | 'reported' | 'confirmed' | 'failed' | 'rejected';
 export type SessionStatus = 'open' | 'closed' | 'cancelled';
 export type PaymentMethod = 'nequi' | 'daviplata' | 'pse' | 'transfiya' | 'cash' | 'other';
 

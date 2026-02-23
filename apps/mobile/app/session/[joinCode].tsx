@@ -39,6 +39,7 @@ export default function SessionScreen() {
   const [showRoulette, setShowRoulette] = useState(false);
   const [rouletteWinner, setRouletteWinner] = useState(-1);
   const [pendingUpdate, setPendingUpdate] = useState<PaymentSession | null>(null);
+  const [canCloseRoulette, setCanCloseRoulette] = useState(false);
   const [showShareModal, setShowShareModal] = useState(false);
   const [showAddParticipantModal, setShowAddParticipantModal] = useState(false);
   const [participantSearchQuery, setParticipantSearchQuery] = useState('');
@@ -103,6 +104,7 @@ export default function SessionScreen() {
         if (winnerIdx >= 0) {
           setRouletteWinner(winnerIdx);
           setPendingUpdate(updated);
+          setCanCloseRoulette(false);
           setShowRoulette(true);
           setSplitting(false);
           return;
@@ -118,14 +120,17 @@ export default function SessionScreen() {
   };
 
   const handleRouletteFinish = () => {
-    // After animation ends, apply the actual session update
-    setTimeout(() => {
-      if (pendingUpdate) {
-        setSession(pendingUpdate);
-        setPendingUpdate(null);
-      }
-      setShowRoulette(false);
-    }, 2500);
+    // Keep modal open and let user close it manually
+    if (pendingUpdate) {
+      setSession(pendingUpdate);
+      setPendingUpdate(null);
+    }
+    setCanCloseRoulette(true);
+  };
+
+  const handleCloseRouletteModal = () => {
+    if (!canCloseRoulette) return;
+    setShowRoulette(false);
   };
 
   const handleShare = () => {
@@ -161,11 +166,31 @@ export default function SessionScreen() {
     }
   };
 
-  const handleMarkPaid = async (userId: string) => {
+  const handleReportPaid = async (userId: string) => {
+    if (!joinCode || !user) return;
+    try {
+      const updated = await api.reportPaid(joinCode, {
+        userId,
+        reporterId: user.id,
+        paymentMethod: 'nequi',
+      });
+      setSession(updated);
+      showSuccess(t('session.reportedPaid'));
+    } catch (err: any) {
+      showError(err.message || t('common.error'));
+    }
+  };
+
+  const handleApprovePaid = async (userId: string) => {
     if (!joinCode) return;
     try {
-      const updated = await api.markPaid(joinCode, { userId, paymentMethod: 'nequi' });
+      const updated = await api.approvePaid(joinCode, {
+        userId,
+        adminId: session?.adminId || '',
+        paymentMethod: 'nequi',
+      });
       setSession(updated);
+      showSuccess(t('session.paymentApproved'));
     } catch (err: any) {
       showError(err.message || t('common.error'));
     }
@@ -258,6 +283,7 @@ export default function SessionScreen() {
   const allSplit = session.participants.some((p) => p.amount > 0);
   const isAdmin = user?.id === session.adminId;
   const canAddParticipants = session.status === 'open' && isAdmin;
+  const pendingApprovalsCount = session.participants.filter((p) => p.status === 'reported').length;
 
   const getModeLabel = () => {
     switch (session.splitMode) {
@@ -267,32 +293,57 @@ export default function SessionScreen() {
     }
   };
 
+  const splitActionLabel = session.splitMode === 'roulette'
+    ? t('session.spinRouletteButton')
+    : t('session.splitButton');
+
   const renderParticipant = ({ item }: { item: Participant }) => {
     const isPaid = item.status === 'confirmed';
+    const isReported = item.status === 'reported';
+    const isMe = user?.id === item.userId;
     const isWinner = item.isRouletteWinner;
 
+    const statusLabel = isPaid
+      ? t('session.paid')
+      : isReported
+        ? t('session.pendingApproval')
+        : t('session.pending');
+
     return (
-      <View style={[s.participantCard, isPaid && s.participantPaid]}>
+      <View style={[s.participantCard, isPaid && s.participantPaid, isReported && s.participantReported]}>
         <View style={s.participantInfo}>
           <Text style={s.participantName}>
             {item.displayName}
             {isWinner ? ' 🎰' : ''}
           </Text>
           <Text style={s.participantStatus}>
-            {isPaid ? t('session.paid') : t('session.pending')}
+            {statusLabel}
           </Text>
         </View>
         <View style={s.participantRight}>
           <Text style={[s.participantAmount, isPaid && s.amountPaid]}>
             {formatCOP(item.amount)}
           </Text>
-          {!isPaid && item.amount > 0 && (
+          {!isPaid && !isReported && isMe && item.amount > 0 && (
             <TouchableOpacity
               style={s.payButton}
-              onPress={() => handleMarkPaid(item.userId)}
+              onPress={() => handleReportPaid(item.userId)}
             >
-              <Text style={s.payButtonText}>{t('session.payButton')}</Text>
+              <Text style={s.payButtonText}>{t('session.reportPaidButton')}</Text>
             </TouchableOpacity>
+          )}
+
+          {isReported && isAdmin && (
+            <TouchableOpacity
+              style={s.approveButton}
+              onPress={() => handleApprovePaid(item.userId)}
+            >
+              <Text style={s.approveButtonText}>{t('session.approvePaidButton')}</Text>
+            </TouchableOpacity>
+          )}
+
+          {isReported && !isAdmin && isMe && (
+            <Text style={s.waitingApprovalText}>{t('session.waitingApproval')}</Text>
           )}
         </View>
       </View>
@@ -349,6 +400,14 @@ export default function SessionScreen() {
           </View>
         )}
 
+        {isAdmin && pendingApprovalsCount > 0 && (
+          <View style={s.pendingApprovalBanner}>
+            <Text style={s.pendingApprovalText}>
+              {t('session.pendingApprovals', { count: pendingApprovalsCount })}
+            </Text>
+          </View>
+        )}
+
         {canAddParticipants && (
           <TouchableOpacity style={s.addParticipantButton} onPress={openAddParticipantModal}>
             <Text style={s.addParticipantButtonText}>➕ {t('session.addParticipants')}</Text>
@@ -391,7 +450,7 @@ export default function SessionScreen() {
               <ActivityIndicator color={colors.background} />
             ) : (
               <Text style={s.splitButtonText}>
-                {t('session.splitButton')}
+                {splitActionLabel}
               </Text>
             )}
           </TouchableOpacity>
@@ -425,7 +484,7 @@ export default function SessionScreen() {
         visible={showRoulette}
         animationType="slide"
         transparent
-        onRequestClose={() => {}}
+        onRequestClose={handleCloseRouletteModal}
       >
         <View style={s.modalOverlay}>
           <View style={s.modalContent}>
@@ -434,6 +493,14 @@ export default function SessionScreen() {
               winnerIndex={rouletteWinner}
               onFinish={handleRouletteFinish}
             />
+            {canCloseRoulette && (
+              <TouchableOpacity
+                style={s.closeRouletteButton}
+                onPress={handleCloseRouletteModal}
+              >
+                <Text style={s.closeRouletteButtonText}>{t('session.closeRoulette')}</Text>
+              </TouchableOpacity>
+            )}
           </View>
         </View>
       </Modal>
@@ -698,6 +765,9 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     borderColor: colors.primary,
     opacity: 0.8,
   },
+  participantReported: {
+    borderColor: colors.warning,
+  },
   participantInfo: {
     flex: 1,
   },
@@ -733,6 +803,39 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     fontSize: fontSize.sm,
     fontWeight: '700',
     color: colors.background,
+  },
+  approveButton: {
+    backgroundColor: colors.warning,
+    paddingVertical: spacing.xs,
+    paddingHorizontal: spacing.md,
+    borderRadius: borderRadius.sm,
+    marginTop: spacing.xs,
+  },
+  approveButtonText: {
+    fontSize: fontSize.sm,
+    fontWeight: '700',
+    color: colors.background,
+  },
+  waitingApprovalText: {
+    fontSize: fontSize.xs,
+    color: colors.warning,
+    marginTop: spacing.xs,
+    fontWeight: '600',
+  },
+  pendingApprovalBanner: {
+    marginTop: spacing.md,
+    backgroundColor: colors.warning + '22',
+    borderWidth: 1,
+    borderColor: colors.warning,
+    borderRadius: borderRadius.md,
+    paddingVertical: spacing.xs,
+    paddingHorizontal: spacing.sm,
+  },
+  pendingApprovalText: {
+    fontSize: fontSize.sm,
+    fontWeight: '600',
+    color: colors.warning,
+    textAlign: 'center',
   },
   emptyState: {
     alignItems: 'center',
@@ -961,5 +1064,19 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   closeModalText: {
     fontSize: fontSize.md,
     color: colors.textSecondary,
+  },
+  closeRouletteButton: {
+    marginHorizontal: spacing.lg,
+    marginBottom: spacing.lg,
+    marginTop: spacing.sm,
+    backgroundColor: colors.primary,
+    borderRadius: borderRadius.md,
+    paddingVertical: spacing.sm,
+    alignItems: 'center',
+  },
+  closeRouletteButtonText: {
+    fontSize: fontSize.md,
+    fontWeight: '700',
+    color: colors.background,
   },
 });

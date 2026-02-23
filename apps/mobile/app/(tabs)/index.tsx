@@ -94,7 +94,7 @@ export default function HomeTab() {
           </View>
 
           <View style={s.hero}>
-            <VacaLogo size="lg" />
+            <VacaLogo size="lg" style={{ marginTop: spacing.md }} />
             <Text style={s.tagline}>{t('home.tagline')}</Text>
           </View>
 
