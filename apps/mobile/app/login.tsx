@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import {
   View,
   Text,
@@ -191,39 +191,53 @@ function OTPStep() {
   const { verifyOTP, pendingPhone, devCode, resetAuth } = useAuth();
   const s = createStyles(colors);
 
+  const MAX_ATTEMPTS = 3;
+  const BLOCK_SECONDS = 60;
+
   const [code, setCode] = useState(['', '', '', '', '', '']);
   const [loading, setLoading] = useState(false);
+  const [attempts, setAttempts] = useState(0);
+  const [errorMsg, setErrorMsg] = useState('');
+  const [blockedSecsLeft, setBlockedSecsLeft] = useState(0);
   const inputRefs = useRef<(TextInput | null)[]>([]);
+  const countdownRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // Cleanup interval on unmount
+  useEffect(() => {
+    return () => { if (countdownRef.current) clearInterval(countdownRef.current); };
+  }, []);
+
+  const startBlockCountdown = () => {
+    setBlockedSecsLeft(BLOCK_SECONDS);
+    countdownRef.current = setInterval(() => {
+      setBlockedSecsLeft(prev => {
+        if (prev <= 1) {
+          clearInterval(countdownRef.current!);
+          countdownRef.current = null;
+          resetAuth();
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+  };
 
   const handleCodeChange = (text: string, index: number) => {
+    if (blockedSecsLeft > 0) return;
     const newCode = [...code];
-    // Handle paste — distribute digits
     if (text.length > 1) {
       const digits = text.replace(/\D/g, '').split('').slice(0, 6);
-      digits.forEach((d, i) => {
-        if (i < 6) newCode[i] = d;
-      });
+      digits.forEach((d, i) => { if (i < 6) newCode[i] = d; });
       setCode(newCode);
       const nextEmpty = digits.length < 6 ? digits.length : 5;
       inputRefs.current[nextEmpty]?.focus();
-      // Auto-submit if all 6 digits filled
-      if (digits.length === 6) {
-        handleVerify(newCode.join(''));
-      }
+      if (digits.length === 6) handleVerify(newCode.join(''));
       return;
     }
-
     newCode[index] = text;
     setCode(newCode);
-
-    if (text && index < 5) {
-      inputRefs.current[index + 1]?.focus();
-    }
-
-    // Auto-submit on last digit
-    if (text && index === 5) {
-      handleVerify(newCode.join(''));
-    }
+    if (text && index < 5) inputRefs.current[index + 1]?.focus();
+    if (text && index === 5) handleVerify(newCode.join(''));
   };
 
   const handleKeyPress = (e: any, index: number) => {
@@ -235,21 +249,34 @@ function OTPStep() {
   const handleVerify = async (fullCode?: string) => {
     const verifyCode = fullCode || code.join('');
     if (verifyCode.length !== 6) {
-      Alert.alert(t('common.error'), t('auth.invalidOTP'));
+      setErrorMsg(t('auth.invalidOTP'));
       return;
     }
 
     setLoading(true);
+    setErrorMsg('');
     try {
       await verifyOTP(verifyCode);
+      // success — AuthContext handles navigation
     } catch (err: any) {
-      Alert.alert(t('common.error'), err.message || t('auth.errorVerifyingOTP'));
+      const newAttempts = attempts + 1;
+      setAttempts(newAttempts);
       setCode(['', '', '', '', '', '']);
       inputRefs.current[0]?.focus();
+
+      if (newAttempts >= MAX_ATTEMPTS) {
+        setErrorMsg(t('auth.tooManyAttempts') + ' ' + t('auth.blockedFor', { s: String(BLOCK_SECONDS) }));
+        startBlockCountdown();
+      } else {
+        const left = MAX_ATTEMPTS - newAttempts;
+        setErrorMsg(t('auth.wrongCode') + '\n' + t('auth.attemptsLeft', { n: String(left) }));
+      }
     } finally {
       setLoading(false);
     }
   };
+
+  const isBlocked = blockedSecsLeft > 0;
 
   return (
     <>
@@ -271,21 +298,43 @@ function OTPStep() {
           <TextInput
             key={index}
             ref={(ref) => { inputRefs.current[index] = ref; }}
-            style={[s.otpInput, digit ? s.otpInputFilled : null]}
+            style={[
+              s.otpInput,
+              digit ? s.otpInputFilled : null,
+              errorMsg ? s.otpInputError : null,
+              isBlocked ? s.otpInputBlocked : null,
+            ]}
             keyboardType="number-pad"
             maxLength={index === 0 ? 6 : 1}
             value={digit}
             onChangeText={(text) => handleCodeChange(text, index)}
             onKeyPress={(e) => handleKeyPress(e, index)}
             autoFocus={index === 0}
+            editable={!isBlocked && !loading}
           />
         ))}
       </View>
 
+      {/* Error / blocked message */}
+      {errorMsg ? (
+        <View style={[s.errorBanner, isBlocked && { backgroundColor: colors.warning + '22' }]}>
+          <Text style={[s.errorText, isBlocked && { color: colors.warning }]}>
+            {isBlocked
+              ? t('auth.tooManyAttempts') + '\n' + t('auth.blockedFor', { s: String(blockedSecsLeft) })
+              : errorMsg}
+          </Text>
+          {isBlocked && (
+            <Text style={[s.errorText, { color: colors.textMuted, fontSize: 12, marginTop: 4 }]}>
+              {t('auth.blockedReturn')}
+            </Text>
+          )}
+        </View>
+      ) : null}
+
       <TouchableOpacity
-        style={[s.button, loading && s.buttonDisabled]}
+        style={[s.button, (loading || isBlocked) && s.buttonDisabled]}
         onPress={() => handleVerify()}
-        disabled={loading}
+        disabled={loading || isBlocked}
       >
         {loading ? (
           <ActivityIndicator color={colors.background} />
@@ -294,8 +343,8 @@ function OTPStep() {
         )}
       </TouchableOpacity>
 
-      <TouchableOpacity onPress={resetAuth} style={s.linkButton}>
-        <Text style={s.linkText}>{t('auth.changePhone')}</Text>
+      <TouchableOpacity onPress={resetAuth} style={s.linkButton} disabled={isBlocked}>
+        <Text style={[s.linkText, isBlocked && { color: colors.textMuted }]}>{t('auth.changePhone')}</Text>
       </TouchableOpacity>
     </>
   );
@@ -632,6 +681,30 @@ const createStyles = (colors: ThemeColors) =>
     },
     otpInputFilled: {
       borderColor: colors.primary,
+    },
+    otpInputError: {
+      borderColor: colors.danger,
+      backgroundColor: colors.danger + '11',
+    },
+    otpInputBlocked: {
+      borderColor: colors.warning,
+      backgroundColor: colors.warning + '11',
+      opacity: 0.6,
+    },
+    errorBanner: {
+      backgroundColor: colors.danger + '22',
+      borderRadius: borderRadius.md,
+      paddingHorizontal: spacing.md,
+      paddingVertical: spacing.sm,
+      marginBottom: spacing.md,
+      width: '100%',
+      alignItems: 'center',
+    },
+    errorText: {
+      color: colors.danger,
+      fontSize: fontSize.sm,
+      fontWeight: '600',
+      textAlign: 'center',
     },
     devBanner: {
       paddingVertical: spacing.sm,

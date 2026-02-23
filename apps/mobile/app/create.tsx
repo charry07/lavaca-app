@@ -5,7 +5,6 @@ import {
   TextInput,
   TouchableOpacity,
   StyleSheet,
-  Alert,
   ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
@@ -18,17 +17,26 @@ import { spacing, borderRadius, fontSize, type ThemeColors } from '../src/consta
 import { useI18n } from '../src/i18n';
 import { useTheme } from '../src/theme';
 import { useAuth } from '../src/auth';
+import { useToast } from '../src/components/Toast';
 
 export default function CreateScreen() {
   const router = useRouter();
   const { t } = useI18n();
   const { colors } = useTheme();
   const { user } = useAuth();
+  const { showError } = useToast();
   const s = createStyles(colors);
   const [amount, setAmount] = useState('');
   const [description, setDescription] = useState('');
   const [splitMode, setSplitMode] = useState<SplitMode>('equal');
+  const [currency, setCurrency] = useState<'COP' | 'USD' | 'EUR'>('COP');
   const [loading, setLoading] = useState(false);
+
+  const CURRENCIES: { key: 'COP' | 'USD' | 'EUR'; symbol: string }[] = [
+    { key: 'COP', symbol: '🇨🇴 COP' },
+    { key: 'USD', symbol: '🇺🇸 USD' },
+    { key: 'EUR', symbol: '🇪🇺 EUR' },
+  ];
 
   const SPLIT_MODES: { key: SplitMode; label: string; emoji: string }[] = [
     { key: 'equal', label: t('create.equalParts'), emoji: '⚖️' },
@@ -39,7 +47,7 @@ export default function CreateScreen() {
   const handleCreate = async () => {
     const numAmount = Number(amount.replace(/[^0-9]/g, ''));
     if (!numAmount || numAmount <= 0) {
-      Alert.alert(t('common.error'), t('create.invalidAmount'));
+      showError(t('create.invalidAmount'));
       return;
     }
 
@@ -48,13 +56,14 @@ export default function CreateScreen() {
       const session = await api.createSession({
         adminId: user?.id || 'anonymous',
         totalAmount: numAmount,
+        currency,
         splitMode,
         description: description || undefined,
       });
 
       router.push(`/session/${session.joinCode}`);
     } catch (err: any) {
-      Alert.alert(t('common.error'), err.message || t('create.errorCreating'));
+      showError(err.message || t('create.errorCreating'));
     } finally {
       setLoading(false);
     }
@@ -88,6 +97,21 @@ export default function CreateScreen() {
           value={description}
           onChangeText={setDescription}
         />
+
+        <Text style={s.sectionTitle}>{t('create.currency')}</Text>
+        <View style={s.currencyContainer}>
+          {CURRENCIES.map((c) => (
+            <TouchableOpacity
+              key={c.key}
+              style={[s.currencyButton, currency === c.key && s.currencyButtonActive]}
+              onPress={() => setCurrency(c.key)}
+            >
+              <Text style={[s.currencyLabel, currency === c.key && s.currencyLabelActive]}>
+                {c.symbol}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
 
         <Text style={s.sectionTitle}>{t('create.howToSplit')}</Text>
         <View style={s.modeContainer}>
@@ -195,6 +219,31 @@ const createStyles = (colors: ThemeColors) =>
     modeLabelActive: {
       color: colors.primary,
       fontWeight: '600',
+    },
+    currencyContainer: {
+      flexDirection: 'row',
+      gap: spacing.sm,
+    },
+    currencyButton: {
+      flex: 1,
+      backgroundColor: colors.surface,
+      borderRadius: borderRadius.md,
+      paddingVertical: spacing.sm,
+      alignItems: 'center',
+      borderWidth: 2,
+      borderColor: colors.surfaceBorder,
+    },
+    currencyButtonActive: {
+      borderColor: colors.accent,
+      backgroundColor: colors.background,
+    },
+    currencyLabel: {
+      fontSize: fontSize.sm,
+      color: colors.textSecondary,
+      fontWeight: '600',
+    },
+    currencyLabelActive: {
+      color: colors.accent,
     },
     createButton: {
       backgroundColor: colors.primary,

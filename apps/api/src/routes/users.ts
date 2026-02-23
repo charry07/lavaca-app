@@ -307,4 +307,23 @@ router.put('/:id', (req: Request, res: Response) => {
   res.json(rowToUser(updated));
 });
 
+// DELETE /api/users/:id
+router.delete('/:id', (req: Request, res: Response) => {
+  const existing = stmts.getUserById.get(req.params.id) as any;
+  if (!existing) {
+    res.status(404).json({ error: 'User not found' });
+    return;
+  }
+
+  const deleteAll = db.transaction(() => {
+    db.prepare(`DELETE FROM participants WHERE userId = ?`).run(req.params.id);
+    db.prepare(`DELETE FROM feed_event_users WHERE userId = ?`).run(req.params.id);
+    db.prepare(`DELETE FROM group_members WHERE userId = ?`).run(req.params.id);
+    db.prepare(`DELETE FROM users WHERE id = ?`).run(req.params.id);
+  });
+  deleteAll();
+
+  res.json({ success: true });
+});
+
 export { router as userRouter };

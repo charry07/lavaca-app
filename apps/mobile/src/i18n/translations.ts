@@ -46,6 +46,7 @@ const es = {
   'create.createButton': 'Crear Mesa 🐄',
   'create.invalidAmount': 'Ingresa un monto valido',
   'create.errorCreating': 'No se pudo crear la mesa',
+  'create.currency': 'Moneda',
 
   // Join
   'join.title': 'Unirme a una mesa',
@@ -82,6 +83,11 @@ const es = {
 
   'session.copied': 'Copiado!',
   'session.copiedMessage': 'El enlace se copio al portapapeles',
+  'session.codeCopied': '¡Codigo copiado!',
+  'session.closeSession': 'Cerrar mesa',
+  'session.closeConfirmTitle': 'Cerrar mesa',
+  'session.closeConfirmMsg': 'Hay pagos pendientes. ¿Cerrar de todas formas?',
+  'session.closeConfirmBtn': 'Sí, cerrar',
 
   // Roulette
   'roulette.title': '🎰 Ruleta de La Vaca',
@@ -123,6 +129,11 @@ const es = {
   'auth.invalidOTP': 'Ingresa el codigo completo de 6 digitos',
   'auth.errorVerifyingOTP': 'Codigo invalido o expirado',
   'auth.changePhone': 'Cambiar numero',
+  'auth.wrongCode': 'Codigo incorrecto. Intentalo de nuevo.',
+  'auth.attemptsLeft': 'Te quedan {{n}} intento(s)',
+  'auth.tooManyAttempts': 'Demasiados intentos fallidos.',
+  'auth.blockedFor': 'Espera {{s}}s para volver a intentar',
+  'auth.blockedReturn': 'Volviendo al inicio...',
 
   // Auth - Register Step
   'auth.registerTitle': 'Completa tu perfil 🐄',
@@ -155,6 +166,17 @@ const es = {
   'profile.logoutMessage': 'Seguro que quieres salir?',
   'profile.logoutConfirm': 'Salir',
   'profile.cancel': 'Cancelar',
+  'profile.savedSuccess': 'Guardado correctamente',
+  'profile.saveError': 'No se pudo guardar. Asegurate que el servidor este corriendo.',
+  'profile.avatarError': 'No se pudo procesar la imagen',
+  'profile.avatarTooLarge': 'La imagen es muy grande ({{size}}KB). Usa una imagen mas pequena.',
+  'profile.avatarSuccess': 'Foto de perfil actualizada',
+  'profile.deleteAccount': 'Eliminar mi cuenta',
+  'profile.deleteTitle': 'Eliminar cuenta',
+  'profile.deleteMessage': 'Esta accion es irreversible. Se eliminaran todos tus datos, historial y participaciones. Seguro que quieres continuar?',
+  'profile.deleteConfirm': 'Si, eliminar',
+  'profile.deleteCancel': 'Cancelar',
+  'profile.deleteError': 'No se pudo eliminar la cuenta. Intentalo de nuevo.',
 
   // Groups
   'groups.empty': 'No tienes grupos aun',
@@ -225,6 +247,7 @@ const en: TranslationKeys = {
   'create.createButton': 'Create Table 🐄',
   'create.invalidAmount': 'Enter a valid amount',
   'create.errorCreating': 'Could not create the table',
+  'create.currency': 'Currency',
 
   // Join
   'join.title': 'Join a table',
@@ -261,6 +284,11 @@ const en: TranslationKeys = {
 
   'session.copied': 'Copied!',
   'session.copiedMessage': 'Link copied to clipboard',
+  'session.codeCopied': 'Code copied!',
+  'session.closeSession': 'Close table',
+  'session.closeConfirmTitle': 'Close table',
+  'session.closeConfirmMsg': 'There are pending payments. Close anyway?',
+  'session.closeConfirmBtn': 'Yes, close',
 
   // Roulette
   'roulette.title': '🎰 La Vaca Roulette',
@@ -302,6 +330,11 @@ const en: TranslationKeys = {
   'auth.invalidOTP': 'Enter the complete 6-digit code',
   'auth.errorVerifyingOTP': 'Invalid or expired code',
   'auth.changePhone': 'Change number',
+  'auth.wrongCode': 'Wrong code. Please try again.',
+  'auth.attemptsLeft': '{{n}} attempt(s) remaining',
+  'auth.tooManyAttempts': 'Too many failed attempts.',
+  'auth.blockedFor': 'Wait {{s}}s before trying again',
+  'auth.blockedReturn': 'Returning to start...',
 
   // Auth - Register Step
   'auth.registerTitle': 'Complete your profile 🐄',
@@ -334,6 +367,17 @@ const en: TranslationKeys = {
   'profile.logoutMessage': 'Are you sure you want to log out?',
   'profile.logoutConfirm': 'Log out',
   'profile.cancel': 'Cancel',
+  'profile.savedSuccess': 'Saved successfully',
+  'profile.saveError': 'Could not save. Make sure the server is running.',
+  'profile.avatarError': 'Could not process image',
+  'profile.avatarTooLarge': 'Image is too large ({{size}}KB). Use a smaller image.',
+  'profile.avatarSuccess': 'Profile picture updated',
+  'profile.deleteAccount': 'Delete my account',
+  'profile.deleteTitle': 'Delete account',
+  'profile.deleteMessage': 'This action is irreversible. All your data, history and participations will be deleted. Are you sure?',
+  'profile.deleteConfirm': 'Yes, delete',
+  'profile.deleteCancel': 'Cancel',
+  'profile.deleteError': 'Could not delete account. Please try again.',
 
   // Groups
   'groups.empty': 'No groups yet',
@@ -404,6 +448,7 @@ const pt: TranslationKeys = {
   'create.createButton': 'Criar Mesa 🐄',
   'create.invalidAmount': 'Insira um valor válido',
   'create.errorCreating': 'Não foi possível criar a mesa',
+  'create.currency': 'Moeda',
 
   // Join
   'join.title': 'Entrar numa mesa',
@@ -440,6 +485,11 @@ const pt: TranslationKeys = {
 
   'session.copied': 'Copiado!',
   'session.copiedMessage': 'Link copiado para a área de transferência',
+  'session.codeCopied': 'Código copiado!',
+  'session.closeSession': 'Fechar mesa',
+  'session.closeConfirmTitle': 'Fechar mesa',
+  'session.closeConfirmMsg': 'Há pagamentos pendentes. Fechar mesmo assim?',
+  'session.closeConfirmBtn': 'Sim, fechar',
 
   // Roulette
   'roulette.title': '🎰 Roleta da La Vaca',
@@ -481,6 +531,11 @@ const pt: TranslationKeys = {
   'auth.invalidOTP': 'Insira o código completo de 6 dígitos',
   'auth.errorVerifyingOTP': 'Código inválido ou expirado',
   'auth.changePhone': 'Mudar número',
+  'auth.wrongCode': 'Código incorreto. Tente novamente.',
+  'auth.attemptsLeft': 'Você tem {{n}} tentativa(s) restante(s)',
+  'auth.tooManyAttempts': 'Muitas tentativas incorretas.',
+  'auth.blockedFor': 'Aguarde {{s}}s para tentar novamente',
+  'auth.blockedReturn': 'Voltando ao início...',
 
   // Auth - Register Step
   'auth.registerTitle': 'Complete seu perfil 🐄',
@@ -513,6 +568,17 @@ const pt: TranslationKeys = {
   'profile.logoutMessage': 'Tem certeza que quer sair?',
   'profile.logoutConfirm': 'Sair',
   'profile.cancel': 'Cancelar',
+  'profile.savedSuccess': 'Salvo com sucesso',
+  'profile.saveError': 'Não foi possível salvar. Verifique se o servidor está rodando.',
+  'profile.avatarError': 'Não foi possível processar a imagem',
+  'profile.avatarTooLarge': 'Imagem muito grande ({{size}}KB). Use uma imagem menor.',
+  'profile.avatarSuccess': 'Foto de perfil atualizada',
+  'profile.deleteAccount': 'Excluir minha conta',
+  'profile.deleteTitle': 'Excluir conta',
+  'profile.deleteMessage': 'Esta ação é irreversível. Todos os seus dados, histórico e participações serão excluídos. Tem certeza?',
+  'profile.deleteConfirm': 'Sim, excluir',
+  'profile.deleteCancel': 'Cancelar',
+  'profile.deleteError': 'Não foi possível excluir a conta. Tente novamente.',
 
   // Groups
   'groups.empty': 'Nenhum grupo ainda',

@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { PaymentSession } from '@lavaca/shared';
+import { formatCOP } from '@lavaca/shared';
 import { spacing, borderRadius, fontSize, type ThemeColors } from '../../src/constants/theme';
 import { useI18n } from '../../src/i18n';
 import { useTheme } from '../../src/theme';
@@ -28,11 +29,14 @@ const MODE_EMOJI: Record<string, string> = {
   roulette: '🎰',
 };
 
-function formatCurrency(amount: number, currency: string = 'COP'): string {
-  if (currency === 'COP') {
-    return '$' + amount.toLocaleString('es-CO');
-  }
-  return `${currency} ${amount.toLocaleString()}`;
+function formatAmount(amount: number, currency: string = 'COP'): string {
+  if (currency === 'COP') return formatCOP(amount);
+  return new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency,
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  }).format(amount);
 }
 
 function timeAgo(date: Date | string, nowLabel: string = 'now'): string {
@@ -102,12 +106,12 @@ export default function HistoryTab() {
         <View style={s.cardBody}>
           <View style={s.stat}>
             <Text style={s.statLabel}>{t('session.total')}</Text>
-            <Text style={s.statValue}>{formatCurrency(item.totalAmount, item.currency)}</Text>
+            <Text style={s.statValue}>{formatAmount(item.totalAmount, item.currency)}</Text>
           </View>
           <View style={s.stat}>
             <Text style={s.statLabel}>{t('history.myPart')}</Text>
             <Text style={[s.statValue, { color: colors.accent }]}>
-              {formatCurrency(myAmount, item.currency)}
+              {formatAmount(myAmount, item.currency)}
             </Text>
           </View>
           <View style={s.stat}>

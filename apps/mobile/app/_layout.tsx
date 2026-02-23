@@ -1,11 +1,19 @@
 import { Stack, useRouter, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
-import { ActivityIndicator, View } from 'react-native';
+import { ActivityIndicator, LogBox, View } from 'react-native';
+
+// Suppress known library warnings from react-native-screens / react-navigation
+// that pass pointerEvents as a prop instead of in style (fixed in future versions)
+LogBox.ignoreLogs([
+  'props.pointerEvents is deprecated',
+  'pointerEvents is deprecated',
+]);
 import { I18nProvider, useI18n } from '../src/i18n';
 import { ThemeProvider, useTheme } from '../src/theme';
 import { AuthProvider, useAuth } from '../src/auth';
 import { HeaderControls } from '../src/components/HeaderControls';
+import { ToastProvider } from '../src/components/Toast';
 
 function AuthGuard({ children }: { children: React.ReactNode }) {
   const { user, isLoading } = useAuth();
@@ -104,7 +112,9 @@ export default function RootLayout() {
     <ThemeProvider>
       <I18nProvider>
         <AuthProvider>
-          <RootLayoutInner />
+          <ToastProvider>
+            <RootLayoutInner />
+          </ToastProvider>
         </AuthProvider>
       </I18nProvider>
     </ThemeProvider>

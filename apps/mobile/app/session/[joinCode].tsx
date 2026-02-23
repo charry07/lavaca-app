@@ -20,16 +20,21 @@ import { RouletteWheel } from '../../src/components/RouletteWheel';
 import { QRCode } from '../../src/components/QRCode';
 import { useI18n } from '../../src/i18n';
 import { useTheme } from '../../src/theme';
+import { useAuth } from '../../src/auth';
+import { useToast } from '../../src/components/Toast';
 
 export default function SessionScreen() {
   const { joinCode } = useLocalSearchParams<{ joinCode: string }>();
   const { t } = useI18n();
   const { colors } = useTheme();
+  const { user } = useAuth();
+  const { showSuccess, showError } = useToast();
   const s = createStyles(colors);
   const [session, setSession] = useState<PaymentSession | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [splitting, setSplitting] = useState(false);
+  const [closing, setClosing] = useState(false);
   const [showRoulette, setShowRoulette] = useState(false);
   const [rouletteWinner, setRouletteWinner] = useState(-1);
   const [pendingUpdate, setPendingUpdate] = useState<PaymentSession | null>(null);
@@ -41,7 +46,7 @@ export default function SessionScreen() {
       const data = await api.getSession(joinCode);
       setSession(data);
     } catch (err: any) {
-      Alert.alert('Error', err.message);
+      showError(err.message);
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -119,7 +124,7 @@ export default function SessionScreen() {
     const link = getShareLink();
     if (Platform.OS === 'web' && typeof navigator !== 'undefined' && navigator.clipboard) {
       await navigator.clipboard.writeText(link);
-      Alert.alert(t('session.copied'), t('session.copiedMessage'));
+      showSuccess(t('session.copied'));
     } else {
       await Share.share({ message: link });
     }
@@ -131,8 +136,49 @@ export default function SessionScreen() {
       const updated = await api.markPaid(joinCode, { userId, paymentMethod: 'nequi' });
       setSession(updated);
     } catch (err: any) {
-      Alert.alert(t('common.error'), err.message);
+      showError(err.message || t('common.error'));
     }
+  };
+
+  const handleCopyCode = async () => {
+    if (!joinCode) return;
+    try {
+      if (Platform.OS === 'web' && navigator?.clipboard) {
+        await navigator.clipboard.writeText(joinCode);
+      } else {
+        await Share.share({ message: joinCode });
+        return;
+      }
+      showSuccess(t('session.codeCopied'));
+    } catch {}
+  };
+
+  const handleCloseSession = () => {
+    if (!joinCode || !session) return;
+    const hasPending = session.participants.some((p) => p.status !== 'confirmed');
+    const msg = hasPending ? t('session.closeConfirmMsg') : t('session.closeConfirmMsg');
+    Alert.alert(
+      t('session.closeConfirmTitle'),
+      msg,
+      [
+        { text: t('profile.cancel'), style: 'cancel' },
+        {
+          text: t('session.closeConfirmBtn'),
+          style: 'destructive',
+          onPress: async () => {
+            setClosing(true);
+            try {
+              const updated = await api.closeSession(joinCode);
+              setSession(updated);
+            } catch (err: any) {
+              showError(err.message || t('common.error'));
+            } finally {
+              setClosing(false);
+            }
+          },
+        },
+      ]
+    );
   };
 
   if (loading) {
@@ -201,7 +247,9 @@ export default function SessionScreen() {
       <View style={s.header}>
         <View style={s.codeRow}>
           <Text style={s.joinCodeLabel}>{t('session.code')}</Text>
-          <Text style={s.joinCode}>{session.joinCode}</Text>
+          <TouchableOpacity onPress={handleCopyCode} activeOpacity={0.6} style={{ flex: 1 }}>
+            <Text style={s.joinCode}>{session.joinCode} 📋</Text>
+          </TouchableOpacity>
           <TouchableOpacity onPress={handleShare} style={s.shareButton}>
             <Text style={s.shareButtonText}>{t('session.share')}</Text>
           </TouchableOpacity>
@@ -281,6 +329,22 @@ export default function SessionScreen() {
               <Text style={s.splitButtonText}>
                 {t('session.splitButton')}
               </Text>
+            )}
+          </TouchableOpacity>
+        </View>
+      )}
+
+      {session.status === 'open' && allSplit && user?.id === session.adminId && (
+        <View style={s.bottomBar}>
+          <TouchableOpacity
+            style={[s.closeSessionButton, closing && s.splitButtonDisabled]}
+            onPress={handleCloseSession}
+            disabled={closing}
+          >
+            {closing ? (
+              <ActivityIndicator color={colors.danger} />
+            ) : (
+              <Text style={s.closeSessionButtonText}>{t('session.closeSession')}</Text>
             )}
           </TouchableOpacity>
         </View>
@@ -547,6 +611,18 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     fontSize: fontSize.lg,
     fontWeight: '700',
     color: colors.background,
+  },
+  closeSessionButton: {
+    paddingVertical: spacing.md,
+    borderRadius: borderRadius.md,
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: colors.danger,
+  },
+  closeSessionButtonText: {
+    fontSize: fontSize.md,
+    fontWeight: '700',
+    color: colors.danger,
   },
   modalOverlay: {
     flex: 1,

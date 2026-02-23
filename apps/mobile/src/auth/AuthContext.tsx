@@ -17,6 +17,7 @@ interface AuthContextValue {
   verifyOTP: (code: string) => Promise<void>;
   register: (displayName: string, username: string, documentId: string) => Promise<void>;
   logout: () => Promise<void>;
+  deleteAccount: () => Promise<void>;
   updateProfile: (data: { displayName?: string; username?: string; documentId?: string; avatarUrl?: string }) => Promise<void>;
   resetAuth: () => void;
 }
@@ -31,6 +32,7 @@ const AuthContext = createContext<AuthContextValue>({
   verifyOTP: async () => {},
   register: async () => {},
   logout: async () => {},
+  deleteAccount: async () => {},
   updateProfile: async () => {},
   resetAuth: () => {},
 });
@@ -102,6 +104,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     await storage.removeItem(AUTH_KEY);
   }, []);
 
+  const deleteAccount = useCallback(async () => {
+    if (!user) return;
+    await api.deleteUser(user.id);
+    setUser(null);
+    setAuthStep('phone');
+    setPendingPhone(null);
+    setDevCode(null);
+    await storage.removeItem(AUTH_KEY);
+  }, [user]);
+
   const updateProfile = useCallback(async (data: { displayName?: string; username?: string; documentId?: string; avatarUrl?: string }) => {
     if (!user) return;
     const updated = await api.updateUser(user.id, data);
@@ -117,7 +129,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   return (
     <AuthContext.Provider value={{
       user, isLoading, authStep, pendingPhone, devCode,
-      sendOTP, verifyOTP, register, logout, updateProfile, resetAuth,
+      sendOTP, verifyOTP, register, logout, deleteAccount, updateProfile, resetAuth,
     }}>
       {children}
     </AuthContext.Provider>

@@ -17,6 +17,7 @@ import { useI18n } from '../../src/i18n';
 import { useTheme } from '../../src/theme';
 import { useAuth } from '../../src/auth';
 import { api } from '../../src/services/api';
+import { useToast } from '../../src/components/Toast';
 
 interface GroupWithMembers {
   id: string;
@@ -33,6 +34,7 @@ export default function GroupsTab() {
   const { colors } = useTheme();
   const { user } = useAuth();
   const router = useRouter();
+  const { showError, showSuccess } = useToast();
   const s = createStyles(colors);
 
   const [groups, setGroups] = useState<GroupWithMembers[]>([]);
@@ -51,7 +53,7 @@ export default function GroupsTab() {
       const data = await api.getUserGroups(user.id);
       setGroups(data);
     } catch (err) {
-      console.error('Error fetching groups:', err);
+      showError(t('common.error'));
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -81,7 +83,7 @@ export default function GroupsTab() {
       setNewGroupIcon('👥');
       fetchGroups();
     } catch (err: any) {
-      Alert.alert(t('common.error'), err.message);
+      showError(err.message || t('create.errorCreating'));
     } finally {
       setCreating(false);
     }
@@ -101,7 +103,7 @@ export default function GroupsTab() {
               await api.deleteGroup(groupId);
               fetchGroups();
             } catch (err: any) {
-              Alert.alert(t('common.error'), err.message);
+              showError(err.message || t('common.error'));
             }
           },
         },
@@ -113,7 +115,7 @@ export default function GroupsTab() {
     <TouchableOpacity
       style={s.groupCard}
       onPress={() => router.push(`/group/${item.id}` as any)}
-      onLongPress={() => handleDeleteGroup(item.id, item.name)}
+      activeOpacity={0.7}
     >
       <Text style={s.groupIcon}>{item.icon || '👥'}</Text>
       <View style={s.groupInfo}>
@@ -125,6 +127,13 @@ export default function GroupsTab() {
           {item.members.map((m) => m.displayName).join(', ')}
         </Text>
       </View>
+      <TouchableOpacity
+        style={s.deleteBtn}
+        onPress={() => handleDeleteGroup(item.id, item.name)}
+        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+      >
+        <Text style={s.deleteBtnText}>🗑️</Text>
+      </TouchableOpacity>
     </TouchableOpacity>
   );
 
@@ -242,6 +251,11 @@ const createStyles = (colors: ThemeColors) =>
     groupName: { fontSize: fontSize.lg, fontWeight: '700', color: colors.text },
     groupMembers: { fontSize: fontSize.sm, color: colors.textSecondary, marginTop: 2 },
     groupMemberNames: { fontSize: fontSize.xs, color: colors.textMuted, marginTop: 2 },
+    deleteBtn: {
+      padding: spacing.sm,
+      marginLeft: spacing.sm,
+    },
+    deleteBtnText: { fontSize: 20 },
     fab: {
       position: 'absolute',
       bottom: spacing.xl,

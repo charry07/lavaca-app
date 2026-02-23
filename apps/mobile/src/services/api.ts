@@ -93,6 +93,12 @@ export const api = {
       body: JSON.stringify(data),
     }),
 
+  /** Delete user account permanently */
+  deleteUser: (userId: string) =>
+    request<{ success: boolean }>(`/api/users/${userId}`, {
+      method: 'DELETE',
+    }),
+
   /** Search users by name, username, or phone */
   searchUsers: (query: string) =>
     request<User[]>(`/api/users/search?q=${encodeURIComponent(query)}`),
@@ -198,5 +204,11 @@ export const api = {
     request<PaymentSession>(`/api/sessions/${joinCode}/pay`, {
       method: 'POST',
       body: JSON.stringify(data),
+    }),
+
+  /** Manually close a session (admin) */
+  closeSession: (joinCode: string) =>
+    request<PaymentSession>(`/api/sessions/${joinCode}/close`, {
+      method: 'PATCH',
     }),
 };

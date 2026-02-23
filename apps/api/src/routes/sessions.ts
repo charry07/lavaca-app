@@ -237,6 +237,16 @@ router.post('/:joinCode/pay', (req: Request, res: Response) => {
   res.json(buildSession(updatedSession));
 });
 
+// PATCH /api/sessions/:joinCode/close  (admin manual close)
+router.patch('/:joinCode/close', (req: Request, res: Response) => {
+  const session = stmts.getSession.get(req.params.joinCode) as any;
+  if (!session) { res.status(404).json({ error: 'Session not found' }); return; }
+  if (session.status === 'closed') { res.json(buildSession(session)); return; }
+  const now = new Date().toISOString();
+  stmts.closeSession.run(now, req.params.joinCode);
+  res.json(buildSession(stmts.getSession.get(req.params.joinCode) as any));
+});
+
 /** Helper to get all sessions (used by history endpoint) */
 export function getAllSessions(): PaymentSession[] {
   const rows = db.prepare('SELECT * FROM sessions').all() as any[];

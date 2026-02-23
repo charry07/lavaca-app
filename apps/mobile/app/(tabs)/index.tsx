@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, FlatList, ActivityIndicator } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, FlatList, ActivityIndicator, RefreshControl } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useFocusEffect } from '@react-navigation/native';
 import { PaymentSession } from '@lavaca/shared';
@@ -21,25 +21,27 @@ export default function HomeTab() {
 
   const [sessions, setSessions] = useState<PaymentSession[]>([]);
   const [loadingSessions, setLoadingSessions] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+
+  const loadSessions = useCallback(async (silent = false) => {
+    if (!user) return;
+    if (!silent) setLoadingSessions(true);
+    try {
+      const data = await api.getUserHistory(user.id);
+      setSessions(data);
+    } catch {
+      // silently ignore — API might not be running
+    } finally {
+      setLoadingSessions(false);
+      setRefreshing(false);
+    }
+  }, [user]);
 
   // Refetch sessions every time this tab is focused
   useFocusEffect(
     useCallback(() => {
-      if (!user) return;
-      let cancelled = false;
-      (async () => {
-        setLoadingSessions(true);
-        try {
-          const data = await api.getUserHistory(user.id);
-          if (!cancelled) setSessions(data);
-        } catch {
-          // silently ignore — API might not be running
-        } finally {
-          if (!cancelled) setLoadingSessions(false);
-        }
-      })();
-      return () => { cancelled = true; };
-    }, [user])
+      loadSessions();
+    }, [loadSessions])
   );
 
   const renderSessionCard = ({ item }: { item: PaymentSession }) => {
@@ -78,6 +80,13 @@ export default function HomeTab() {
       data={sessions}
       keyExtractor={(item) => item.id}
       renderItem={renderSessionCard}
+      refreshControl={
+        <RefreshControl
+          refreshing={refreshing}
+          onRefresh={() => { setRefreshing(true); loadSessions(true); }}
+          tintColor={colors.primary}
+        />
+      }
       ListHeaderComponent={
         <>
           <View style={s.header}>
