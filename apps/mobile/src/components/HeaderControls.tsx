@@ -1,7 +1,7 @@
 import { View, TouchableOpacity, Text, StyleSheet } from 'react-native';
 import { useI18n, LOCALE_FLAGS, type Locale } from '../i18n';
 import { useTheme } from '../theme';
-import { spacing, borderRadius } from '../constants/theme';
+import { borderRadius } from '../constants/theme';
 
 const LOCALES: Locale[] = ['es', 'en', 'pt'];
 

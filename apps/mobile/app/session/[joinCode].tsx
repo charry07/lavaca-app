@@ -794,6 +794,10 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     color: colors.text,
     marginTop: 2,
   },
+  progressContainer: {
+    marginTop: spacing.md,
+    alignItems: 'center',
+  },
   progressBar: {
     width: '100%',
     height: 8,

@@ -24,7 +24,6 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
     if (isLoading) return;
 
     const inAuthGroup = segments[0] === 'login';
-    const inTabs = segments[0] === '(tabs)';
 
     if (!user && !inAuthGroup) {
       // Not logged in — go to login

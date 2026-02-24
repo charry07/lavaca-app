@@ -9,10 +9,9 @@ interface TabIconProps {
   focused: boolean;
   activeColor: string;
   inactiveColor: string;
-  bgColor: string;
 }
 
-function TabIcon({ emoji, label, focused, activeColor, inactiveColor, bgColor }: TabIconProps) {
+function TabIcon({ emoji, label, focused, activeColor, inactiveColor }: TabIconProps) {
   return (
     <View style={styles.iconWrapper}>
       <View style={[styles.iconPill, focused && { backgroundColor: activeColor + '22' }]}>
@@ -108,7 +107,6 @@ export default function TabLayout() {
               focused={focused}
               activeColor={colors.primary}
               inactiveColor={colors.textMuted}
-              bgColor={colors.surface}
             />
           ),
         }}
@@ -124,7 +122,6 @@ export default function TabLayout() {
               focused={focused}
               activeColor={colors.primary}
               inactiveColor={colors.textMuted}
-              bgColor={colors.surface}
             />
           ),
         }}
@@ -140,7 +137,6 @@ export default function TabLayout() {
               focused={focused}
               activeColor={colors.primary}
               inactiveColor={colors.textMuted}
-              bgColor={colors.surface}
             />
           ),
         }}
@@ -156,7 +152,6 @@ export default function TabLayout() {
               focused={focused}
               activeColor={colors.primary}
               inactiveColor={colors.textMuted}
-              bgColor={colors.surface}
             />
           ),
         }}
@@ -172,7 +167,6 @@ export default function TabLayout() {
               focused={focused}
               activeColor={colors.primary}
               inactiveColor={colors.textMuted}
-              bgColor={colors.surface}
             />
           ),
         }}

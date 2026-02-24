@@ -1,5 +1,5 @@
 import { View, Text, StyleSheet, ViewStyle } from 'react-native';
-import { spacing, borderRadius, type ThemeColors } from '../constants/theme';
+import { spacing, type ThemeColors } from '../constants/theme';
 import { useTheme } from '../theme';
 
 interface VacaLogoProps {

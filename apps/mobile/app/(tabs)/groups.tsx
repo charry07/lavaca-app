@@ -34,7 +34,7 @@ export default function GroupsTab() {
   const { colors } = useTheme();
   const { user } = useAuth();
   const router = useRouter();
-  const { showError, showSuccess } = useToast();
+  const { showError } = useToast();
   const s = createStyles(colors);
 
   const [groups, setGroups] = useState<GroupWithMembers[]>([]);

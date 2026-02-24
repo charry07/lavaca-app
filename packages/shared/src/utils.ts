@@ -1,7 +1,5 @@
 // La Vaca - Split Calculation Utilities
 
-import { Participant, SplitMode } from './types';
-
 /**
  * Divide un monto en partes iguales.
  * El centavo sobrante se asigna aleatoriamente.
