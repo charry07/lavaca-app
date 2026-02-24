@@ -19,6 +19,22 @@ const stmts = {
   getUserByUsername: db.prepare(`SELECT * FROM users WHERE username = ?`),
   getUserByDocument: db.prepare(`SELECT * FROM users WHERE documentId = ?`),
   searchUsers: db.prepare(`SELECT id, displayName, username, phone, avatarUrl FROM users WHERE lower(displayName) LIKE ? OR lower(username) LIKE ? OR phone LIKE ? OR documentId LIKE ? OR lower(COALESCE(email, '')) LIKE ? LIMIT 20`),
+  frequentUsers: db.prepare(`
+    SELECT
+      u.id,
+      u.displayName,
+      u.username,
+      u.phone,
+      u.avatarUrl,
+      u.createdAt
+    FROM participants me
+    INNER JOIN participants co ON co.joinCode = me.joinCode AND co.userId <> me.userId
+    INNER JOIN users u ON u.id = co.userId
+    WHERE me.userId = ?
+    GROUP BY u.id, u.displayName, u.username, u.phone, u.avatarUrl, u.createdAt
+    ORDER BY COUNT(*) DESC, MAX(co.joinedAt) DESC
+    LIMIT ?
+  `),
   lookupByPhone: db.prepare(`SELECT id, phone, displayName, username, avatarUrl, createdAt FROM users WHERE phone = ?`),
   updateUser: db.prepare(`UPDATE users SET displayName = @displayName, username = @username, documentId = @documentId, avatarUrl = @avatarUrl WHERE id = @id`),
 };
@@ -255,6 +271,22 @@ router.get('/:id/history', (req: Request, res: Response) => {
     };
   });
 
+  res.json(result);
+});
+
+// GET /api/users/:id/frequent?limit=7
+router.get('/:id/frequent', (req: Request, res: Response) => {
+  const user = stmts.getUserById.get(req.params.id) as any;
+  if (!user) {
+    res.status(404).json({ error: 'User not found' });
+    return;
+  }
+
+  const rawLimit = Number(req.query.limit);
+  const limit = Number.isFinite(rawLimit) && rawLimit > 0 ? Math.min(Math.floor(rawLimit), 20) : 7;
+
+  const rows = stmts.frequentUsers.all(req.params.id, limit) as any[];
+  const result = rows.map((row) => rowToUser(row));
   res.json(result);
 });
 

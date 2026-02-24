@@ -54,6 +54,10 @@ const es = {
   'create.invalidAmount': 'Ingresa un monto valido',
   'create.errorCreating': 'No se pudo crear la mesa',
   'create.currency': 'Moneda',
+  'create.selectedParticipants': '{{count}} participante(s) seleccionados',
+  'create.added': 'Agregado',
+  'create.noFrequentPeople': 'Aun no tienes mesas compartidas con otras personas',
+  'create.frequentPeopleHint': 'Tus 7 personas mas frecuentes',
 
   // Join
   'join.title': 'Unirme a una mesa',
@@ -291,6 +295,10 @@ const en: TranslationKeys = {
   'create.invalidAmount': 'Enter a valid amount',
   'create.errorCreating': 'Could not create the table',
   'create.currency': 'Currency',
+  'create.selectedParticipants': '{{count}} selected participant(s)',
+  'create.added': 'Added',
+  'create.noFrequentPeople': 'You do not have shared tables with other people yet',
+  'create.frequentPeopleHint': 'Your 7 most frequent people',
 
   // Join
   'join.title': 'Join a table',
@@ -528,6 +536,10 @@ const pt: TranslationKeys = {
   'create.invalidAmount': 'Insira um valor válido',
   'create.errorCreating': 'Não foi possível criar a mesa',
   'create.currency': 'Moeda',
+  'create.selectedParticipants': '{{count}} participante(s) selecionado(s)',
+  'create.added': 'Adicionado',
+  'create.noFrequentPeople': 'Você ainda não tem mesas compartilhadas com outras pessoas',
+  'create.frequentPeopleHint': 'Suas 7 pessoas mais frequentes',
 
   // Join
   'join.title': 'Entrar numa mesa',

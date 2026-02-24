@@ -114,6 +114,10 @@ export const api = {
   getUserHistory: (userId: string) =>
     request<PaymentSession[]>(`/api/users/${userId}/history`),
 
+  /** Get users with whom the user has shared the most tables */
+  getFrequentUsers: (userId: string, limit = 7) =>
+    request<User[]>(`/api/users/${userId}/frequent?limit=${encodeURIComponent(String(limit))}`),
+
   // ── Feed ──────────────────────────────────────────────
   /** Get global feed */
   getFeed: () =>
