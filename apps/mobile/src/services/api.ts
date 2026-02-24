@@ -225,4 +225,11 @@ export const api = {
     request<PaymentSession>(`/api/sessions/${joinCode}/close`, {
       method: 'PATCH',
     }),
+
+  /** Delete a session (admin) */
+  deleteSession: (joinCode: string, data: { adminId: string }) =>
+    request<{ success: boolean }>(`/api/sessions/${joinCode}?adminId=${encodeURIComponent(data.adminId)}`, {
+      method: 'DELETE',
+      body: JSON.stringify(data),
+    }),
 };

@@ -1,15 +1,10 @@
-import { useEffect, useRef, useState } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  Animated,
-  Easing,
-} from 'react-native';
-import { Participant } from '@lavaca/shared';
-import { spacing, borderRadius, fontSize, type ThemeColors } from '../constants/theme';
-import { useI18n } from '../i18n';
-import { useTheme } from '../theme';
+import {useEffect, useRef, useState} from "react";
+import {View, Text, StyleSheet, Animated, Easing} from "react-native";
+import Svg, {Path, Circle, G, Polygon} from "react-native-svg";
+import {Participant} from "@lavaca/shared";
+import {spacing, borderRadius, fontSize, type ThemeColors} from "../constants/theme";
+import {useI18n} from "../i18n";
+import {useTheme} from "../theme";
 
 interface RouletteWheelProps {
   participants: Participant[];
@@ -19,22 +14,66 @@ interface RouletteWheelProps {
 
 const TOTAL_SPINS = 6;
 const WHEEL_SIZE = 280;
-const LABEL_RADIUS = 115;
-const MIN_SPIN_MS = 5000;
-const MAX_SPIN_MS = 7000;
+const RADIUS = WHEEL_SIZE / 2 - 8;
+const INNER_RADIUS = 50;
+const LABEL_RADIUS = 85;
 
-// Generate distinct colors for each segment
+// Generate distinct colors for each segment - highly vibrant and contrasting
 const SEGMENT_COLORS = [
-  '#FF6B6B', '#4ECDC4', '#45B7D1', '#FFA07A', '#98D8C8',
-  '#F7DC6F', '#BB8FCE', '#85C1E2', '#F8B88B', '#A9D0E2',
-  '#FF8C94', '#AAF683', '#FFE66D', '#A8D5BA', '#FF9999',
+  "#FF2D2D",
+  "#00D9FF",
+  "#1E90FF",
+  "#FF6B1E",
+  "#00AA00",
+  "#FFD700",
+  "#8B008B",
+  "#FF1493",
+  "#00CED1",
+  "#FF8C00",
+  "#C41E3A",
+  "#00FF7F",
+  "#FFB6C1",
+  "#4169E1",
+  "#FF4500",
+  "#00BFFF",
+  "#DC143C",
+  "#32CD32",
+  "#FF69B4",
+  "#1E88E5",
 ];
 
 const getSegmentColor = (index: number) => {
   return SEGMENT_COLORS[index % SEGMENT_COLORS.length];
 };
 
-export function RouletteWheel({ participants, winnerIndex, onFinish }: RouletteWheelProps) {
+const degreesToRadians = (degrees: number) => (degrees * Math.PI) / 180;
+
+const polarToCartesian = (angle: number, distance: number) => {
+  const radians = degreesToRadians(angle - 90);
+  return {
+    x: distance * Math.cos(radians),
+    y: distance * Math.sin(radians),
+  };
+};
+
+const createArcPath = (startAngle: number, endAngle: number, outerRadius: number, innerRadius: number) => {
+  const start = polarToCartesian(endAngle, outerRadius);
+  const end = polarToCartesian(startAngle, outerRadius);
+  const innerStart = polarToCartesian(endAngle, innerRadius);
+  const innerEnd = polarToCartesian(startAngle, innerRadius);
+
+  const largeArc = endAngle - startAngle > 180 ? 1 : 0;
+
+  return `
+    M ${start.x} ${start.y}
+    A ${outerRadius} ${outerRadius} 0 ${largeArc} 0 ${end.x} ${end.y}
+    L ${innerEnd.x} ${innerEnd.y}
+    A ${innerRadius} ${innerRadius} 0 ${largeArc} 1 ${innerStart.x} ${innerStart.y}
+    Z
+  `;
+};
+
+export function RouletteWheel({participants, winnerIndex, onFinish}: RouletteWheelProps) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [finished, setFinished] = useState(false);
   const [winnerPulse, setWinnerPulse] = useState(false);
@@ -42,8 +81,8 @@ export function RouletteWheel({ participants, winnerIndex, onFinish }: RouletteW
   const scaleAnim = useRef(new Animated.Value(1)).current;
   const hasStarted = useRef(false);
   const onFinishRef = useRef(onFinish);
-  const { t } = useI18n();
-  const { colors } = useTheme();
+  const {t} = useI18n();
+  const {colors} = useTheme();
   const s = createStyles(colors);
 
   const count = participants.length;
@@ -53,26 +92,21 @@ export function RouletteWheel({ participants, winnerIndex, onFinish }: RouletteW
     onFinishRef.current = onFinish;
   }, [onFinish]);
 
-  useEffect(() => {
-    if (hasStarted.current) {
-      return;
-    }
-
-    if (count === 0 || winnerIndex < 0 || winnerIndex >= count) {
-      return;
-    }
-
-    hasStarted.current = true;
+  const runSpin = () => {
+    if (count === 0 || winnerIndex < 0 || winnerIndex >= count) return;
 
     rotation.setValue(0);
     setFinished(false);
     setWinnerPulse(false);
 
-    const finalOffset = (360 - winnerIndex * segmentAngle) % 360;
+    const slicePadding = Math.min(4, segmentAngle * 0.1);
+    const randomWithinSlice = Math.random() * (segmentAngle - slicePadding * 2) + slicePadding;
+    const targetAngle = winnerIndex * segmentAngle + randomWithinSlice;
+    const finalOffset = (360 - targetAngle) % 360;
     const finalRotation = TOTAL_SPINS * 360 + finalOffset;
-    const duration = MIN_SPIN_MS + Math.floor(Math.random() * (MAX_SPIN_MS - MIN_SPIN_MS + 1));
+    const duration = 10000;
 
-    const listenerId = rotation.addListener(({ value }) => {
+    const listenerId = rotation.addListener(({value}) => {
       const normalized = ((value % 360) + 360) % 360;
       const index = Math.round(((360 - normalized) % 360) / segmentAngle) % count;
       setCurrentIndex(index);
@@ -83,7 +117,7 @@ export function RouletteWheel({ participants, winnerIndex, onFinish }: RouletteW
       duration,
       easing: Easing.out(Easing.cubic),
       useNativeDriver: true,
-    }).start(({ finished: animationFinished }) => {
+    }).start(({finished: animationFinished}) => {
       if (!animationFinished) return;
 
       setCurrentIndex(winnerIndex);
@@ -110,12 +144,21 @@ export function RouletteWheel({ participants, winnerIndex, onFinish }: RouletteW
       rotation.removeListener(listenerId);
       rotation.stopAnimation();
     };
-  }, [count, winnerIndex, segmentAngle, rotation, scaleAnim]);
+  };
+
+  useEffect(() => {
+    if (hasStarted.current) {
+      return;
+    }
+
+    hasStarted.current = true;
+    runSpin();
+  }, [count, winnerIndex, segmentAngle]);
 
   const wheelRotation = rotation.interpolate({
     inputRange: [0, 360],
-    outputRange: ['0deg', '360deg'],
-    extrapolate: 'extend',
+    outputRange: ["0deg", "360deg"],
+    extrapolate: "extend",
   });
 
   const participant = participants[currentIndex];
@@ -123,87 +166,60 @@ export function RouletteWheel({ participants, winnerIndex, onFinish }: RouletteW
 
   return (
     <View style={s.container}>
-      <Text style={s.title}>{t('roulette.title')}</Text>
-      <Text style={s.subtitle}>
-        {finished ? t('roulette.result') : t('roulette.spinning')}
-      </Text>
+      <Text style={s.title}>{t("roulette.title")}</Text>
+      <Text style={s.subtitle}>{finished ? t("roulette.result") : t("roulette.spinning")}</Text>
 
       <View style={s.wheelContainer}>
-        <View style={s.pointer} />
+        <View style={s.pointerWrap}>
+          <Svg width={34} height={28} viewBox='0 0 34 28'>
+            <Polygon points='0,0 34,0 17,28' fill='#FF4444' stroke={colors.text} strokeWidth={2} />
+          </Svg>
+        </View>
 
-        <Animated.View
-          style={[
-            s.wheel,
-            {
-              transform: [{ rotate: wheelRotation }],
-            },
-          ]}
-        >
-          {/* Background segments with colors - triangular slices */}
+        <Animated.View style={[s.wheelInner, {transform: [{rotate: wheelRotation}]}]}>
+          <Svg width={WHEEL_SIZE} height={WHEEL_SIZE} viewBox={`${-WHEEL_SIZE / 2} ${-WHEEL_SIZE / 2} ${WHEEL_SIZE} ${WHEEL_SIZE}`}>
+            <G>
+              {/* Segments */}
+              {participants.map((p, i) => {
+                const startAngle = i * segmentAngle;
+                const endAngle = (i + 1) * segmentAngle;
+                const color = getSegmentColor(i);
+
+                return <Path key={`segment-${p.userId}`} d={createArcPath(startAngle, endAngle, RADIUS, INNER_RADIUS)} fill={color} stroke={colors.background} strokeWidth={2} />;
+              })}
+
+              {/* Center circle */}
+              <Circle cx={0} cy={0} r={INNER_RADIUS} fill={colors.primary} stroke={colors.background} strokeWidth={2} />
+            </G>
+          </Svg>
+
+          {/* Center hub text - positioned over SVG */}
+          <View style={s.hubWrapper}>
+            <Text style={s.hubText}>🎰</Text>
+          </View>
+
+          {/* Labels positioned outside segments - rotate with wheel */}
           {participants.map((p, i) => {
-            const angle = i * segmentAngle;
-            const halfSize = WHEEL_SIZE / 2;
+            const angle = i * segmentAngle + segmentAngle / 2;
+            const radians = degreesToRadians(angle - 90);
+            const x = LABEL_RADIUS * Math.cos(radians);
+            const y = LABEL_RADIUS * Math.sin(radians);
+
             return (
               <View
-                key={`segment-bg-${p.userId}`}
-                style={{
-                  position: 'absolute',
-                  width: halfSize,
-                  height: halfSize,
-                  backgroundColor: getSegmentColor(i),
-                  opacity: 0.8,
-                  left: halfSize,
-                  top: halfSize,
-                  transformOrigin: '0px 0px',
-                  transform: [{ rotate: `${angle}deg` }],
-                }}
-              />
-            );
-          })}
-
-          {/* Segment divider lines */}
-          {participants.map((p, i) => {
-            const angle = i * segmentAngle;
-            return (
-              <View
-                key={`${p.userId}-divider`}
+                key={`label-${p.userId}`}
                 style={[
-                  s.segmentDivider,
+                  s.labelContainer,
                   {
-                    transform: [{ rotate: `${angle}deg` }],
+                    transform: [{translateX: x}, {translateY: y}],
                   },
-                ]}
-              />
-            );
-          })}
-
-          {/* Segment labels */}
-          {participants.map((p, i) => {
-            const angle = i * segmentAngle;
-            return (
-              <View
-                key={p.userId}
-                style={[
-                  s.segmentLabelWrap,
-                  {
-                    transform: [
-                      { rotate: `${angle}deg` },
-                      { translateY: -LABEL_RADIUS },
-                      { rotate: `${-angle}deg` },
-                    ],
-                  },
-                ]}
-              >
-                <Text numberOfLines={1} style={s.segmentLabel}>
+                ]}>
+                <Text style={s.segmentLabel} numberOfLines={1}>
                   {p.displayName}
                 </Text>
               </View>
             );
           })}
-
-          <View style={s.wheelHub}>
-            <Text style={s.hubText}>🎰</Text>
-          </View>
         </Animated.View>
       </View>
 
@@ -212,210 +228,167 @@ export function RouletteWheel({ participants, winnerIndex, onFinish }: RouletteW
           s.nameCard,
           finished && s.nameCardWinner,
           {
-            transform: [{ scale: scaleAnim }],
+            transform: [{scale: scaleAnim}],
           },
-        ]}
-      >
-        <Text numberOfLines={1} ellipsizeMode="tail" style={[s.nameText, finished && s.nameTextWinner]}>
-          {participant?.displayName ?? '...'}
+        ]}>
+        <Text numberOfLines={1} ellipsizeMode='tail' style={[s.nameText, finished && s.nameTextWinner]}>
+          {participant?.displayName ?? "..."}
         </Text>
       </Animated.View>
 
       <View style={s.dotsRow}>
         {participants.map((p, i) => (
-          <View
-            key={p.userId}
-            style={[
-              s.dot,
-              i === currentIndex && s.dotActive,
-              finished && i === winnerIndex && s.dotWinner,
-            ]}
-          />
+          <View key={p.userId} style={[s.dot, i === currentIndex && s.dotActive, finished && i === winnerIndex && s.dotWinner]} />
         ))}
       </View>
 
       {finished && winner && (
         <View style={[s.winnerBanner, winnerPulse && s.winnerBannerPulse]}>
           <Text style={s.winnerEmoji}>🐄💸</Text>
-          <Text style={s.winnerText}>
-            {t('roulette.winner', { name: winner.displayName })}
-          </Text>
-          <Text style={s.winnerSubtext}>
-            {t('roulette.betterLuck')}
-          </Text>
+          <Text style={s.winnerText}>{t("roulette.winner", {name: winner.displayName})}</Text>
+          <Text style={s.winnerSubtext}>{t("roulette.betterLuck")}</Text>
         </View>
       )}
     </View>
   );
 }
 
-const createStyles = (colors: ThemeColors) => StyleSheet.create({
-  container: {
-    alignItems: 'center',
-    padding: spacing.lg,
-  },
-  title: {
-    fontSize: fontSize.xl,
-    fontWeight: 'bold',
-    color: colors.text,
-    marginBottom: spacing.xs,
-  },
-  subtitle: {
-    fontSize: fontSize.md,
-    color: colors.textSecondary,
-    marginBottom: spacing.lg,
-  },
-  wheelContainer: {
-    width: WHEEL_SIZE,
-    height: WHEEL_SIZE,
-    marginBottom: spacing.lg,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  wheel: {
-    width: WHEEL_SIZE,
-    height: WHEEL_SIZE,
-    borderRadius: WHEEL_SIZE / 2,
-    borderWidth: 3,
-    borderColor: colors.primary,
-    backgroundColor: colors.surface,
-    shadowColor: colors.primary,
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.3,
-    shadowRadius: 12,
-    elevation: 8,
-    justifyContent: 'center',
-    alignItems: 'center',
-    overflow: 'hidden',
-  },
-  segmentDivider: {
-    position: 'absolute',
-    width: 2,
-    height: WHEEL_SIZE / 2,
-    backgroundColor: colors.background,
-    top: 0,
-    left: WHEEL_SIZE / 2 - 1,
-    opacity: 0.8,
-  },
-  segmentLabelWrap: {
-    position: 'absolute',
-    top: WHEEL_SIZE / 2,
-    left: WHEEL_SIZE / 2 - 60,
-    width: 120,
-    alignItems: 'center',
-  },
-  segmentLabel: {
-    fontSize: fontSize.xs,
-    fontWeight: '700',
-    color: colors.background,
-    backgroundColor: 'rgba(0,0,0,0.6)',
-    borderRadius: borderRadius.full,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: 3,
-    textAlign: 'center',
-    overflow: 'hidden',
-  },
-  pointer: {
-    position: 'absolute',
-    top: -8,
-    width: 0,
-    height: 0,
-    borderLeftWidth: 13,
-    borderRightWidth: 13,
-    borderBottomWidth: 22,
-    borderLeftColor: 'transparent',
-    borderRightColor: 'transparent',
-    borderBottomColor: '#FF4444',
-    zIndex: 10,
-    shadowColor: '#FF4444',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.6,
-    shadowRadius: 4,
-    elevation: 10,
-  },
-  wheelHub: {
-    width: 62,
-    height: 62,
-    borderRadius: 31,
-    backgroundColor: colors.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 2,
-    borderColor: colors.background,
-  },
-  hubText: {
-    fontSize: 28,
-  },
-  nameCard: {
-    backgroundColor: colors.background,
-    borderRadius: borderRadius.md,
-    paddingVertical: spacing.md,
-    paddingHorizontal: spacing.xxl,
-    minWidth: 240,
-    alignItems: 'center',
-    marginBottom: spacing.md,
-    borderWidth: 1,
-    borderColor: colors.surfaceBorder,
-  },
-  nameCardWinner: {
-    backgroundColor: colors.primary,
-    borderColor: colors.primary,
-  },
-  nameText: {
-    fontSize: fontSize.xl,
-    fontWeight: 'bold',
-    color: colors.text,
-    maxWidth: 220,
-  },
-  nameTextWinner: {
-    color: colors.background,
-  },
-  dotsRow: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    flexWrap: 'wrap',
-    marginBottom: spacing.lg,
-  },
-  dot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    backgroundColor: colors.surfaceBorder,
-    marginHorizontal: 4,
-    marginVertical: 2,
-  },
-  dotActive: {
-    backgroundColor: colors.warning,
-    transform: [{ scale: 1.3 }],
-  },
-  dotWinner: {
-    backgroundColor: colors.primary,
-    transform: [{ scale: 1.5 }],
-  },
-  winnerBanner: {
-    alignItems: 'center',
-    backgroundColor: colors.surface,
-    borderRadius: borderRadius.lg,
-    padding: spacing.lg,
-    borderWidth: 1,
-    borderColor: colors.primary,
-    width: '100%',
-  },
-  winnerBannerPulse: {
-    transform: [{ scale: 1.02 }],
-  },
-  winnerEmoji: {
-    fontSize: 48,
-    marginBottom: spacing.sm,
-  },
-  winnerText: {
-    fontSize: fontSize.lg,
-    fontWeight: 'bold',
-    color: colors.primary,
-    marginBottom: spacing.xs,
-  },
-  winnerSubtext: {
-    fontSize: fontSize.md,
-    color: colors.textSecondary,
-  },
-});
+const createStyles = (colors: ThemeColors) =>
+  StyleSheet.create({
+    container: {
+      alignItems: "center",
+      padding: spacing.lg,
+    },
+    title: {
+      fontSize: fontSize.xl,
+      fontWeight: "bold",
+      color: colors.text,
+      marginBottom: spacing.xs,
+    },
+    subtitle: {
+      fontSize: fontSize.md,
+      color: colors.textSecondary,
+      marginBottom: spacing.lg,
+    },
+    wheelContainer: {
+      position: "relative",
+      width: WHEEL_SIZE,
+      height: WHEEL_SIZE,
+      marginBottom: spacing.lg,
+      justifyContent: "center",
+      alignItems: "center",
+    },
+    wheelInner: {
+      width: WHEEL_SIZE,
+      height: WHEEL_SIZE,
+      justifyContent: "center",
+      alignItems: "center",
+    },
+    pointerWrap: {
+      position: "absolute",
+      top: -14,
+      zIndex: 10,
+    },
+    hubText: {
+      fontSize: 28,
+    },
+    labelContainer: {
+      position: "absolute",
+      width: 70,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    segmentLabel: {
+      fontSize: fontSize.xs,
+      fontWeight: "700",
+      color: "#FFFFFF",
+      backgroundColor: "rgba(0, 0, 0, 0.85)",
+      borderRadius: borderRadius.full,
+      paddingHorizontal: spacing.sm,
+      paddingVertical: 4,
+      textAlign: "center",
+      overflow: "hidden",
+      maxWidth: 65,
+    },
+    hubWrapper: {
+      position: "absolute",
+      width: INNER_RADIUS * 2,
+      height: INNER_RADIUS * 2,
+      borderRadius: INNER_RADIUS,
+      alignItems: "center",
+      justifyContent: "center",
+      zIndex: 100,
+    },
+    nameCard: {
+      backgroundColor: colors.background,
+      borderRadius: borderRadius.md,
+      paddingVertical: spacing.md,
+      paddingHorizontal: spacing.xxl,
+      minWidth: 240,
+      alignItems: "center",
+      marginBottom: spacing.md,
+      borderWidth: 1,
+      borderColor: colors.surfaceBorder,
+    },
+    nameCardWinner: {
+      backgroundColor: colors.primary,
+      borderColor: colors.primary,
+    },
+    nameText: {
+      fontSize: fontSize.xl,
+      fontWeight: "bold",
+      color: colors.text,
+      maxWidth: 220,
+    },
+    nameTextWinner: {
+      color: colors.background,
+    },
+    dotsRow: {
+      flexDirection: "row",
+      justifyContent: "center",
+      flexWrap: "wrap",
+      marginBottom: spacing.lg,
+    },
+    dot: {
+      width: 10,
+      height: 10,
+      borderRadius: 5,
+      backgroundColor: colors.surfaceBorder,
+      marginHorizontal: 4,
+      marginVertical: 2,
+    },
+    dotActive: {
+      backgroundColor: "#FF4444",
+      transform: [{scale: 1.3}],
+    },
+    dotWinner: {
+      backgroundColor: colors.primary,
+      transform: [{scale: 1.5}],
+    },
+    winnerBanner: {
+      alignItems: "center",
+      backgroundColor: colors.surface,
+      borderRadius: borderRadius.lg,
+      padding: spacing.lg,
+      borderWidth: 1,
+      borderColor: colors.primary,
+      width: "100%",
+    },
+    winnerBannerPulse: {
+      transform: [{scale: 1.02}],
+    },
+    winnerEmoji: {
+      fontSize: 48,
+      marginBottom: spacing.sm,
+    },
+    winnerText: {
+      fontSize: fontSize.lg,
+      fontWeight: "bold",
+      color: colors.primary,
+      marginBottom: spacing.xs,
+    },
+    winnerSubtext: {
+      fontSize: fontSize.md,
+      color: colors.textSecondary,
+    },
+  });

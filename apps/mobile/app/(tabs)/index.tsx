@@ -22,6 +22,7 @@ export default function HomeTab() {
   const [sessions, setSessions] = useState<PaymentSession[]>([]);
   const [loadingSessions, setLoadingSessions] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const [filter, setFilter] = useState<'all' | 'open' | 'closed' | 'pending' | 'cancelled'>('all');
 
   const loadSessions = useCallback(async (silent = false) => {
     if (!user) return;
@@ -47,6 +48,7 @@ export default function HomeTab() {
   const renderSessionCard = ({ item }: { item: PaymentSession }) => {
     const participantCount = item.participants.length;
     const isOpen = item.status === 'open';
+    const hasPendingApproval = item.participants.some((p) => p.status === 'reported');
     return (
       <TouchableOpacity
         style={s.sessionCard}
@@ -57,10 +59,31 @@ export default function HomeTab() {
           <Text style={s.sessionCardTitle} numberOfLines={1}>
             {item.description || t('history.untitled')}
           </Text>
-          <View style={[s.statusBadge, isOpen ? s.statusOpen : s.statusClosed]}>
-            <Text style={[s.statusText, isOpen ? s.statusTextOpen : s.statusTextClosed]}>
-              {isOpen ? t('home.open') : t('home.closed')}
-            </Text>
+          <View style={s.badgeRow}>
+            {hasPendingApproval && (
+              <View style={s.pendingBadge}>
+                <Text style={s.pendingBadgeText}>{t('home.pendingApproval')}</Text>
+              </View>
+            )}
+            <View
+              style={[
+                s.statusBadge,
+                isOpen ? s.statusOpen : item.status === 'closed' ? s.statusClosed : s.statusCancelled,
+              ]}
+            >
+              <Text
+                style={[
+                  s.statusText,
+                  isOpen ? s.statusTextOpen : item.status === 'closed' ? s.statusTextClosed : s.statusTextCancelled,
+                ]}
+              >
+                {isOpen
+                  ? t('home.open')
+                  : item.status === 'closed'
+                    ? t('home.closed')
+                    : t('home.cancelled')}
+              </Text>
+            </View>
           </View>
         </View>
         <View style={s.sessionCardBody}>
@@ -73,11 +96,17 @@ export default function HomeTab() {
     );
   };
 
+  const filteredSessions = sessions.filter((item) => {
+    if (filter === 'all') return true;
+    if (filter === 'pending') return item.participants.some((p) => p.status === 'reported');
+    return item.status === filter;
+  });
+
   return (
     <FlatList
       style={{ flex: 1, backgroundColor: colors.background }}
       contentContainerStyle={s.container}
-      data={sessions}
+      data={filteredSessions}
       keyExtractor={(item) => item.id}
       renderItem={renderSessionCard}
       refreshControl={
@@ -119,7 +148,50 @@ export default function HomeTab() {
             {loadingSessions && <ActivityIndicator size="small" color={colors.accent} />}
           </View>
 
-          {!loadingSessions && sessions.length === 0 && (
+          <View style={s.filtersRow}>
+            <TouchableOpacity
+              style={[s.filterChip, filter === 'all' && s.filterChipActive]}
+              onPress={() => setFilter('all')}
+            >
+              <Text style={[s.filterChipText, filter === 'all' && s.filterChipTextActive]}>
+                {t('home.filterAll')}
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[s.filterChip, filter === 'open' && s.filterChipActive]}
+              onPress={() => setFilter('open')}
+            >
+              <Text style={[s.filterChipText, filter === 'open' && s.filterChipTextActive]}>
+                {t('home.filterOpen')}
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[s.filterChip, filter === 'closed' && s.filterChipActive]}
+              onPress={() => setFilter('closed')}
+            >
+              <Text style={[s.filterChipText, filter === 'closed' && s.filterChipTextActive]}>
+                {t('home.filterClosed')}
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[s.filterChip, filter === 'pending' && s.filterChipActive]}
+              onPress={() => setFilter('pending')}
+            >
+              <Text style={[s.filterChipText, filter === 'pending' && s.filterChipTextActive]}>
+                {t('home.filterPending')}
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[s.filterChip, filter === 'cancelled' && s.filterChipActive]}
+              onPress={() => setFilter('cancelled')}
+            >
+              <Text style={[s.filterChipText, filter === 'cancelled' && s.filterChipTextActive]}>
+                {t('home.filterCancelled')}
+              </Text>
+            </TouchableOpacity>
+          </View>
+
+          {!loadingSessions && filteredSessions.length === 0 && (
             <View style={s.emptyContainer}>
               <Text style={s.emptyText}>🐄</Text>
               <Text style={s.emptyLabel}>{t('home.noTables')}</Text>
@@ -184,6 +256,32 @@ const createStyles = (colors: ThemeColors) =>
       alignItems: 'center',
       marginBottom: spacing.md,
     },
+    filtersRow: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: spacing.xs,
+      marginBottom: spacing.md,
+    },
+    filterChip: {
+      paddingHorizontal: spacing.sm,
+      paddingVertical: 6,
+      borderRadius: borderRadius.full,
+      backgroundColor: colors.surface,
+      borderWidth: 1,
+      borderColor: colors.surfaceBorder,
+    },
+    filterChipActive: {
+      backgroundColor: colors.primary + '22',
+      borderColor: colors.primary,
+    },
+    filterChipText: {
+      fontSize: fontSize.xs,
+      fontWeight: '600',
+      color: colors.textSecondary,
+    },
+    filterChipTextActive: {
+      color: colors.primary,
+    },
     sectionTitle: {
       fontSize: fontSize.xl,
       fontWeight: '700',
@@ -203,12 +301,30 @@ const createStyles = (colors: ThemeColors) =>
       alignItems: 'center',
       marginBottom: spacing.xs,
     },
+    badgeRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: spacing.xs,
+    },
     sessionCardTitle: {
       fontSize: fontSize.md,
       fontWeight: '600',
       color: colors.text,
       flex: 1,
       marginRight: spacing.sm,
+    },
+    pendingBadge: {
+      paddingHorizontal: spacing.sm,
+      paddingVertical: 2,
+      borderRadius: borderRadius.sm,
+      backgroundColor: '#f59e0b20',
+      borderWidth: 1,
+      borderColor: '#f59e0b',
+    },
+    pendingBadgeText: {
+      fontSize: fontSize.xs,
+      fontWeight: '700',
+      color: '#f59e0b',
     },
     statusBadge: {
       paddingHorizontal: spacing.sm,
@@ -221,6 +337,9 @@ const createStyles = (colors: ThemeColors) =>
     statusClosed: {
       backgroundColor: '#ef444420',
     },
+    statusCancelled: {
+      backgroundColor: '#64748b20',
+    },
     statusText: {
       fontSize: fontSize.xs,
       fontWeight: '600',
@@ -230,6 +349,9 @@ const createStyles = (colors: ThemeColors) =>
     },
     statusTextClosed: {
       color: '#ef4444',
+    },
+    statusTextCancelled: {
+      color: '#64748b',
     },
     sessionCardBody: {
       flexDirection: 'row',

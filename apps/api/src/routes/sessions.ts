@@ -26,6 +26,8 @@ const stmts = {
   reportParticipantPaid: db.prepare(`UPDATE participants SET status = 'reported', paymentMethod = ?, paidAt = NULL WHERE joinCode = ? AND userId = ?`),
   approveParticipantPaid: db.prepare(`UPDATE participants SET status = 'confirmed', paymentMethod = COALESCE(?, paymentMethod), paidAt = ? WHERE joinCode = ? AND userId = ?`),
   closeSession: db.prepare(`UPDATE sessions SET status = 'closed', closedAt = ? WHERE joinCode = ?`),
+  deleteSession: db.prepare(`DELETE FROM sessions WHERE joinCode = ?`),
+  deleteFeedEventsBySession: db.prepare(`DELETE FROM feed_events WHERE sessionId = ?`),
 };
 
 function buildSession(row: any): PaymentSession {
@@ -190,7 +192,8 @@ router.post('/:joinCode/split', (req: Request, res: Response) => {
 
 function closeSessionIfAllPaid(session: any, joinCode: string, now: string): void {
   const allParticipants = stmts.getParticipants.all(joinCode) as any[];
-  const allPaid = allParticipants.length > 0 && allParticipants.every((p: any) => p.status === 'confirmed');
+  const owedParticipants = allParticipants.filter((p: any) => Number(p.amount) > 0);
+  const allPaid = owedParticipants.length > 0 && owedParticipants.every((p: any) => p.status === 'confirmed');
 
   if (!allPaid) return;
 
@@ -336,6 +339,24 @@ router.patch('/:joinCode/close', (req: Request, res: Response) => {
   const now = new Date().toISOString();
   stmts.closeSession.run(now, req.params.joinCode);
   res.json(buildSession(stmts.getSession.get(req.params.joinCode) as any));
+});
+
+// DELETE /api/sessions/:joinCode  (admin delete)
+router.delete('/:joinCode', (req: Request, res: Response) => {
+  const session = stmts.getSession.get(req.params.joinCode) as any;
+  if (!session) { res.status(404).json({ error: 'Session not found' }); return; }
+
+  const adminId = (req.body && req.body.adminId) || (req.query && (req.query.adminId as string));
+  if (!adminId) { res.status(400).json({ error: 'adminId is required' }); return; }
+  if (adminId !== session.adminId) { res.status(403).json({ error: 'Only admin can delete session' }); return; }
+
+  const deleteAll = db.transaction(() => {
+    stmts.deleteFeedEventsBySession.run(session.id);
+    stmts.deleteSession.run(req.params.joinCode);
+  });
+
+  deleteAll();
+  res.json({ success: true });
 });
 
 /** Helper to get all sessions (used by history endpoint) */

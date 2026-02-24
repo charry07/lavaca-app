@@ -13,7 +13,7 @@ import {
   Modal,
   Platform,
 } from 'react-native';
-import { useLocalSearchParams } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { PaymentSession, Participant, User, formatCOP } from '@lavaca/shared';
 import { api } from '../../src/services/api';
 import { spacing, borderRadius, fontSize, type ThemeColors } from '../../src/constants/theme';
@@ -26,6 +26,7 @@ import { useToast } from '../../src/components/Toast';
 
 export default function SessionScreen() {
   const { joinCode } = useLocalSearchParams<{ joinCode: string }>();
+  const router = useRouter();
   const { t } = useI18n();
   const { colors } = useTheme();
   const { user } = useAuth();
@@ -36,6 +37,7 @@ export default function SessionScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [splitting, setSplitting] = useState(false);
   const [closing, setClosing] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [showRoulette, setShowRoulette] = useState(false);
   const [rouletteWinner, setRouletteWinner] = useState(-1);
   const [pendingUpdate, setPendingUpdate] = useState<PaymentSession | null>(null);
@@ -53,7 +55,7 @@ export default function SessionScreen() {
       const data = await api.getSession(joinCode);
       setSession(data);
     } catch (err: any) {
-      showError(err.message);
+      showError(err.message || t('common.error'));
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -211,28 +213,83 @@ export default function SessionScreen() {
 
   const handleCloseSession = () => {
     if (!joinCode || !session) return;
-    const hasPending = session.participants.some((p) => p.status !== 'confirmed');
-    const msg = hasPending ? t('session.closeConfirmMsg') : t('session.closeConfirmMsg');
+    if (session.status !== 'open') {
+      showError(t('session.closeNotOpen'));
+      return;
+    }
+
+    const owedPendingCount = session.participants.filter((p) => p.amount > 0 && p.status !== 'confirmed').length;
+    const msg = owedPendingCount > 0
+      ? t('session.closeConfirmPending', { count: owedPendingCount })
+      : t('session.closeConfirmMsg');
+
+    const confirmClose = async () => {
+      setClosing(true);
+      try {
+        const updated = await api.closeSession(joinCode);
+        if (updated.status !== 'closed') {
+          showError(t('session.closeFailed'));
+          return;
+        }
+        setSession(updated);
+        showSuccess(t('session.closedSuccess'));
+        fetchSession();
+      } catch (err: any) {
+        showError(err.message || t('common.error'));
+      } finally {
+        setClosing(false);
+      }
+    };
+
+    if (Platform.OS === 'web') {
+      const ok = typeof window !== 'undefined' ? window.confirm(msg) : true;
+      if (ok) confirmClose();
+      return;
+    }
+
     Alert.alert(
       t('session.closeConfirmTitle'),
       msg,
       [
         { text: t('profile.cancel'), style: 'cancel' },
-        {
-          text: t('session.closeConfirmBtn'),
-          style: 'destructive',
-          onPress: async () => {
-            setClosing(true);
-            try {
-              const updated = await api.closeSession(joinCode);
-              setSession(updated);
-            } catch (err: any) {
-              showError(err.message || t('common.error'));
-            } finally {
-              setClosing(false);
-            }
-          },
-        },
+        { text: t('session.closeConfirmBtn'), style: 'destructive', onPress: confirmClose },
+      ]
+    );
+  };
+
+  const handleDeleteSession = () => {
+    if (!joinCode || !session) return;
+    if (user?.id !== session.adminId) {
+      showError(t('session.deleteNotAdmin'));
+      return;
+    }
+
+    const msg = t('session.deleteConfirmMsg');
+    const confirmDelete = async () => {
+      setDeleting(true);
+      try {
+        await api.deleteSession(joinCode, { adminId: session.adminId });
+        showSuccess(t('session.deleteSuccess'));
+        router.replace('/(tabs)');
+      } catch (err: any) {
+        showError(err.message || t('session.deleteError'));
+      } finally {
+        setDeleting(false);
+      }
+    };
+
+    if (Platform.OS === 'web') {
+      const ok = typeof window !== 'undefined' ? window.confirm(msg) : true;
+      if (ok) confirmDelete();
+      return;
+    }
+
+    Alert.alert(
+      t('session.deleteConfirmTitle'),
+      msg,
+      [
+        { text: t('profile.cancel'), style: 'cancel' },
+        { text: t('session.deleteConfirmBtn'), style: 'destructive', onPress: confirmDelete },
       ]
     );
   };
@@ -278,8 +335,12 @@ export default function SessionScreen() {
     );
   }
 
-  const paidCount = session.participants.filter((p) => p.status === 'confirmed').length;
+  const owedParticipants = session.participants.filter((p) => p.amount > 0);
+  const paidCount = owedParticipants.filter((p) => p.status === 'confirmed').length;
   const totalCount = session.participants.length;
+  const owedCount = owedParticipants.length;
+  const displayPaidCount = owedCount === 0 ? totalCount : paidCount;
+  const displayTotalCount = owedCount === 0 ? totalCount : owedCount;
   const allSplit = session.participants.some((p) => p.amount > 0);
   const isAdmin = user?.id === session.adminId;
   const canAddParticipants = session.status === 'open' && isAdmin;
@@ -302,12 +363,15 @@ export default function SessionScreen() {
     const isReported = item.status === 'reported';
     const isMe = user?.id === item.userId;
     const isWinner = item.isRouletteWinner;
+    const isNoPay = item.amount <= 0;
 
-    const statusLabel = isPaid
-      ? t('session.paid')
-      : isReported
-        ? t('session.pendingApproval')
-        : t('session.pending');
+    const statusLabel = isNoPay
+      ? t('session.noPay')
+      : isPaid
+        ? t('session.paid')
+        : isReported
+          ? t('session.pendingApproval')
+          : t('session.pending');
 
     return (
       <View style={[s.participantCard, isPaid && s.participantPaid, isReported && s.participantReported]}>
@@ -390,20 +454,22 @@ export default function SessionScreen() {
               <View
                 style={[
                   s.progressFill,
-                  { width: `${totalCount > 0 ? (paidCount / totalCount) * 100 : 0}%` },
+                  { width: `${displayTotalCount > 0 ? (displayPaidCount / displayTotalCount) * 100 : 0}%` },
                 ]}
               />
             </View>
             <Text style={s.progressText}>
-              {t('session.paidCount', { paid: paidCount, total: totalCount })}
+              {t('session.paidCount', { paid: displayPaidCount, total: displayTotalCount })}
             </Text>
           </View>
         )}
 
-        {isAdmin && pendingApprovalsCount > 0 && (
+        {pendingApprovalsCount > 0 && (
           <View style={s.pendingApprovalBanner}>
             <Text style={s.pendingApprovalText}>
-              {t('session.pendingApprovals', { count: pendingApprovalsCount })}
+              {isAdmin
+                ? t('session.pendingApprovalsAdmin', { count: pendingApprovalsCount })
+                : t('session.pendingApprovalsUser')}
             </Text>
           </View>
         )}
@@ -457,21 +523,37 @@ export default function SessionScreen() {
         </View>
       )}
 
-      {session.status === 'open' && allSplit && user?.id === session.adminId && (
+      {(session.status === 'open' && allSplit && user?.id === session.adminId) || user?.id === session.adminId ? (
         <View style={s.bottomBar}>
-          <TouchableOpacity
-            style={[s.closeSessionButton, closing && s.splitButtonDisabled]}
-            onPress={handleCloseSession}
-            disabled={closing}
-          >
-            {closing ? (
-              <ActivityIndicator color={colors.danger} />
-            ) : (
-              <Text style={s.closeSessionButtonText}>{t('session.closeSession')}</Text>
-            )}
-          </TouchableOpacity>
+          {session.status === 'open' && allSplit && user?.id === session.adminId && (
+            <TouchableOpacity
+              style={[s.closeSessionButton, closing && s.splitButtonDisabled]}
+              onPress={handleCloseSession}
+              disabled={closing}
+            >
+              {closing ? (
+                <ActivityIndicator color={colors.danger} />
+              ) : (
+                <Text style={s.closeSessionButtonText}>{t('session.closeSession')}</Text>
+              )}
+            </TouchableOpacity>
+          )}
+
+          {user?.id === session.adminId && (
+            <TouchableOpacity
+              style={s.deleteSessionLink}
+              onPress={handleDeleteSession}
+              disabled={deleting}
+            >
+              {deleting ? (
+                <ActivityIndicator color={colors.textMuted} />
+              ) : (
+                <Text style={s.deleteSessionLinkText}>{t('session.deleteSession')}</Text>
+              )}
+            </TouchableOpacity>
+          )}
         </View>
-      )}
+      ) : null}
 
       {session.status === 'closed' && (
         <View style={s.closedBanner}>
@@ -709,12 +791,8 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   },
   statLabel: {
     fontSize: fontSize.xs,
-    color: colors.textMuted,
+    color: colors.text,
     marginTop: 2,
-  },
-  progressContainer: {
-    marginTop: spacing.md,
-    alignItems: 'center',
   },
   progressBar: {
     width: '100%',
@@ -855,6 +933,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     padding: spacing.lg,
     borderTopWidth: 1,
     borderTopColor: colors.surfaceBorder,
+    gap: 8,
   },
   splitButton: {
     backgroundColor: colors.primary,
@@ -891,6 +970,16 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     fontSize: fontSize.md,
     fontWeight: '700',
     color: colors.danger,
+  },
+  deleteSessionLink: {
+    paddingVertical: spacing.sm,
+    alignItems: 'center',
+  },
+  deleteSessionLinkText: {
+    fontSize: fontSize.sm,
+    fontWeight: '600',
+    color: colors.textMuted,
+    textDecorationLine: 'underline',
   },
   modalOverlay: {
     flex: 1,
