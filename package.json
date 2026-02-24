@@ -4,9 +4,9 @@
   "private": true,
   "description": "La Vaca 🐄 - Simple y sencillo de dividir y pagar cuentas",
   "scripts": {
-    "mobile": "pnpm --filter @lavaca/mobile",
-    "api": "pnpm --filter @lavaca/api",
-    "shared": "pnpm --filter @lavaca/shared",
+    "mobile": "pnpm --filter @lavaca/mobile start",
+    "api": "pnpm --filter @lavaca/api dev",
+    "shared": "pnpm --filter @lavaca/shared typecheck",
     "dev:mobile": "pnpm --filter @lavaca/mobile start",
     "dev:api": "pnpm --filter @lavaca/api dev",
     "build:api": "pnpm --filter @lavaca/api build",
@@ -23,7 +23,5 @@
     "node": ">=20.0.0",
     "pnpm": ">=9.0.0"
   },
-  "devDependencies": {
-    "expo-module-scripts": "^5.0.8"
-  }
+  "devDependencies": {}
 }
