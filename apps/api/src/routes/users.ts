@@ -1,6 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { User } from '@lavaca/shared';
 import db from '../db';
+import { rateLimiter } from '../middleware/rateLimiter';
 
 const router = Router();
 
@@ -57,7 +58,7 @@ export function getUserById(id: string): User | undefined {
 }
 
 // POST /api/users/send-otp
-router.post('/send-otp', (req: Request, res: Response) => {
+router.post('/send-otp', rateLimiter(5, 10 * 60 * 1000), (req: Request, res: Response) => {
   const { phone } = req.body;
   if (!phone) {
     res.status(400).json({ error: 'phone is required' });
@@ -75,8 +76,39 @@ router.post('/send-otp', (req: Request, res: Response) => {
   res.json({ success: true, message: 'OTP sent', dev_code: code });
 });
 
+// POST /api/users/resend-otp
+router.post('/resend-otp', rateLimiter(5, 10 * 60 * 1000), (req: Request, res: Response) => {
+  const { phone } = req.body;
+  if (!phone) {
+    res.status(400).json({ error: 'phone is required' });
+    return;
+  }
+
+  const cleanPhone = phone.replace(/[^0-9+]/g, '');
+
+  // Enforce 60-second cooldown between resends
+  const existing = stmts.getOTP.get(cleanPhone) as any;
+  const MIN_RESEND_GAP_MS = 60 * 1000;
+  if (existing) {
+    const sentAt = existing.expiresAt - 5 * 60 * 1000;
+    if (Date.now() - sentAt < MIN_RESEND_GAP_MS) {
+      res.status(429).json({ error: 'Please wait before requesting a new code.' });
+      return;
+    }
+  }
+
+  const code = generateOTP();
+  const expiresAt = Date.now() + 5 * 60 * 1000;
+
+  stmts.upsertOTP.run(cleanPhone, code, expiresAt);
+
+  console.log(`\n📱 Resend OTP for ${cleanPhone}: ${code}\n`);
+
+  res.json({ success: true, message: 'OTP resent', dev_code: code });
+});
+
 // POST /api/users/verify-otp
-router.post('/verify-otp', (req: Request, res: Response) => {
+router.post('/verify-otp', rateLimiter(10, 10 * 60 * 1000), (req: Request, res: Response) => {
   const { phone, code } = req.body;
   if (!phone || !code) {
     res.status(400).json({ error: 'phone and code are required' });
@@ -97,7 +129,8 @@ router.post('/verify-otp', (req: Request, res: Response) => {
     return;
   }
 
-  if (code !== entry.code && code !== '123456') {
+  const allowDevBypass = process.env.NODE_ENV !== 'production';
+  if (code !== entry.code && !(allowDevBypass && code === '123456')) {
     res.status(400).json({ error: 'Invalid OTP code' });
     return;
   }

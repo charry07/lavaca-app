@@ -1,10 +1,19 @@
 import { useState, useCallback } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, FlatList, ActivityIndicator, RefreshControl } from 'react-native';
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  StyleSheet,
+  FlatList,
+  RefreshControl,
+} from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { useFocusEffect } from '@react-navigation/native';
 import { PaymentSession } from '@lavaca/shared';
-import { spacing, borderRadius, fontSize, type ThemeColors } from '../../src/constants/theme';
+import { spacing, borderRadius, fontSize, fontWeight, type ThemeColors } from '../../src/constants/theme';
 import { formatCOP } from '@lavaca/shared';
+import { GlassCard, SkeletonCard, ErrorState } from '../../src/components';
 import { useI18n } from '../../src/i18n';
 import { useTheme } from '../../src/theme';
 import { VacaLogo } from '../../src/components/VacaLogo';
@@ -21,6 +30,7 @@ export default function HomeTab() {
 
   const [sessions, setSessions] = useState<PaymentSession[]>([]);
   const [loadingSessions, setLoadingSessions] = useState(false);
+  const [fetchError, setFetchError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [filter, setFilter] = useState<'all' | 'open' | 'closed' | 'pending' | 'cancelled'>('all');
 
@@ -30,15 +40,15 @@ export default function HomeTab() {
     try {
       const data = await api.getUserHistory(user.id);
       setSessions(data);
-    } catch {
-      // silently ignore — API might not be running
+      setFetchError(null);
+    } catch (err: any) {
+      setFetchError(err.message || t('common.error'));
     } finally {
       setLoadingSessions(false);
       setRefreshing(false);
     }
   }, [user]);
 
-  // Refetch sessions every time this tab is focused
   useFocusEffect(
     useCallback(() => {
       loadSessions();
@@ -48,50 +58,38 @@ export default function HomeTab() {
   const renderSessionCard = ({ item }: { item: PaymentSession }) => {
     const participantCount = item.participants.length;
     const isOpen = item.status === 'open';
+    const isClosed = item.status === 'closed';
     const hasPendingApproval = item.participants.some((p) => p.status === 'reported');
+
+    const statusColor = isOpen ? colors.statusOpen : isClosed ? colors.statusClosed : colors.statusCancelled;
+    const statusBg = isOpen ? colors.statusOpenBg : isClosed ? colors.statusClosedBg : colors.statusCancelledBg;
+    const statusLabel = isOpen ? t('home.open') : isClosed ? t('home.closed') : t('home.cancelled');
+
     return (
-      <TouchableOpacity
-        style={s.sessionCard}
-        onPress={() => router.push(`/session/${item.joinCode}`)}
-        activeOpacity={0.7}
-      >
-        <View style={s.sessionCardHeader}>
-          <Text style={s.sessionCardTitle} numberOfLines={1}>
-            {item.description || t('history.untitled')}
-          </Text>
-          <View style={s.badgeRow}>
-            {hasPendingApproval && (
-              <View style={s.pendingBadge}>
-                <Text style={s.pendingBadgeText}>{t('home.pendingApproval')}</Text>
+      <TouchableOpacity onPress={() => router.push(`/session/${item.joinCode}`)} activeOpacity={0.7}>
+        <GlassCard style={s.sessionCard}>
+          <View style={s.sessionCardHeader}>
+            <Text style={s.sessionCardTitle} numberOfLines={1}>
+              {item.description || t('history.untitled')}
+            </Text>
+            <View style={s.badgeRow}>
+              {hasPendingApproval && (
+                <View style={[s.badge, { backgroundColor: colors.statusPendingBg, borderColor: colors.statusPending }]}>
+                  <Text style={[s.badgeText, { color: colors.statusPending }]}>{t('home.pendingApproval')}</Text>
+                </View>
+              )}
+              <View style={[s.badge, { backgroundColor: statusBg }]}>
+                <Text style={[s.badgeText, { color: statusColor }]}>{statusLabel}</Text>
               </View>
-            )}
-            <View
-              style={[
-                s.statusBadge,
-                isOpen ? s.statusOpen : item.status === 'closed' ? s.statusClosed : s.statusCancelled,
-              ]}
-            >
-              <Text
-                style={[
-                  s.statusText,
-                  isOpen ? s.statusTextOpen : item.status === 'closed' ? s.statusTextClosed : s.statusTextCancelled,
-                ]}
-              >
-                {isOpen
-                  ? t('home.open')
-                  : item.status === 'closed'
-                    ? t('home.closed')
-                    : t('home.cancelled')}
-              </Text>
             </View>
           </View>
-        </View>
-        <View style={s.sessionCardBody}>
-          <Text style={s.sessionAmount}>{formatCOP(item.totalAmount)}</Text>
-          <Text style={s.sessionMeta}>
-            {participantCount} {participantCount === 1 ? t('common.person') : t('common.people')} · {item.joinCode}
-          </Text>
-        </View>
+          <View style={s.sessionCardBody}>
+            <Text style={s.sessionAmount}>{formatCOP(item.totalAmount)}</Text>
+            <Text style={s.sessionMeta}>
+              {participantCount} {participantCount === 1 ? t('common.person') : t('common.people')} · {item.joinCode}
+            </Text>
+          </View>
+        </GlassCard>
       </TouchableOpacity>
     );
   };
@@ -101,6 +99,14 @@ export default function HomeTab() {
     if (filter === 'pending') return item.participants.some((p) => p.status === 'reported');
     return item.status === filter;
   });
+
+  const FILTERS: { key: typeof filter; label: string }[] = [
+    { key: 'all', label: t('home.filterAll') },
+    { key: 'open', label: t('home.filterOpen') },
+    { key: 'closed', label: t('home.filterClosed') },
+    { key: 'pending', label: t('home.filterPending') },
+    { key: 'cancelled', label: t('home.filterCancelled') },
+  ];
 
   return (
     <FlatList
@@ -128,70 +134,54 @@ export default function HomeTab() {
           </View>
 
           <View style={s.actions}>
-            <TouchableOpacity style={s.button} onPress={() => router.push('/create')}>
-              <Text style={s.buttonText}>{t('home.createTable')}</Text>
+            <TouchableOpacity
+              style={{ borderRadius: borderRadius.md, overflow: 'hidden', marginBottom: spacing.md }}
+              onPress={() => router.push('/create')}
+            >
+              <LinearGradient
+                colors={[colors.primary, colors.accent || colors.primary]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={s.button}
+              >
+                <Text style={s.buttonText}>{t('home.createTable')}</Text>
+              </LinearGradient>
             </TouchableOpacity>
 
-            <TouchableOpacity
-              style={[s.button, s.buttonSecondary]}
-              onPress={() => router.push('/join')}
-            >
-              <Text style={[s.buttonText, s.buttonTextSecondary]}>
-                {t('home.joinTable')}
-              </Text>
+            <TouchableOpacity style={s.buttonSecondary} onPress={() => router.push('/join')}>
+              <Text style={s.buttonTextSecondary}>{t('home.joinTable')}</Text>
             </TouchableOpacity>
           </View>
 
-          {/* Section title for sessions list */}
           <View style={s.sectionHeader}>
             <Text style={s.sectionTitle}>{t('home.myTables')}</Text>
-            {loadingSessions && <ActivityIndicator size="small" color={colors.accent} />}
           </View>
 
           <View style={s.filtersRow}>
-            <TouchableOpacity
-              style={[s.filterChip, filter === 'all' && s.filterChipActive]}
-              onPress={() => setFilter('all')}
-            >
-              <Text style={[s.filterChipText, filter === 'all' && s.filterChipTextActive]}>
-                {t('home.filterAll')}
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[s.filterChip, filter === 'open' && s.filterChipActive]}
-              onPress={() => setFilter('open')}
-            >
-              <Text style={[s.filterChipText, filter === 'open' && s.filterChipTextActive]}>
-                {t('home.filterOpen')}
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[s.filterChip, filter === 'closed' && s.filterChipActive]}
-              onPress={() => setFilter('closed')}
-            >
-              <Text style={[s.filterChipText, filter === 'closed' && s.filterChipTextActive]}>
-                {t('home.filterClosed')}
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[s.filterChip, filter === 'pending' && s.filterChipActive]}
-              onPress={() => setFilter('pending')}
-            >
-              <Text style={[s.filterChipText, filter === 'pending' && s.filterChipTextActive]}>
-                {t('home.filterPending')}
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[s.filterChip, filter === 'cancelled' && s.filterChipActive]}
-              onPress={() => setFilter('cancelled')}
-            >
-              <Text style={[s.filterChipText, filter === 'cancelled' && s.filterChipTextActive]}>
-                {t('home.filterCancelled')}
-              </Text>
-            </TouchableOpacity>
+            {FILTERS.map((f) => (
+              <TouchableOpacity
+                key={f.key}
+                style={[s.filterChip, filter === f.key && s.filterChipActive]}
+                onPress={() => setFilter(f.key)}
+              >
+                <Text style={[s.filterChipText, filter === f.key && s.filterChipTextActive]}>
+                  {f.label}
+                </Text>
+              </TouchableOpacity>
+            ))}
           </View>
 
-          {!loadingSessions && filteredSessions.length === 0 && (
+          {loadingSessions && (
+            <View style={{ gap: spacing.sm }}>
+              {[0, 1, 2].map((i) => <SkeletonCard key={i} />)}
+            </View>
+          )}
+
+          {!loadingSessions && fetchError && (
+            <ErrorState message={fetchError} onRetry={() => loadSessions()} />
+          )}
+
+          {!loadingSessions && !fetchError && filteredSessions.length === 0 && (
             <View style={s.emptyContainer}>
               <Text style={s.emptyText}>🐄</Text>
               <Text style={s.emptyLabel}>{t('home.noTables')}</Text>
@@ -224,37 +214,46 @@ const createStyles = (colors: ThemeColors) =>
       color: colors.textSecondary,
       textAlign: 'center',
       lineHeight: 24,
+      marginTop: spacing.sm,
     },
     actions: {
       marginBottom: spacing.xl,
     },
     button: {
-      backgroundColor: colors.primary,
       paddingVertical: spacing.md,
-      marginBottom: spacing.md,
       paddingHorizontal: spacing.xl,
       borderRadius: borderRadius.md,
       alignItems: 'center',
     },
     buttonText: {
       fontSize: fontSize.lg,
-      fontWeight: '700',
-      color: colors.background,
+      fontWeight: fontWeight.bold,
+      color: '#fff',
     },
     buttonSecondary: {
-      backgroundColor: 'transparent',
-      borderWidth: 2,
+      backgroundColor: colors.glass,
+      borderWidth: 1.5,
       borderColor: colors.primary,
+      paddingVertical: spacing.md,
+      paddingHorizontal: spacing.xl,
+      borderRadius: borderRadius.md,
+      alignItems: 'center',
     },
     buttonTextSecondary: {
+      fontSize: fontSize.lg,
+      fontWeight: fontWeight.semibold,
       color: colors.primary,
     },
-    // ── Sessions section ──
     sectionHeader: {
       flexDirection: 'row',
       justifyContent: 'space-between',
       alignItems: 'center',
       marginBottom: spacing.md,
+    },
+    sectionTitle: {
+      fontSize: fontSize.xl,
+      fontWeight: fontWeight.bold,
+      color: colors.text,
     },
     filtersRow: {
       flexDirection: 'row',
@@ -266,9 +265,9 @@ const createStyles = (colors: ThemeColors) =>
       paddingHorizontal: spacing.sm,
       paddingVertical: 6,
       borderRadius: borderRadius.full,
-      backgroundColor: colors.surface,
+      backgroundColor: colors.glass,
       borderWidth: 1,
-      borderColor: colors.surfaceBorder,
+      borderColor: colors.glassBorder,
     },
     filterChipActive: {
       backgroundColor: colors.primary + '22',
@@ -276,24 +275,16 @@ const createStyles = (colors: ThemeColors) =>
     },
     filterChipText: {
       fontSize: fontSize.xs,
-      fontWeight: '600',
+      fontWeight: fontWeight.semibold,
       color: colors.textSecondary,
     },
     filterChipTextActive: {
       color: colors.primary,
     },
-    sectionTitle: {
-      fontSize: fontSize.xl,
-      fontWeight: '700',
-      color: colors.text,
-    },
     sessionCard: {
-      backgroundColor: colors.surface,
-      borderRadius: borderRadius.lg,
       padding: spacing.md,
       marginBottom: spacing.sm,
-      borderWidth: 1,
-      borderColor: colors.surfaceBorder,
+      borderRadius: borderRadius.lg,
     },
     sessionCardHeader: {
       flexDirection: 'row',
@@ -308,50 +299,20 @@ const createStyles = (colors: ThemeColors) =>
     },
     sessionCardTitle: {
       fontSize: fontSize.md,
-      fontWeight: '600',
+      fontWeight: fontWeight.semibold,
       color: colors.text,
       flex: 1,
       marginRight: spacing.sm,
     },
-    pendingBadge: {
+    badge: {
       paddingHorizontal: spacing.sm,
       paddingVertical: 2,
       borderRadius: borderRadius.sm,
-      backgroundColor: '#f59e0b20',
       borderWidth: 1,
-      borderColor: '#f59e0b',
     },
-    pendingBadgeText: {
+    badgeText: {
       fontSize: fontSize.xs,
-      fontWeight: '700',
-      color: '#f59e0b',
-    },
-    statusBadge: {
-      paddingHorizontal: spacing.sm,
-      paddingVertical: 2,
-      borderRadius: borderRadius.sm,
-    },
-    statusOpen: {
-      backgroundColor: '#22c55e20',
-    },
-    statusClosed: {
-      backgroundColor: '#ef444420',
-    },
-    statusCancelled: {
-      backgroundColor: '#64748b20',
-    },
-    statusText: {
-      fontSize: fontSize.xs,
-      fontWeight: '600',
-    },
-    statusTextOpen: {
-      color: '#22c55e',
-    },
-    statusTextClosed: {
-      color: '#ef4444',
-    },
-    statusTextCancelled: {
-      color: '#64748b',
+      fontWeight: fontWeight.bold,
     },
     sessionCardBody: {
       flexDirection: 'row',
@@ -360,14 +321,13 @@ const createStyles = (colors: ThemeColors) =>
     },
     sessionAmount: {
       fontSize: fontSize.lg,
-      fontWeight: '700',
+      fontWeight: fontWeight.bold,
       color: colors.accent,
     },
     sessionMeta: {
       fontSize: fontSize.sm,
       color: colors.textMuted,
     },
-    // ── Empty state ──
     emptyContainer: {
       alignItems: 'center',
       paddingVertical: spacing.xl,
@@ -378,7 +338,7 @@ const createStyles = (colors: ThemeColors) =>
     },
     emptyLabel: {
       fontSize: fontSize.md,
-      fontWeight: '600',
+      fontWeight: fontWeight.semibold,
       color: colors.textSecondary,
       marginBottom: spacing.xs,
     },

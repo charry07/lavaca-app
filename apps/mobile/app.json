@@ -14,7 +14,10 @@
       "backgroundColor": "#1a1a2e"
     },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "infoPlist": {
+        "NSCameraUsageDescription": "La Vaca needs camera to scan QR codes to join tables"
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -29,7 +32,8 @@
       "bundler": "metro"
     },
     "plugins": [
-      "expo-router"
+      "expo-router",
+      "expo-camera"
     ]
   }
 }

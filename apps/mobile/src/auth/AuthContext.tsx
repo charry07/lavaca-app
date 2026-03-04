@@ -14,6 +14,7 @@ interface AuthContextValue {
   pendingPhone: string | null;
   devCode: string | null;
   sendOTP: (phone: string) => Promise<void>;
+  resendOTP: () => Promise<void>;
   verifyOTP: (code: string) => Promise<void>;
   register: (displayName: string, username: string, documentId: string) => Promise<void>;
   logout: () => Promise<void>;
@@ -29,6 +30,7 @@ const AuthContext = createContext<AuthContextValue>({
   pendingPhone: null,
   devCode: null,
   sendOTP: async () => {},
+  resendOTP: async () => {},
   verifyOTP: async () => {},
   register: async () => {},
   logout: async () => {},
@@ -75,6 +77,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setDevCode(result.dev_code);
     setAuthStep('otp');
   }, []);
+
+  const resendOTP = useCallback(async () => {
+    if (!pendingPhone) throw new Error('No pending phone');
+    const result = await api.resendOTP(pendingPhone);
+    setDevCode(result.dev_code);
+  }, [pendingPhone]);
 
   const verifyOTP = useCallback(async (code: string) => {
     if (!pendingPhone) throw new Error('No pending phone');
@@ -129,7 +137,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   return (
     <AuthContext.Provider value={{
       user, isLoading, authStep, pendingPhone, devCode,
-      sendOTP, verifyOTP, register, logout, deleteAccount, updateProfile, resetAuth,
+      sendOTP, resendOTP, verifyOTP, register, logout, deleteAccount, updateProfile, resetAuth,
     }}>
       {children}
     </AuthContext.Provider>

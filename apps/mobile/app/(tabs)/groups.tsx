@@ -11,8 +11,10 @@ import {
   ActivityIndicator,
   RefreshControl,
 } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
-import { spacing, borderRadius, fontSize, type ThemeColors } from '../../src/constants/theme';
+import { spacing, borderRadius, fontSize, fontWeight, type ThemeColors } from '../../src/constants/theme';
+import { GlassCard, SkeletonCard, EmptyState } from '../../src/components';
 import { useI18n } from '../../src/i18n';
 import { useTheme } from '../../src/theme';
 import { useAuth } from '../../src/auth';
@@ -27,6 +29,14 @@ interface GroupWithMembers {
   createdBy: string;
   createdAt: Date;
   members: { id: string; displayName: string; username: string; avatarUrl?: string }[];
+}
+
+// Deterministic accent color from group name for the left strip
+function nameToAccent(name: string): string {
+  const ACCENTS = ['#4ade80', '#60a5fa', '#f59e0b', '#a78bfa', '#f472b6', '#34d399'];
+  let hash = 0;
+  for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
+  return ACCENTS[Math.abs(hash) % ACCENTS.length];
 }
 
 export default function GroupsTab() {
@@ -52,7 +62,7 @@ export default function GroupsTab() {
     try {
       const data = await api.getUserGroups(user.id);
       setGroups(data);
-    } catch (err) {
+    } catch {
       showError(t('common.error'));
     } finally {
       setLoading(false);
@@ -111,36 +121,44 @@ export default function GroupsTab() {
     );
   };
 
-  const renderGroup = ({ item }: { item: GroupWithMembers }) => (
-    <TouchableOpacity
-      style={s.groupCard}
-      onPress={() => router.push(`/group/${item.id}` as any)}
-      activeOpacity={0.7}
-    >
-      <Text style={s.groupIcon}>{item.icon || '👥'}</Text>
-      <View style={s.groupInfo}>
-        <Text style={s.groupName}>{item.name}</Text>
-        <Text style={s.groupMembers}>
-          {item.members.length} {t('groups.members')}
-        </Text>
-        <Text style={s.groupMemberNames} numberOfLines={1}>
-          {item.members.map((m) => m.displayName).join(', ')}
-        </Text>
-      </View>
+  const renderGroup = ({ item }: { item: GroupWithMembers }) => {
+    const accent = nameToAccent(item.name);
+    return (
       <TouchableOpacity
-        style={s.deleteBtn}
-        onPress={() => handleDeleteGroup(item.id, item.name)}
-        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+        onPress={() => router.push(`/group/${item.id}` as any)}
+        activeOpacity={0.7}
       >
-        <Text style={s.deleteBtnText}>🗑️</Text>
+        <GlassCard style={s.groupCard}>
+          {/* Left accent strip */}
+          <View style={[s.accentStrip, { backgroundColor: accent }]} />
+          <Text style={s.groupIcon}>{item.icon || '👥'}</Text>
+          <View style={s.groupInfo}>
+            <Text style={s.groupName}>{item.name}</Text>
+            <Text style={s.groupMembers}>
+              {item.members.length} {t('groups.members')}
+            </Text>
+            <Text style={s.groupMemberNames} numberOfLines={1}>
+              {item.members.map((m) => m.displayName).join(', ')}
+            </Text>
+          </View>
+          <TouchableOpacity
+            style={s.deleteBtn}
+            onPress={() => handleDeleteGroup(item.id, item.name)}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          >
+            <Text style={s.deleteBtnText}>🗑️</Text>
+          </TouchableOpacity>
+        </GlassCard>
       </TouchableOpacity>
-    </TouchableOpacity>
-  );
+    );
+  };
 
   if (loading) {
     return (
-      <View style={s.centered}>
-        <ActivityIndicator size="large" color={colors.primary} />
+      <View style={s.container}>
+        <View style={{ padding: spacing.md, gap: spacing.md }}>
+          {[0, 1, 2, 3].map((i) => <SkeletonCard key={i} />)}
+        </View>
       </View>
     );
   }
@@ -148,10 +166,13 @@ export default function GroupsTab() {
   return (
     <View style={s.container}>
       {groups.length === 0 ? (
-        <View style={s.empty}>
-          <Text style={s.emptyIcon}>👥</Text>
-          <Text style={s.emptyText}>{t('groups.empty')}</Text>
-          <Text style={s.emptyHint}>{t('groups.emptyHint')}</Text>
+        <View style={s.emptyWrapper}>
+          <EmptyState
+            emoji="👥"
+            title={t('groups.empty')}
+            hint={t('groups.emptyHint')}
+            action={{ label: t('groups.createButton'), onPress: () => setShowCreate(true) }}
+          />
         </View>
       ) : (
         <FlatList
@@ -169,13 +190,22 @@ export default function GroupsTab() {
         />
       )}
 
-      <TouchableOpacity style={s.fab} onPress={() => setShowCreate(true)}>
-        <Text style={s.fabText}>+</Text>
+      {/* Gradient FAB */}
+      <TouchableOpacity style={s.fab} onPress={() => setShowCreate(true)} activeOpacity={0.85}>
+        <LinearGradient
+          colors={[colors.primary, colors.accent || colors.primary]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={s.fabGradient}
+        >
+          <Text style={s.fabText}>+</Text>
+        </LinearGradient>
       </TouchableOpacity>
 
+      {/* Create Group Modal */}
       <Modal visible={showCreate} transparent animationType="slide">
-        <View style={s.modalOverlay}>
-          <View style={s.modalContent}>
+        <View style={[s.modalOverlay, { backgroundColor: colors.overlay }]}>
+          <GlassCard style={s.modalContent}>
             <Text style={s.modalTitle}>{t('groups.createTitle')}</Text>
 
             <Text style={s.fieldLabel}>{t('groups.nameLabel')}</Text>
@@ -202,25 +232,29 @@ export default function GroupsTab() {
             </View>
 
             <View style={s.modalButtons}>
-              <TouchableOpacity
-                style={s.cancelButton}
-                onPress={() => setShowCreate(false)}
-              >
+              <TouchableOpacity style={s.cancelButton} onPress={() => setShowCreate(false)}>
                 <Text style={s.cancelButtonText}>{t('profile.cancel')}</Text>
               </TouchableOpacity>
               <TouchableOpacity
-                style={[s.createButton, creating && s.buttonDisabled]}
+                style={{ flex: 1, borderRadius: borderRadius.md, overflow: 'hidden', opacity: creating ? 0.6 : 1 }}
                 onPress={handleCreate}
                 disabled={creating}
               >
-                {creating ? (
-                  <ActivityIndicator color={colors.background} size="small" />
-                ) : (
-                  <Text style={s.createButtonText}>{t('groups.createButton')}</Text>
-                )}
+                <LinearGradient
+                  colors={[colors.primary, colors.accent || colors.primary]}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                  style={s.createButton}
+                >
+                  {creating ? (
+                    <ActivityIndicator color="#fff" size="small" />
+                  ) : (
+                    <Text style={s.createButtonText}>{t('groups.createButton')}</Text>
+                  )}
+                </LinearGradient>
               </TouchableOpacity>
             </View>
-          </View>
+          </GlassCard>
         </View>
       </Modal>
     </View>
@@ -230,31 +264,28 @@ export default function GroupsTab() {
 const createStyles = (colors: ThemeColors) =>
   StyleSheet.create({
     container: { flex: 1, backgroundColor: colors.background },
-    centered: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: colors.background },
-    empty: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: spacing.xl },
-    emptyIcon: { fontSize: 64, marginBottom: spacing.md },
-    emptyText: { fontSize: fontSize.lg, fontWeight: '600', color: colors.text, marginBottom: spacing.xs },
-    emptyHint: { fontSize: fontSize.md, color: colors.textMuted, textAlign: 'center' },
-    list: { padding: spacing.md },
+    emptyWrapper: { flex: 1, justifyContent: 'center', padding: spacing.xl },
+    list: { padding: spacing.md, paddingBottom: 100 },
     groupCard: {
       flexDirection: 'row',
-      backgroundColor: colors.surface,
-      borderRadius: borderRadius.lg,
       padding: spacing.md,
       marginBottom: spacing.sm,
-      borderWidth: 1,
-      borderColor: colors.surfaceBorder,
       alignItems: 'center',
+      borderRadius: borderRadius.lg,
+      overflow: 'hidden',
     },
-    groupIcon: { fontSize: 40, marginRight: spacing.md },
+    accentStrip: {
+      width: 4,
+      alignSelf: 'stretch',
+      borderRadius: 2,
+      marginRight: spacing.md,
+    },
+    groupIcon: { fontSize: 36, marginRight: spacing.md },
     groupInfo: { flex: 1 },
-    groupName: { fontSize: fontSize.lg, fontWeight: '700', color: colors.text },
+    groupName: { fontSize: fontSize.lg, fontWeight: fontWeight.bold, color: colors.text },
     groupMembers: { fontSize: fontSize.sm, color: colors.textSecondary, marginTop: 2 },
     groupMemberNames: { fontSize: fontSize.xs, color: colors.textMuted, marginTop: 2 },
-    deleteBtn: {
-      padding: spacing.sm,
-      marginLeft: spacing.sm,
-    },
+    deleteBtn: { padding: spacing.sm, marginLeft: spacing.sm },
     deleteBtnText: { fontSize: 20 },
     fab: {
       position: 'absolute',
@@ -263,32 +294,40 @@ const createStyles = (colors: ThemeColors) =>
       width: 56,
       height: 56,
       borderRadius: 28,
-      backgroundColor: colors.primary,
+      overflow: 'hidden',
+      shadowColor: colors.primary,
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.4,
+      shadowRadius: 8,
+      elevation: 8,
+    },
+    fabGradient: {
+      flex: 1,
       justifyContent: 'center',
       alignItems: 'center',
-      shadowColor: '#000',
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.3,
-      shadowRadius: 4,
-      elevation: 5,
     },
-    fabText: { fontSize: 28, fontWeight: '700', color: colors.background, marginTop: -2 },
+    fabText: { fontSize: 28, fontWeight: fontWeight.bold, color: '#fff', marginTop: -2 },
     modalOverlay: {
       flex: 1,
-      backgroundColor: 'rgba(0,0,0,0.5)',
       justifyContent: 'flex-end',
     },
     modalContent: {
-      backgroundColor: colors.background,
+      borderBottomLeftRadius: 0,
+      borderBottomRightRadius: 0,
       borderTopLeftRadius: borderRadius.xl,
       borderTopRightRadius: borderRadius.xl,
       padding: spacing.xl,
       paddingBottom: spacing.xxl,
     },
-    modalTitle: { fontSize: fontSize.xl, fontWeight: '700', color: colors.text, marginBottom: spacing.lg },
+    modalTitle: {
+      fontSize: fontSize.xl,
+      fontWeight: fontWeight.bold,
+      color: colors.text,
+      marginBottom: spacing.lg,
+    },
     fieldLabel: {
       fontSize: fontSize.sm,
-      fontWeight: '600',
+      fontWeight: fontWeight.semibold,
       color: colors.textSecondary,
       marginBottom: spacing.xs,
       marginTop: spacing.sm,
@@ -296,11 +335,11 @@ const createStyles = (colors: ThemeColors) =>
     input: {
       fontSize: fontSize.md,
       color: colors.text,
-      backgroundColor: colors.surface,
+      backgroundColor: colors.glass,
       borderRadius: borderRadius.md,
       padding: spacing.md,
       borderWidth: 1,
-      borderColor: colors.surfaceBorder,
+      borderColor: colors.glassBorder,
       marginBottom: spacing.sm,
     },
     iconPicker: {
@@ -316,7 +355,7 @@ const createStyles = (colors: ThemeColors) =>
       alignItems: 'center',
       marginRight: spacing.sm,
       marginBottom: spacing.sm,
-      backgroundColor: colors.surface,
+      backgroundColor: colors.glass,
       borderWidth: 2,
       borderColor: 'transparent',
     },
@@ -328,24 +367,30 @@ const createStyles = (colors: ThemeColors) =>
     modalButtons: {
       flexDirection: 'row',
       marginTop: spacing.lg,
+      gap: spacing.sm,
     },
     cancelButton: {
       flex: 1,
       paddingVertical: spacing.md,
       alignItems: 'center',
       borderRadius: borderRadius.md,
-      backgroundColor: colors.surface,
-      marginRight: spacing.sm,
+      backgroundColor: colors.glass,
+      borderWidth: 1,
+      borderColor: colors.glassBorder,
     },
-    cancelButtonText: { fontSize: fontSize.md, fontWeight: '600', color: colors.text },
+    cancelButtonText: {
+      fontSize: fontSize.md,
+      fontWeight: fontWeight.semibold,
+      color: colors.text,
+    },
     createButton: {
-      flex: 1,
       paddingVertical: spacing.md,
       alignItems: 'center',
       borderRadius: borderRadius.md,
-      backgroundColor: colors.primary,
-      marginLeft: spacing.sm,
     },
-    createButtonText: { fontSize: fontSize.md, fontWeight: '700', color: colors.background },
-    buttonDisabled: { opacity: 0.6 },
+    createButtonText: {
+      fontSize: fontSize.md,
+      fontWeight: fontWeight.bold,
+      color: '#fff',
+    },
   });

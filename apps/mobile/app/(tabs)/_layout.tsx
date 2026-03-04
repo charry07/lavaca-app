@@ -47,24 +47,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  emoji: {
-    fontSize: 18,
-    lineHeight: 22,
-  },
-  iconLabel: {
-    fontSize: 10,
-    fontWeight: '500',
-    letterSpacing: 0.2,
-  },
-  iconLabelActive: {
-    fontWeight: '700',
-  },
-  activeDot: {
-    width: 4,
-    height: 4,
-    borderRadius: 2,
-    marginTop: 1,
-  },
+  emoji: { fontSize: 18, lineHeight: 22 },
+  iconLabel: { fontSize: 10, fontWeight: '500', letterSpacing: 0.2 },
+  iconLabelActive: { fontWeight: '700' },
+  activeDot: { width: 4, height: 4, borderRadius: 2, marginTop: 1 },
 });
 
 export default function TabLayout() {
@@ -80,16 +66,18 @@ export default function TabLayout() {
         headerShadowVisible: false,
         tabBarShowLabel: false,
         tabBarStyle: {
-          backgroundColor: colors.surface,
-          borderTopWidth: 0,
+          // Glass tab bar
+          backgroundColor: colors.glass,
+          borderTopWidth: 1,
+          borderTopColor: colors.glassBorder,
           elevation: 0,
           height: Platform.OS === 'ios' ? 82 : 64,
           paddingBottom: Platform.OS === 'ios' ? 20 : 6,
           paddingTop: 4,
           shadowColor: '#000',
           shadowOffset: { width: 0, height: -2 },
-          shadowOpacity: 0.08,
-          shadowRadius: 8,
+          shadowOpacity: 0.15,
+          shadowRadius: 12,
         },
         tabBarActiveTintColor: colors.primary,
         tabBarInactiveTintColor: colors.textMuted,
@@ -101,13 +89,7 @@ export default function TabLayout() {
           title: t('tabs.home'),
           headerShown: false,
           tabBarIcon: ({ focused }) => (
-            <TabIcon
-              emoji="🏠"
-              label={t('tabs.home')}
-              focused={focused}
-              activeColor={colors.primary}
-              inactiveColor={colors.textMuted}
-            />
+            <TabIcon emoji="🏠" label={t('tabs.home')} focused={focused} activeColor={colors.primary} inactiveColor={colors.textMuted} />
           ),
         }}
       />
@@ -116,13 +98,7 @@ export default function TabLayout() {
         options={{
           title: t('tabs.groups'),
           tabBarIcon: ({ focused }) => (
-            <TabIcon
-              emoji="👥"
-              label={t('tabs.groups')}
-              focused={focused}
-              activeColor={colors.primary}
-              inactiveColor={colors.textMuted}
-            />
+            <TabIcon emoji="👥" label={t('tabs.groups')} focused={focused} activeColor={colors.primary} inactiveColor={colors.textMuted} />
           ),
         }}
       />
@@ -131,13 +107,7 @@ export default function TabLayout() {
         options={{
           title: t('tabs.history'),
           tabBarIcon: ({ focused }) => (
-            <TabIcon
-              emoji="📋"
-              label={t('tabs.history')}
-              focused={focused}
-              activeColor={colors.primary}
-              inactiveColor={colors.textMuted}
-            />
+            <TabIcon emoji="📋" label={t('tabs.history')} focused={focused} activeColor={colors.primary} inactiveColor={colors.textMuted} />
           ),
         }}
       />
@@ -146,13 +116,7 @@ export default function TabLayout() {
         options={{
           title: t('tabs.feed'),
           tabBarIcon: ({ focused }) => (
-            <TabIcon
-              emoji="📰"
-              label={t('tabs.feed')}
-              focused={focused}
-              activeColor={colors.primary}
-              inactiveColor={colors.textMuted}
-            />
+            <TabIcon emoji="📰" label={t('tabs.feed')} focused={focused} activeColor={colors.primary} inactiveColor={colors.textMuted} />
           ),
         }}
       />
@@ -161,13 +125,7 @@ export default function TabLayout() {
         options={{
           title: t('tabs.profile'),
           tabBarIcon: ({ focused }) => (
-            <TabIcon
-              emoji="👤"
-              label={t('tabs.profile')}
-              focused={focused}
-              activeColor={colors.primary}
-              inactiveColor={colors.textMuted}
-            />
+            <TabIcon emoji="👤" label={t('tabs.profile')} focused={focused} activeColor={colors.primary} inactiveColor={colors.textMuted} />
           ),
         }}
       />

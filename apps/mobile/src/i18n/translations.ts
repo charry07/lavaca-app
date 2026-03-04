@@ -67,6 +67,10 @@ const es = {
   'join.noCode': 'Ingresa el codigo de la mesa',
   'join.noName': 'Ingresa tu nombre',
   'join.errorJoining': 'No se pudo unir a la mesa',
+  'join.scanQR': 'Escanear código QR',
+  'join.scanHint': 'Apunta la cámara al código QR de la mesa',
+  'join.permissionDenied': 'Se necesita permiso de cámara para escanear QR',
+  'join.scanning': 'Escaneando...',
 
   // Session
   'session.notFound': 'Mesa no encontrada',
@@ -174,6 +178,9 @@ const es = {
   'auth.tooManyAttempts': 'Demasiados intentos fallidos.',
   'auth.blockedFor': 'Espera {{s}}s para volver a intentar',
   'auth.blockedReturn': 'Volviendo al inicio...',
+  'auth.resendCode': 'Reenviar código',
+  'auth.resendIn': 'Reenviar en {{s}}s',
+  'auth.resendSuccess': 'Código reenviado',
 
   // Auth - Register Step
   'auth.registerTitle': 'Completa tu perfil 🐄',
@@ -308,6 +315,10 @@ const en: TranslationKeys = {
   'join.noCode': 'Enter the table code',
   'join.noName': 'Enter your name',
   'join.errorJoining': 'Could not join the table',
+  'join.scanQR': 'Scan QR code',
+  'join.scanHint': 'Point the camera at the table QR code',
+  'join.permissionDenied': 'Camera permission is needed to scan QR codes',
+  'join.scanning': 'Scanning...',
 
   // Session
   'session.notFound': 'Table not found',
@@ -415,6 +426,9 @@ const en: TranslationKeys = {
   'auth.tooManyAttempts': 'Too many failed attempts.',
   'auth.blockedFor': 'Wait {{s}}s before trying again',
   'auth.blockedReturn': 'Returning to start...',
+  'auth.resendCode': 'Resend code',
+  'auth.resendIn': 'Resend in {{s}}s',
+  'auth.resendSuccess': 'Code resent',
 
   // Auth - Register Step
   'auth.registerTitle': 'Complete your profile 🐄',
@@ -549,6 +563,10 @@ const pt: TranslationKeys = {
   'join.noCode': 'Insira o código da mesa',
   'join.noName': 'Insira seu nome',
   'join.errorJoining': 'Não foi possível entrar na mesa',
+  'join.scanQR': 'Escanear código QR',
+  'join.scanHint': 'Aponte a câmera para o código QR da mesa',
+  'join.permissionDenied': 'Permissão de câmera é necessária para escanear QR',
+  'join.scanning': 'Escaneando...',
 
   // Session
   'session.notFound': 'Mesa não encontrada',
@@ -656,6 +674,9 @@ const pt: TranslationKeys = {
   'auth.tooManyAttempts': 'Muitas tentativas incorretas.',
   'auth.blockedFor': 'Aguarde {{s}}s para tentar novamente',
   'auth.blockedReturn': 'Voltando ao início...',
+  'auth.resendCode': 'Reenviar código',
+  'auth.resendIn': 'Reenviar em {{s}}s',
+  'auth.resendSuccess': 'Código reenviado',
 
   // Auth - Register Step
   'auth.registerTitle': 'Complete seu perfil 🐄',

@@ -5,13 +5,13 @@ import {
   TouchableOpacity,
   StyleSheet,
   FlatList,
-  ActivityIndicator,
   RefreshControl,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { PaymentSession } from '@lavaca/shared';
 import { formatCOP } from '@lavaca/shared';
-import { spacing, borderRadius, fontSize, type ThemeColors } from '../../src/constants/theme';
+import { spacing, borderRadius, fontSize, fontWeight, type ThemeColors } from '../../src/constants/theme';
+import { GlassCard, SkeletonCard, EmptyState } from '../../src/components';
 import { useI18n } from '../../src/i18n';
 import { useTheme } from '../../src/theme';
 import { useAuth } from '../../src/auth';
@@ -29,7 +29,7 @@ const MODE_EMOJI: Record<string, string> = {
   roulette: '🎰',
 };
 
-function formatAmount(amount: number, currency: string = 'COP'): string {
+function formatAmount(amount: number, currency = 'COP'): string {
   if (currency === 'COP') return formatCOP(amount);
   return new Intl.NumberFormat('en-US', {
     style: 'currency',
@@ -39,14 +39,11 @@ function formatAmount(amount: number, currency: string = 'COP'): string {
   }).format(amount);
 }
 
-function timeAgo(date: Date | string, nowLabel: string = 'now'): string {
-  const now = new Date().getTime();
-  const then = new Date(date).getTime();
-  const diff = now - then;
+function timeAgo(date: Date | string, nowLabel = 'now'): string {
+  const diff = Date.now() - new Date(date).getTime();
   const mins = Math.floor(diff / 60000);
   const hrs = Math.floor(diff / 3600000);
   const days = Math.floor(diff / 86400000);
-
   if (mins < 1) return nowLabel;
   if (mins < 60) return `${mins}m`;
   if (hrs < 24) return `${hrs}h`;
@@ -70,74 +67,81 @@ export default function HistoryTab() {
     try {
       const data = await api.getUserHistory(user.id);
       setSessions(data);
-    } catch (err) {
-      console.error('Error fetching history:', err);
+    } catch {
+      // silently ignore
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
   }, [user]);
 
-  useEffect(() => {
-    fetchHistory();
-  }, [fetchHistory]);
+  useEffect(() => { fetchHistory(); }, [fetchHistory]);
 
   const renderSession = ({ item }: { item: PaymentSession }) => {
     const myParticipation = item.participants.find((p) => p.userId === user?.id);
     const myAmount = myParticipation?.amount || 0;
     const isAdmin = item.adminId === user?.id;
+    const isPaid = myParticipation?.status === 'confirmed';
 
     return (
-      <TouchableOpacity
-        style={s.card}
-        onPress={() => router.push(`/session/${item.joinCode}` as any)}
-      >
-        <View style={s.cardHeader}>
-          <Text style={s.statusEmoji}>{STATUS_EMOJI[item.status] || '🟢'}</Text>
-          <View style={s.cardHeaderInfo}>
-            <Text style={s.cardTitle} numberOfLines={1}>
-              {item.description || t('history.untitled')}
-            </Text>
-            <Text style={s.cardTime}>{timeAgo(item.createdAt, t('common.now'))}</Text>
+      <TouchableOpacity onPress={() => router.push(`/session/${item.joinCode}` as any)}>
+        <GlassCard style={s.card}>
+          <View style={s.cardHeader}>
+            <Text style={s.statusEmoji}>{STATUS_EMOJI[item.status] || '🟢'}</Text>
+            <View style={s.cardHeaderInfo}>
+              <Text style={s.cardTitle} numberOfLines={1}>
+                {item.description || t('history.untitled')}
+              </Text>
+              <Text style={s.cardTime}>{timeAgo(item.createdAt, t('common.now'))}</Text>
+            </View>
+            <Text style={s.modeEmoji}>{MODE_EMOJI[item.splitMode] || '⚖️'}</Text>
           </View>
-          <Text style={s.modeEmoji}>{MODE_EMOJI[item.splitMode] || '⚖️'}</Text>
-        </View>
 
-        <View style={s.cardBody}>
-          <View style={s.stat}>
-            <Text style={s.statLabel}>{t('session.total')}</Text>
-            <Text style={s.statValue}>{formatAmount(item.totalAmount, item.currency)}</Text>
+          <View style={s.cardBody}>
+            <View style={s.stat}>
+              <Text style={s.statLabel}>{t('session.total')}</Text>
+              <Text style={s.statValue}>{formatAmount(item.totalAmount, item.currency)}</Text>
+            </View>
+            <View style={s.stat}>
+              <Text style={s.statLabel}>{t('history.myPart')}</Text>
+              <Text style={[s.statValue, { color: colors.accent }]}>
+                {formatAmount(myAmount, item.currency)}
+              </Text>
+            </View>
+            <View style={s.stat}>
+              <Text style={s.statLabel}>{t('session.people')}</Text>
+              <Text style={s.statValue}>{item.participants.length}</Text>
+            </View>
           </View>
-          <View style={s.stat}>
-            <Text style={s.statLabel}>{t('history.myPart')}</Text>
-            <Text style={[s.statValue, { color: colors.accent }]}>
-              {formatAmount(myAmount, item.currency)}
-            </Text>
-          </View>
-          <View style={s.stat}>
-            <Text style={s.statLabel}>{t('session.people')}</Text>
-            <Text style={s.statValue}>{item.participants.length}</Text>
-          </View>
-        </View>
 
-        <View style={s.cardFooter}>
-          <Text style={s.roleTag}>
-            {isAdmin ? '👑 ' + t('history.organizer') : '👤 ' + t('history.participant')}
-          </Text>
-          {myParticipation && (
-            <Text style={[s.paymentStatus, myParticipation.status === 'confirmed' ? s.paid : s.pending]}>
-              {myParticipation.status === 'confirmed' ? t('session.paid') : t('session.pending')}
+          <View style={s.cardFooter}>
+            <Text style={s.roleTag}>
+              {isAdmin ? '👑 ' + t('history.organizer') : '👤 ' + t('history.participant')}
             </Text>
-          )}
-        </View>
+            {myParticipation && (
+              <View style={[
+                s.paymentBadge,
+                isPaid
+                  ? { backgroundColor: colors.statusOpenBg, borderColor: colors.statusOpen }
+                  : { backgroundColor: colors.statusPendingBg, borderColor: colors.statusPending },
+              ]}>
+                <Text style={[s.paymentBadgeText, { color: isPaid ? colors.statusOpen : colors.statusPending }]}>
+                  {isPaid ? t('session.paid') : t('session.pending')}
+                </Text>
+              </View>
+            )}
+          </View>
+        </GlassCard>
       </TouchableOpacity>
     );
   };
 
   if (loading) {
     return (
-      <View style={s.centered}>
-        <ActivityIndicator size="large" color={colors.primary} />
+      <View style={s.container}>
+        <View style={{ padding: spacing.md, gap: spacing.sm }}>
+          {[0, 1, 2, 3].map((i) => <SkeletonCard key={i} />)}
+        </View>
       </View>
     );
   }
@@ -145,10 +149,8 @@ export default function HistoryTab() {
   return (
     <View style={s.container}>
       {sessions.length === 0 ? (
-        <View style={s.empty}>
-          <Text style={s.emptyIcon}>📋</Text>
-          <Text style={s.emptyText}>{t('history.empty')}</Text>
-          <Text style={s.emptyHint}>{t('history.emptyHint')}</Text>
+        <View style={s.emptyWrapper}>
+          <EmptyState emoji="📋" title={t('history.empty')} hint={t('history.emptyHint')} />
         </View>
       ) : (
         <FlatList
@@ -172,28 +174,13 @@ export default function HistoryTab() {
 const createStyles = (colors: ThemeColors) =>
   StyleSheet.create({
     container: { flex: 1, backgroundColor: colors.background },
-    centered: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: colors.background },
-    empty: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: spacing.xl },
-    emptyIcon: { fontSize: 64, marginBottom: spacing.md },
-    emptyText: { fontSize: fontSize.lg, fontWeight: '600', color: colors.text, marginBottom: spacing.xs },
-    emptyHint: { fontSize: fontSize.md, color: colors.textMuted, textAlign: 'center' },
+    emptyWrapper: { flex: 1, justifyContent: 'center', padding: spacing.xl },
     list: { padding: spacing.md },
-    card: {
-      backgroundColor: colors.surface,
-      borderRadius: borderRadius.lg,
-      padding: spacing.md,
-      marginBottom: spacing.sm,
-      borderWidth: 1,
-      borderColor: colors.surfaceBorder,
-    },
-    cardHeader: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      marginBottom: spacing.sm,
-    },
+    card: { padding: spacing.md, marginBottom: spacing.sm, borderRadius: borderRadius.lg },
+    cardHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: spacing.sm },
     statusEmoji: { fontSize: 20, marginRight: spacing.sm },
     cardHeaderInfo: { flex: 1 },
-    cardTitle: { fontSize: fontSize.md, fontWeight: '700', color: colors.text },
+    cardTitle: { fontSize: fontSize.md, fontWeight: fontWeight.bold, color: colors.text },
     cardTime: { fontSize: fontSize.xs, color: colors.textMuted, marginTop: 2 },
     modeEmoji: { fontSize: 20 },
     cardBody: {
@@ -201,13 +188,13 @@ const createStyles = (colors: ThemeColors) =>
       justifyContent: 'space-between',
       paddingVertical: spacing.sm,
       borderTopWidth: 1,
-      borderTopColor: colors.surfaceBorder,
+      borderTopColor: colors.glassBorder,
       borderBottomWidth: 1,
-      borderBottomColor: colors.surfaceBorder,
+      borderBottomColor: colors.glassBorder,
     },
     stat: { alignItems: 'center', flex: 1 },
     statLabel: { fontSize: fontSize.xs, color: colors.textMuted, marginBottom: 2 },
-    statValue: { fontSize: fontSize.md, fontWeight: '700', color: colors.text },
+    statValue: { fontSize: fontSize.md, fontWeight: fontWeight.bold, color: colors.text },
     cardFooter: {
       flexDirection: 'row',
       justifyContent: 'space-between',
@@ -215,14 +202,11 @@ const createStyles = (colors: ThemeColors) =>
       marginTop: spacing.sm,
     },
     roleTag: { fontSize: fontSize.sm, color: colors.textSecondary },
-    paymentStatus: {
-      fontSize: fontSize.sm,
-      fontWeight: '600',
+    paymentBadge: {
       paddingHorizontal: spacing.sm,
       paddingVertical: 2,
       borderRadius: borderRadius.sm,
-      overflow: 'hidden',
+      borderWidth: 1,
     },
-    paid: { color: '#22c55e', backgroundColor: '#22c55e22' },
-    pending: { color: '#f59e0b', backgroundColor: '#f59e0b22' },
+    paymentBadgeText: { fontSize: fontSize.xs, fontWeight: fontWeight.bold },
   });

@@ -14,6 +14,19 @@ export interface ThemeColors {
   warning: string;
   success: string;
   white: string;
+  // Glassmorphism
+  glass: string;
+  glassBorder: string;
+  overlay: string;
+  // Status tokens (centralised — no more hardcoded hex in components)
+  statusOpen: string;
+  statusClosed: string;
+  statusCancelled: string;
+  statusPending: string;
+  statusOpenBg: string;
+  statusClosedBg: string;
+  statusCancelledBg: string;
+  statusPendingBg: string;
 }
 
 export const darkColors: ThemeColors = {
@@ -30,6 +43,19 @@ export const darkColors: ThemeColors = {
   warning: '#f59e0b',
   success: '#4ade80',
   white: '#ffffff',
+  // Glassmorphism
+  glass: 'rgba(22, 33, 62, 0.6)',
+  glassBorder: 'rgba(255, 255, 255, 0.08)',
+  overlay: 'rgba(0, 0, 0, 0.85)',
+  // Status tokens
+  statusOpen: '#4ade80',
+  statusClosed: '#ef4444',
+  statusCancelled: '#64748b',
+  statusPending: '#f59e0b',
+  statusOpenBg: 'rgba(74, 222, 128, 0.13)',
+  statusClosedBg: 'rgba(239, 68, 68, 0.13)',
+  statusCancelledBg: 'rgba(100, 116, 139, 0.13)',
+  statusPendingBg: 'rgba(245, 158, 11, 0.13)',
 };
 
 export const lightColors: ThemeColors = {
@@ -46,6 +72,19 @@ export const lightColors: ThemeColors = {
   warning: '#d97706',
   success: '#16a34a',
   white: '#ffffff',
+  // Glassmorphism
+  glass: 'rgba(255, 255, 255, 0.65)',
+  glassBorder: 'rgba(0, 0, 0, 0.06)',
+  overlay: 'rgba(0, 0, 0, 0.5)',
+  // Status tokens
+  statusOpen: '#16a34a',
+  statusClosed: '#dc2626',
+  statusCancelled: '#475569',
+  statusPending: '#d97706',
+  statusOpenBg: 'rgba(22, 163, 74, 0.12)',
+  statusClosedBg: 'rgba(220, 38, 38, 0.12)',
+  statusCancelledBg: 'rgba(71, 85, 105, 0.12)',
+  statusPendingBg: 'rgba(217, 119, 6, 0.12)',
 };
 
 // Default export for backward compat — will be overridden by ThemeContext at runtime
@@ -76,4 +115,12 @@ export const fontSize = {
   xl: 24,
   xxl: 32,
   hero: 48,
+};
+
+export const fontWeight = {
+  regular: '400' as const,
+  medium: '500' as const,
+  semibold: '600' as const,
+  bold: '700' as const,
+  black: '900' as const,
 };

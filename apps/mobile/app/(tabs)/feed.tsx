@@ -5,9 +5,9 @@ import {
   FlatList,
   StyleSheet,
   RefreshControl,
-  ActivityIndicator,
 } from 'react-native';
-import { spacing, borderRadius, fontSize, type ThemeColors } from '../../src/constants/theme';
+import { spacing, borderRadius, fontSize, fontWeight, type ThemeColors } from '../../src/constants/theme';
+import { GlassCard, SkeletonCard, EmptyState, ErrorState } from '../../src/components';
 import { useI18n } from '../../src/i18n';
 import { useTheme } from '../../src/theme';
 import { api } from '../../src/services/api';
@@ -21,11 +21,17 @@ const EVENT_EMOJI: Record<FeedEvent['type'], string> = {
   debt_reminder: '💸',
 };
 
-function timeAgo(date: Date | string): string {
-  const now = Date.now();
-  const d = typeof date === 'string' ? new Date(date).getTime() : date.getTime();
-  const diff = Math.floor((now - d) / 1000);
+// Left accent strip color per event type
+const EVENT_ACCENT: Record<string, string> = {
+  roulette_win: '#a78bfa',
+  roulette_coward: '#f59e0b',
+  fast_payer: '#60a5fa',
+  session_closed: '#4ade80',
+  debt_reminder: '#f472b6',
+};
 
+function timeAgo(date: Date | string): string {
+  const diff = Math.floor((Date.now() - new Date(date).getTime()) / 1000);
   if (diff < 60) return `${diff}s`;
   if (diff < 3600) return `${Math.floor(diff / 60)}m`;
   if (diff < 86400) return `${Math.floor(diff / 3600)}h`;
@@ -39,33 +45,38 @@ export default function FeedTab() {
 
   const [events, setEvents] = useState<FeedEvent[]>([]);
   const [loading, setLoading] = useState(true);
+  const [fetchError, setFetchError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
 
   const loadFeed = useCallback(async () => {
     try {
       const data = await api.getFeed();
       setEvents(data);
-    } catch {
-      // silently fail
+      setFetchError(null);
+    } catch (err: any) {
+      setFetchError(err.message || t('common.error'));
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
   }, []);
 
-  useEffect(() => {
-    loadFeed();
-  }, [loadFeed]);
-
-  const onRefresh = () => {
-    setRefreshing(true);
-    loadFeed();
-  };
+  useEffect(() => { loadFeed(); }, [loadFeed]);
 
   if (loading) {
     return (
-      <View style={s.center}>
-        <ActivityIndicator size="large" color={colors.primary} />
+      <View style={s.container}>
+        <View style={{ padding: spacing.md, gap: spacing.sm }}>
+          {[0, 1, 2, 3].map((i) => <SkeletonCard key={i} />)}
+        </View>
+      </View>
+    );
+  }
+
+  if (fetchError) {
+    return (
+      <View style={[s.container, s.center]}>
+        <ErrorState message={fetchError} onRetry={loadFeed} />
       </View>
     );
   }
@@ -79,29 +90,27 @@ export default function FeedTab() {
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
-            onRefresh={onRefresh}
+            onRefresh={() => { setRefreshing(true); loadFeed(); }}
             tintColor={colors.primary}
           />
         }
         ListEmptyComponent={
-          <View style={s.empty}>
-            <Text style={s.emptyEmoji}>📰</Text>
-            <Text style={s.emptyText}>{t('feed.empty')}</Text>
-            <Text style={s.emptyHint}>{t('feed.emptyHint')}</Text>
+          <View style={s.emptyWrapper}>
+            <EmptyState emoji="📰" title={t('feed.empty')} hint={t('feed.emptyHint')} />
           </View>
         }
         renderItem={({ item }) => (
-          <View style={s.card}>
-            <View style={s.cardHeader}>
-              <Text style={s.eventEmoji}>
-                {EVENT_EMOJI[item.type] || '📝'}
-              </Text>
-              <Text style={s.timeAgo}>
-                {timeAgo(item.createdAt)}
-              </Text>
+          <GlassCard style={s.card}>
+            {/* Left accent strip */}
+            <View style={[s.accentStrip, { backgroundColor: EVENT_ACCENT[item.type] || colors.primary }]} />
+            <View style={s.cardInner}>
+              <View style={s.cardHeader}>
+                <Text style={s.eventEmoji}>{EVENT_EMOJI[item.type] || '📝'}</Text>
+                <Text style={s.timeAgo}>{timeAgo(item.createdAt)}</Text>
+              </View>
+              <Text style={s.eventMessage}>{item.message}</Text>
             </View>
-            <Text style={s.eventMessage}>{item.message}</Text>
-          </View>
+          </GlassCard>
         )}
       />
     </View>
@@ -110,27 +119,23 @@ export default function FeedTab() {
 
 const createStyles = (colors: ThemeColors) =>
   StyleSheet.create({
-    container: {
-      flex: 1,
-      backgroundColor: colors.background,
-    },
-    center: {
-      flex: 1,
-      backgroundColor: colors.background,
-      justifyContent: 'center',
-      alignItems: 'center',
-    },
-    list: {
-      padding: spacing.md,
-      paddingBottom: spacing.xxl,
-    },
+    container: { flex: 1, backgroundColor: colors.background },
+    center: { justifyContent: 'center', alignItems: 'center' },
+    emptyWrapper: { paddingTop: spacing.xxl * 2, padding: spacing.xl },
+    list: { padding: spacing.md, paddingBottom: spacing.xxl },
     card: {
-      backgroundColor: colors.surface,
-      borderRadius: borderRadius.md,
-      padding: spacing.md,
       marginBottom: spacing.sm,
-      borderWidth: 1,
-      borderColor: colors.surfaceBorder,
+      borderRadius: borderRadius.md,
+      flexDirection: 'row',
+      overflow: 'hidden',
+      padding: 0,
+    },
+    accentStrip: {
+      width: 4,
+    },
+    cardInner: {
+      flex: 1,
+      padding: spacing.md,
     },
     cardHeader: {
       flexDirection: 'row',
@@ -138,35 +143,7 @@ const createStyles = (colors: ThemeColors) =>
       alignItems: 'center',
       marginBottom: spacing.xs,
     },
-    eventEmoji: {
-      fontSize: 22,
-    },
-    timeAgo: {
-      fontSize: fontSize.xs,
-      color: colors.textMuted,
-    },
-    eventMessage: {
-      fontSize: fontSize.md,
-      color: colors.text,
-      lineHeight: 22,
-    },
-    empty: {
-      alignItems: 'center',
-      paddingTop: spacing.xxl * 2,
-    },
-    emptyEmoji: {
-      fontSize: 48,
-      marginBottom: spacing.md,
-    },
-    emptyText: {
-      fontSize: fontSize.lg,
-      fontWeight: '600',
-      color: colors.text,
-      marginBottom: spacing.xs,
-    },
-    emptyHint: {
-      fontSize: fontSize.md,
-      color: colors.textSecondary,
-      textAlign: 'center',
-    },
+    eventEmoji: { fontSize: 22 },
+    timeAgo: { fontSize: fontSize.xs, color: colors.textMuted },
+    eventMessage: { fontSize: fontSize.md, color: colors.text, lineHeight: 22 },
   });

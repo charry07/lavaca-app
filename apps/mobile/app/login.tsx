@@ -13,12 +13,14 @@ import {
   Modal,
   FlatList,
 } from 'react-native';
-import { spacing, borderRadius, fontSize, type ThemeColors } from '../src/constants/theme';
+import { LinearGradient } from 'expo-linear-gradient';
+import { spacing, borderRadius, fontSize, fontWeight, type ThemeColors } from '../src/constants/theme';
 import { useI18n } from '../src/i18n';
 import { useTheme } from '../src/theme';
 import { useAuth } from '../src/auth';
 import { VacaLogo } from '../src/components/VacaLogo';
 import { HeaderControls } from '../src/components/HeaderControls';
+import { GlassCard } from '../src/components/GlassCard';
 
 // ── Country data ────────────────────────────────────────
 interface Country {
@@ -60,7 +62,7 @@ function PhoneStep() {
 
   const [phone, setPhone] = useState('');
   const [loading, setLoading] = useState(false);
-  const [country, setCountry] = useState<Country>(COUNTRIES[0]); // Default: Colombia 🇨🇴
+  const [country, setCountry] = useState<Country>(COUNTRIES[0]);
   const [showPicker, setShowPicker] = useState(false);
   const [search, setSearch] = useState('');
 
@@ -98,7 +100,6 @@ function PhoneStep() {
       <Text style={s.fieldLabel}>{t('auth.phoneLabel')}</Text>
 
       <View style={s.phoneRow}>
-        {/* Country code selector */}
         <TouchableOpacity
           style={s.countryButton}
           onPress={() => setShowPicker(true)}
@@ -109,7 +110,6 @@ function PhoneStep() {
           <Text style={s.countryArrow}>▼</Text>
         </TouchableOpacity>
 
-        {/* Phone input */}
         <TextInput
           style={s.phoneInput}
           placeholder={t('auth.phonePlaceholder')}
@@ -126,11 +126,18 @@ function PhoneStep() {
         onPress={handleSendOTP}
         disabled={loading}
       >
-        {loading ? (
-          <ActivityIndicator color={colors.background} />
-        ) : (
-          <Text style={s.buttonText}>{t('auth.sendCode')}</Text>
-        )}
+        <LinearGradient
+          colors={[colors.primary, colors.primaryDark]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 0 }}
+          style={s.buttonGradient}
+        >
+          {loading ? (
+            <ActivityIndicator color={colors.background} />
+          ) : (
+            <Text style={s.buttonText}>{t('auth.sendCode')}</Text>
+          )}
+        </LinearGradient>
       </TouchableOpacity>
 
       <Text style={s.hint}>{t('auth.hint')}</Text>
@@ -139,7 +146,7 @@ function PhoneStep() {
       {/* Country picker modal */}
       <Modal visible={showPicker} animationType="slide" transparent>
         <View style={s.modalOverlay}>
-          <View style={s.modalContainer}>
+          <View style={[s.modalContainer, { backgroundColor: colors.background }]}>
             <View style={s.modalHeader}>
               <Text style={s.modalTitle}>{t('auth.selectCountry')}</Text>
               <TouchableOpacity onPress={() => { setShowPicker(false); setSearch(''); }}>
@@ -188,23 +195,41 @@ function PhoneStep() {
 function OTPStep() {
   const { t } = useI18n();
   const { colors } = useTheme();
-  const { verifyOTP, pendingPhone, devCode, resetAuth } = useAuth();
+  const { verifyOTP, resendOTP, pendingPhone, devCode, resetAuth } = useAuth();
   const s = createStyles(colors);
 
   const MAX_ATTEMPTS = 3;
   const BLOCK_SECONDS = 60;
+  const RESEND_COOLDOWN = 60;
 
   const [code, setCode] = useState(['', '', '', '', '', '']);
   const [loading, setLoading] = useState(false);
   const [attempts, setAttempts] = useState(0);
   const [errorMsg, setErrorMsg] = useState('');
   const [blockedSecsLeft, setBlockedSecsLeft] = useState(0);
+  const [resendCooldown, setResendCooldown] = useState(RESEND_COOLDOWN);
+  const [resending, setResending] = useState(false);
+
   const inputRefs = useRef<(TextInput | null)[]>([]);
   const countdownRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const resendTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  // Cleanup interval on unmount
+  // Start resend cooldown on mount (code was just sent)
   useEffect(() => {
-    return () => { if (countdownRef.current) clearInterval(countdownRef.current); };
+    resendTimerRef.current = setInterval(() => {
+      setResendCooldown(prev => {
+        if (prev <= 1) {
+          clearInterval(resendTimerRef.current!);
+          resendTimerRef.current = null;
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+    return () => {
+      if (countdownRef.current) clearInterval(countdownRef.current);
+      if (resendTimerRef.current) clearInterval(resendTimerRef.current);
+    };
   }, []);
 
   const startBlockCountdown = () => {
@@ -220,6 +245,33 @@ function OTPStep() {
         return prev - 1;
       });
     }, 1000);
+  };
+
+  const handleResend = async () => {
+    if (resendCooldown > 0 || resending) return;
+    setResending(true);
+    try {
+      await resendOTP();
+      setResendCooldown(RESEND_COOLDOWN);
+      resendTimerRef.current = setInterval(() => {
+        setResendCooldown(prev => {
+          if (prev <= 1) {
+            clearInterval(resendTimerRef.current!);
+            resendTimerRef.current = null;
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+      setCode(['', '', '', '', '', '']);
+      setErrorMsg('');
+      setAttempts(0);
+      inputRefs.current[0]?.focus();
+    } catch (err: any) {
+      Alert.alert(t('common.error'), err.message || t('auth.errorSendingOTP'));
+    } finally {
+      setResending(false);
+    }
   };
 
   const handleCodeChange = (text: string, index: number) => {
@@ -257,7 +309,6 @@ function OTPStep() {
     setErrorMsg('');
     try {
       await verifyOTP(verifyCode);
-      // success — AuthContext handles navigation
     } catch (err: any) {
       const newAttempts = attempts + 1;
       setAttempts(newAttempts);
@@ -336,12 +387,38 @@ function OTPStep() {
         onPress={() => handleVerify()}
         disabled={loading || isBlocked}
       >
-        {loading ? (
-          <ActivityIndicator color={colors.background} />
-        ) : (
-          <Text style={s.buttonText}>{t('auth.verifyButton')}</Text>
-        )}
+        <LinearGradient
+          colors={[colors.primary, colors.primaryDark]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 0 }}
+          style={s.buttonGradient}
+        >
+          {loading ? (
+            <ActivityIndicator color={colors.background} />
+          ) : (
+            <Text style={s.buttonText}>{t('auth.verifyButton')}</Text>
+          )}
+        </LinearGradient>
       </TouchableOpacity>
+
+      {/* Resend code */}
+      <View style={s.resendRow}>
+        {resendCooldown > 0 ? (
+          <Text style={[s.resendCooldown, { color: colors.textMuted }]}>
+            {t('auth.resendIn', { s: String(resendCooldown) })}
+          </Text>
+        ) : (
+          <TouchableOpacity onPress={handleResend} disabled={resending}>
+            {resending ? (
+              <ActivityIndicator size="small" color={colors.primary} />
+            ) : (
+              <Text style={[s.resendLink, { color: colors.primary }]}>
+                {t('auth.resendCode')}
+              </Text>
+            )}
+          </TouchableOpacity>
+        )}
+      </View>
 
       <TouchableOpacity onPress={resetAuth} style={s.linkButton} disabled={isBlocked}>
         <Text style={[s.linkText, isBlocked && { color: colors.textMuted }]}>{t('auth.changePhone')}</Text>
@@ -430,11 +507,18 @@ function RegisterStep() {
         onPress={handleRegister}
         disabled={loading}
       >
-        {loading ? (
-          <ActivityIndicator color={colors.background} />
-        ) : (
-          <Text style={s.buttonText}>{t('auth.registerButton')}</Text>
-        )}
+        <LinearGradient
+          colors={[colors.primary, colors.primaryDark]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 0 }}
+          style={s.buttonGradient}
+        >
+          {loading ? (
+            <ActivityIndicator color={colors.background} />
+          ) : (
+            <Text style={s.buttonText}>{t('auth.registerButton')}</Text>
+          )}
+        </LinearGradient>
       </TouchableOpacity>
 
       <TouchableOpacity onPress={resetAuth} style={s.linkButton}>
@@ -446,43 +530,55 @@ function RegisterStep() {
 
 // ── Main Login Screen ───────────────────────────────────
 export default function LoginScreen() {
-  const { colors } = useTheme();
+  const { colors, isDark } = useTheme();
   const { authStep } = useAuth();
   const s = createStyles(colors);
 
+  const gradientColors: [string, string, string] = isDark
+    ? ['#0f0f23', '#1a1a2e', '#16213e']
+    : ['#e8f4e8', '#f0f7f0', '#f8fafc'];
+
   return (
-    <KeyboardAvoidingView
-      style={s.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-    >
-      <ScrollView
-        contentContainerStyle={s.content}
-        keyboardShouldPersistTaps="handled"
+    <LinearGradient colors={gradientColors} style={s.container}>
+      <KeyboardAvoidingView
+        style={s.flex}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       >
-        <View style={s.headerControls}>
-          <HeaderControls />
-        </View>
+        <ScrollView
+          contentContainerStyle={s.content}
+          keyboardShouldPersistTaps="handled"
+        >
+          <View style={s.headerControls}>
+            <HeaderControls />
+          </View>
 
-        <VacaLogo size="lg" style={{ marginTop: spacing.xxl }} />
+          <VacaLogo size="lg" style={{ marginTop: spacing.xxl }} />
 
-        {authStep === 'phone' && <PhoneStep />}
-        {authStep === 'otp' && <OTPStep />}
-        {authStep === 'register' && <RegisterStep />}
-      </ScrollView>
-    </KeyboardAvoidingView>
+          {/* Form card */}
+          <GlassCard style={s.card}>
+            <View style={s.cardInner}>
+              {authStep === 'phone' && <PhoneStep />}
+              {authStep === 'otp' && <OTPStep />}
+              {authStep === 'register' && <RegisterStep />}
+            </View>
+          </GlassCard>
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </LinearGradient>
   );
 }
 
 const createStyles = (colors: ThemeColors) =>
   StyleSheet.create({
+    flex: {
+      flex: 1,
+    },
     container: {
       flex: 1,
-      backgroundColor: colors.background,
     },
     content: {
       flexGrow: 1,
       padding: spacing.lg,
-      justifyContent: 'center',
       alignItems: 'center',
       paddingBottom: spacing.xxl,
     },
@@ -491,22 +587,31 @@ const createStyles = (colors: ThemeColors) =>
       top: spacing.xl,
       right: 0,
     },
+    card: {
+      width: '100%',
+      marginTop: spacing.xl,
+    },
+    cardInner: {
+      padding: spacing.lg,
+      alignItems: 'center',
+    },
     title: {
       fontSize: fontSize.xl,
-      fontWeight: 'bold',
+      fontWeight: fontWeight.bold,
       color: colors.text,
-      marginTop: spacing.lg,
+      marginTop: spacing.sm,
       marginBottom: spacing.xs,
+      textAlign: 'center',
     },
     subtitle: {
-      fontSize: fontSize.md,
+      fontSize: fontSize.sm,
       color: colors.textSecondary,
       textAlign: 'center',
       marginBottom: spacing.xl,
     },
     fieldLabel: {
       fontSize: fontSize.sm,
-      fontWeight: '600',
+      fontWeight: fontWeight.semibold,
       color: colors.textSecondary,
       alignSelf: 'flex-start',
       marginBottom: spacing.xs,
@@ -515,29 +620,31 @@ const createStyles = (colors: ThemeColors) =>
     input: {
       fontSize: fontSize.md,
       color: colors.text,
-      backgroundColor: colors.surface,
+      backgroundColor: colors.glass,
       borderRadius: borderRadius.md,
       padding: spacing.md,
       borderWidth: 1,
-      borderColor: colors.surfaceBorder,
+      borderColor: colors.glassBorder,
       width: '100%',
       marginBottom: spacing.sm,
     },
     button: {
-      backgroundColor: colors.primary,
-      paddingVertical: spacing.md,
-      paddingHorizontal: spacing.xxl,
-      borderRadius: borderRadius.md,
-      alignItems: 'center',
       width: '100%',
+      borderRadius: borderRadius.md,
+      overflow: 'hidden',
       marginTop: spacing.md,
     },
     buttonDisabled: {
       opacity: 0.6,
     },
+    buttonGradient: {
+      paddingVertical: spacing.md,
+      paddingHorizontal: spacing.xxl,
+      alignItems: 'center',
+    },
     buttonText: {
       fontSize: fontSize.lg,
-      fontWeight: '700',
+      fontWeight: fontWeight.bold,
       color: colors.background,
     },
     hint: {
@@ -553,7 +660,6 @@ const createStyles = (colors: ThemeColors) =>
       marginTop: spacing.xs,
       fontStyle: 'italic',
     },
-    // Phone row with country picker
     phoneRow: {
       flexDirection: 'row',
       width: '100%',
@@ -562,10 +668,10 @@ const createStyles = (colors: ThemeColors) =>
     countryButton: {
       flexDirection: 'row',
       alignItems: 'center',
-      backgroundColor: colors.surface,
+      backgroundColor: colors.glass,
       borderRadius: borderRadius.md,
       borderWidth: 1,
-      borderColor: colors.surfaceBorder,
+      borderColor: colors.glassBorder,
       paddingHorizontal: spacing.sm,
       paddingVertical: spacing.md,
       marginRight: spacing.xs,
@@ -577,7 +683,7 @@ const createStyles = (colors: ThemeColors) =>
     countryDial: {
       fontSize: fontSize.md,
       color: colors.text,
-      fontWeight: '600',
+      fontWeight: fontWeight.semibold,
       marginRight: 4,
     },
     countryArrow: {
@@ -588,20 +694,19 @@ const createStyles = (colors: ThemeColors) =>
       flex: 1,
       fontSize: fontSize.md,
       color: colors.text,
-      backgroundColor: colors.surface,
+      backgroundColor: colors.glass,
       borderRadius: borderRadius.md,
       padding: spacing.md,
       borderWidth: 1,
-      borderColor: colors.surfaceBorder,
+      borderColor: colors.glassBorder,
     },
     // Country picker modal
     modalOverlay: {
       flex: 1,
-      backgroundColor: 'rgba(0,0,0,0.5)',
+      backgroundColor: colors.overlay,
       justifyContent: 'flex-end',
     },
     modalContainer: {
-      backgroundColor: colors.background,
       borderTopLeftRadius: 20,
       borderTopRightRadius: 20,
       maxHeight: '70%',
@@ -617,7 +722,7 @@ const createStyles = (colors: ThemeColors) =>
     },
     modalTitle: {
       fontSize: fontSize.lg,
-      fontWeight: '700',
+      fontWeight: fontWeight.bold,
       color: colors.text,
     },
     modalClose: {
@@ -628,12 +733,12 @@ const createStyles = (colors: ThemeColors) =>
     modalSearch: {
       fontSize: fontSize.md,
       color: colors.text,
-      backgroundColor: colors.surface,
+      backgroundColor: colors.glass,
       borderRadius: borderRadius.md,
       padding: spacing.md,
       margin: spacing.md,
       borderWidth: 1,
-      borderColor: colors.surfaceBorder,
+      borderColor: colors.glassBorder,
     },
     countryItem: {
       flexDirection: 'row',
@@ -658,7 +763,7 @@ const createStyles = (colors: ThemeColors) =>
     countryItemDial: {
       fontSize: fontSize.md,
       color: colors.textSecondary,
-      fontWeight: '600',
+      fontWeight: fontWeight.semibold,
     },
     // OTP styles
     otpContainer: {
@@ -671,11 +776,11 @@ const createStyles = (colors: ThemeColors) =>
       height: 56,
       borderRadius: borderRadius.md,
       borderWidth: 2,
-      borderColor: colors.surfaceBorder,
-      backgroundColor: colors.surface,
+      borderColor: colors.glassBorder,
+      backgroundColor: colors.glass,
       textAlign: 'center',
       fontSize: fontSize.xl,
-      fontWeight: '700',
+      fontWeight: fontWeight.bold,
       color: colors.text,
       marginHorizontal: 4,
     },
@@ -703,7 +808,7 @@ const createStyles = (colors: ThemeColors) =>
     errorText: {
       color: colors.danger,
       fontSize: fontSize.sm,
-      fontWeight: '600',
+      fontWeight: fontWeight.semibold,
       textAlign: 'center',
     },
     devBanner: {
@@ -716,7 +821,21 @@ const createStyles = (colors: ThemeColors) =>
     },
     devBannerText: {
       fontSize: fontSize.sm,
-      fontWeight: '600',
+      fontWeight: fontWeight.semibold,
+    },
+    resendRow: {
+      marginTop: spacing.sm,
+      alignItems: 'center',
+      minHeight: 28,
+    },
+    resendCooldown: {
+      fontSize: fontSize.xs,
+      textAlign: 'center',
+    },
+    resendLink: {
+      fontSize: fontSize.sm,
+      fontWeight: fontWeight.semibold,
+      textDecorationLine: 'underline',
     },
     linkButton: {
       marginTop: spacing.md,

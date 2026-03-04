@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import {
   View,
   Text,
@@ -12,17 +12,21 @@ import {
   RefreshControl,
   Modal,
   Platform,
+  Animated,
 } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { PaymentSession, Participant, User, formatCOP } from '@lavaca/shared';
 import { api } from '../../src/services/api';
-import { spacing, borderRadius, fontSize, type ThemeColors } from '../../src/constants/theme';
+import { spacing, borderRadius, fontSize, fontWeight, type ThemeColors } from '../../src/constants/theme';
+import { GlassCard, SkeletonCard, ErrorState } from '../../src/components';
 import { RouletteWheel } from '../../src/components/RouletteWheel';
 import { QRCode } from '../../src/components/QRCode';
 import { useI18n } from '../../src/i18n';
 import { useTheme } from '../../src/theme';
 import { useAuth } from '../../src/auth';
 import { useToast } from '../../src/components/Toast';
+import { useSessionSocket } from '../../src/hooks/useSessionSocket';
 
 export default function SessionScreen() {
   const { joinCode } = useLocalSearchParams<{ joinCode: string }>();
@@ -32,8 +36,10 @@ export default function SessionScreen() {
   const { user } = useAuth();
   const { showSuccess, showError } = useToast();
   const s = createStyles(colors);
+
   const [session, setSession] = useState<PaymentSession | null>(null);
   const [loading, setLoading] = useState(true);
+  const [fetchError, setFetchError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [splitting, setSplitting] = useState(false);
   const [closing, setClosing] = useState(false);
@@ -49,13 +55,17 @@ export default function SessionScreen() {
   const [searchingUsers, setSearchingUsers] = useState(false);
   const [addingParticipantId, setAddingParticipantId] = useState<string | null>(null);
 
+  // Animated progress bar width
+  const progressAnim = useRef(new Animated.Value(0)).current;
+
   const fetchSession = useCallback(async () => {
     if (!joinCode) return;
     try {
       const data = await api.getSession(joinCode);
       setSession(data);
+      setFetchError(null);
     } catch (err: any) {
-      showError(err.message || t('common.error'));
+      setFetchError(err.message || t('common.error'));
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -64,10 +74,28 @@ export default function SessionScreen() {
 
   useEffect(() => {
     fetchSession();
-    // Poll every 3 seconds for real-time updates
-    const interval = setInterval(fetchSession, 3000);
-    return () => clearInterval(interval);
   }, [fetchSession]);
+
+  // Real-time updates via Socket.IO (replaces 3-second polling)
+  const handleSocketUpdate = useCallback((updated: PaymentSession) => {
+    setSession(updated);
+  }, []);
+  useSessionSocket(joinCode, handleSocketUpdate);
+
+  // Animate progress bar whenever paid count changes
+  useEffect(() => {
+    if (!session) return;
+    const owedParticipants = session.participants.filter((p) => p.amount > 0);
+    const paidCount = owedParticipants.filter((p) => p.status === 'confirmed').length;
+    const totalCount = owedParticipants.length || session.participants.length;
+    const pct = totalCount > 0 ? (paidCount / totalCount) * 100 : 0;
+
+    Animated.spring(progressAnim, {
+      toValue: pct,
+      useNativeDriver: false,
+      friction: 8,
+    }).start();
+  }, [session]);
 
   useEffect(() => {
     if (!showAddParticipantModal) return;
@@ -101,7 +129,6 @@ export default function SessionScreen() {
       const updated = await api.splitSession(joinCode);
 
       if (session.splitMode === 'roulette' && updated.participants.length > 1) {
-        // Find the winner index for the animation
         const winnerIdx = updated.participants.findIndex((p) => p.isRouletteWinner);
         if (winnerIdx >= 0) {
           setRouletteWinner(winnerIdx);
@@ -122,7 +149,6 @@ export default function SessionScreen() {
   };
 
   const handleRouletteFinish = () => {
-    // Keep modal open and let user close it manually
     if (pendingUpdate) {
       setSession(pendingUpdate);
       setPendingUpdate(null);
@@ -133,10 +159,6 @@ export default function SessionScreen() {
   const handleCloseRouletteModal = () => {
     if (!canCloseRoulette) return;
     setShowRoulette(false);
-  };
-
-  const handleShare = () => {
-    setShowShareModal(true);
   };
 
   const getShareLink = () => {
@@ -319,18 +341,22 @@ export default function SessionScreen() {
     }
   };
 
+  // ── Loading state ──────────────────────────────────────
   if (loading) {
     return (
-      <View style={[s.container, s.center]}>
-        <ActivityIndicator size="large" color={colors.primary} />
+      <View style={s.container}>
+        <View style={s.skeletonContainer}>
+          {[0, 1, 2, 3].map((i) => <SkeletonCard key={i} />)}
+        </View>
       </View>
     );
   }
 
-  if (!session) {
+  // ── Error / not found ──────────────────────────────────
+  if (fetchError || !session) {
     return (
       <View style={[s.container, s.center]}>
-        <Text style={s.errorText}>{t('session.notFound')}</Text>
+        <ErrorState message={fetchError || t('session.notFound')} onRetry={fetchSession} />
       </View>
     );
   }
@@ -358,11 +384,20 @@ export default function SessionScreen() {
     ? t('session.spinRouletteButton')
     : t('session.splitButton');
 
+  const getStatusStyle = (status: string) => {
+    switch (status) {
+      case 'open': return { color: colors.statusOpen, bg: colors.statusOpenBg };
+      case 'closed': return { color: colors.statusClosed, bg: colors.statusClosedBg };
+      default: return { color: colors.statusCancelled, bg: colors.statusCancelledBg };
+    }
+  };
+
   const renderParticipant = ({ item }: { item: Participant }) => {
     const isPaid = item.status === 'confirmed';
     const isReported = item.status === 'reported';
     const isMe = user?.id === item.userId;
     const isWinner = item.isRouletteWinner;
+    const isCoward = item.isRouletteCoward;
     const isNoPay = item.amount <= 0;
 
     const statusLabel = isNoPay
@@ -373,59 +408,69 @@ export default function SessionScreen() {
           ? t('session.pendingApproval')
           : t('session.pending');
 
+    const cardBorderColor = isPaid
+      ? colors.statusOpen
+      : isReported
+        ? colors.statusPending
+        : colors.glassBorder;
+
     return (
-      <View style={[s.participantCard, isPaid && s.participantPaid, isReported && s.participantReported]}>
+      <GlassCard style={[s.participantCard, { borderColor: cardBorderColor }]}>
         <View style={s.participantInfo}>
           <Text style={s.participantName}>
             {item.displayName}
             {isWinner ? ' 🎰' : ''}
+            {isCoward ? ' 🐔' : ''}
           </Text>
-          <Text style={s.participantStatus}>
+          <Text style={[
+            s.participantStatus,
+            isPaid && { color: colors.statusOpen },
+            isReported && { color: colors.statusPending },
+          ]}>
             {statusLabel}
           </Text>
         </View>
         <View style={s.participantRight}>
-          <Text style={[s.participantAmount, isPaid && s.amountPaid]}>
+          <Text style={[s.participantAmount, isPaid && { color: colors.statusOpen }]}>
             {formatCOP(item.amount)}
           </Text>
           {!isPaid && !isReported && isMe && item.amount > 0 && (
-            <TouchableOpacity
-              style={s.payButton}
-              onPress={() => handleReportPaid(item.userId)}
-            >
+            <TouchableOpacity style={s.payButton} onPress={() => handleReportPaid(item.userId)}>
               <Text style={s.payButtonText}>{t('session.reportPaidButton')}</Text>
             </TouchableOpacity>
           )}
-
           {isReported && isAdmin && (
-            <TouchableOpacity
-              style={s.approveButton}
-              onPress={() => handleApprovePaid(item.userId)}
-            >
+            <TouchableOpacity style={s.approveButton} onPress={() => handleApprovePaid(item.userId)}>
               <Text style={s.approveButtonText}>{t('session.approvePaidButton')}</Text>
             </TouchableOpacity>
           )}
-
           {isReported && !isAdmin && isMe && (
             <Text style={s.waitingApprovalText}>{t('session.waitingApproval')}</Text>
           )}
         </View>
-      </View>
+      </GlassCard>
     );
   };
+
+  const statusStyle = getStatusStyle(session.status);
 
   return (
     <View style={s.container}>
       {/* Session Header */}
-      <View style={s.header}>
+      <GlassCard style={s.header}>
         <View style={s.codeRow}>
           <Text style={s.joinCodeLabel}>{t('session.code')}</Text>
           <TouchableOpacity onPress={handleCopyCode} activeOpacity={0.6} style={{ flex: 1 }}>
             <Text style={s.joinCode}>{session.joinCode} 📋</Text>
           </TouchableOpacity>
-          <TouchableOpacity onPress={handleShare} style={s.shareButton}>
+          <TouchableOpacity onPress={() => setShowShareModal(true)} style={s.shareButton}>
             <Text style={s.shareButtonText}>{t('session.share')}</Text>
           </TouchableOpacity>
+          <View style={[s.statusBadge, { backgroundColor: statusStyle.bg }]}>
+            <Text style={[s.statusBadgeText, { color: statusStyle.color }]}>
+              {session.status}
+            </Text>
+          </View>
         </View>
 
         {session.description && (
@@ -447,16 +492,28 @@ export default function SessionScreen() {
           </View>
         </View>
 
-        {/* Progress bar */}
+        {/* Animated progress bar */}
         {allSplit && (
           <View style={s.progressContainer}>
             <View style={s.progressBar}>
-              <View
+              <Animated.View
                 style={[
-                  s.progressFill,
-                  { width: `${displayTotalCount > 0 ? (displayPaidCount / displayTotalCount) * 100 : 0}%` },
+                  s.progressFillWrapper,
+                  {
+                    width: progressAnim.interpolate({
+                      inputRange: [0, 100],
+                      outputRange: ['0%', '100%'],
+                    }),
+                  },
                 ]}
-              />
+              >
+                <LinearGradient
+                  colors={[colors.primary, colors.accent || colors.primary]}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                  style={StyleSheet.absoluteFill}
+                />
+              </Animated.View>
             </View>
             <Text style={s.progressText}>
               {t('session.paidCount', { paid: displayPaidCount, total: displayTotalCount })}
@@ -465,8 +522,8 @@ export default function SessionScreen() {
         )}
 
         {pendingApprovalsCount > 0 && (
-          <View style={s.pendingApprovalBanner}>
-            <Text style={s.pendingApprovalText}>
+          <View style={[s.pendingApprovalBanner, { backgroundColor: colors.statusPendingBg, borderColor: colors.statusPending }]}>
+            <Text style={[s.pendingApprovalText, { color: colors.statusPending }]}>
               {isAdmin
                 ? t('session.pendingApprovalsAdmin', { count: pendingApprovalsCount })
                 : t('session.pendingApprovalsUser')}
@@ -479,7 +536,7 @@ export default function SessionScreen() {
             <Text style={s.addParticipantButtonText}>➕ {t('session.addParticipants')}</Text>
           </TouchableOpacity>
         )}
-      </View>
+      </GlassCard>
 
       {/* Participants List */}
       <FlatList
@@ -490,9 +547,7 @@ export default function SessionScreen() {
         ListEmptyComponent={
           <View style={s.emptyState}>
             <Text style={s.emptyEmoji}>👥</Text>
-            <Text style={s.emptyText}>
-              {t('session.noParticipants')}
-            </Text>
+            <Text style={s.emptyText}>{t('session.noParticipants')}</Text>
           </View>
         }
         refreshControl={
@@ -506,25 +561,30 @@ export default function SessionScreen() {
 
       {/* Bottom Actions */}
       {!allSplit && totalCount > 0 && (
-        <View style={s.bottomBar}>
+        <GlassCard style={s.bottomBar}>
           <TouchableOpacity
-            style={[s.splitButton, splitting && s.splitButtonDisabled]}
             onPress={handleSplit}
             disabled={splitting}
+            style={{ borderRadius: borderRadius.md, overflow: 'hidden', opacity: splitting ? 0.6 : 1 }}
           >
-            {splitting ? (
-              <ActivityIndicator color={colors.background} />
-            ) : (
-              <Text style={s.splitButtonText}>
-                {splitActionLabel}
-              </Text>
-            )}
+            <LinearGradient
+              colors={[colors.primary, colors.accent || colors.primary]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+              style={s.splitButton}
+            >
+              {splitting ? (
+                <ActivityIndicator color="#fff" />
+              ) : (
+                <Text style={s.splitButtonText}>{splitActionLabel}</Text>
+              )}
+            </LinearGradient>
           </TouchableOpacity>
-        </View>
+        </GlassCard>
       )}
 
       {(session.status === 'open' && allSplit && user?.id === session.adminId) || user?.id === session.adminId ? (
-        <View style={s.bottomBar}>
+        <GlassCard style={s.bottomBar}>
           {session.status === 'open' && allSplit && user?.id === session.adminId && (
             <TouchableOpacity
               style={[s.closeSessionButton, closing && s.splitButtonDisabled]}
@@ -552,13 +612,18 @@ export default function SessionScreen() {
               )}
             </TouchableOpacity>
           )}
-        </View>
+        </GlassCard>
       ) : null}
 
       {session.status === 'closed' && (
-        <View style={s.closedBanner}>
+        <LinearGradient
+          colors={[colors.primary, colors.accent || colors.primary]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 0 }}
+          style={s.closedBanner}
+        >
           <Text style={s.closedText}>{t('session.allPaid')}</Text>
-        </View>
+        </LinearGradient>
       )}
 
       {/* Roulette Modal */}
@@ -568,8 +633,8 @@ export default function SessionScreen() {
         transparent
         onRequestClose={handleCloseRouletteModal}
       >
-        <View style={s.modalOverlay}>
-          <View style={s.modalContent}>
+        <View style={[s.modalOverlay, { backgroundColor: colors.overlay }]}>
+          <GlassCard style={s.modalContent}>
             <RouletteWheel
               participants={session.participants}
               winnerIndex={rouletteWinner}
@@ -583,7 +648,7 @@ export default function SessionScreen() {
                 <Text style={s.closeRouletteButtonText}>{t('session.closeRoulette')}</Text>
               </TouchableOpacity>
             )}
-          </View>
+          </GlassCard>
         </View>
       </Modal>
 
@@ -594,8 +659,8 @@ export default function SessionScreen() {
         transparent
         onRequestClose={() => setShowAddParticipantModal(false)}
       >
-        <View style={s.modalOverlay}>
-          <View style={s.modalContent}>
+        <View style={[s.modalOverlay, { backgroundColor: colors.overlay }]}>
+          <GlassCard style={s.modalContent}>
             <View style={s.searchModalInner}>
               <View style={s.searchModalHeader}>
                 <Text style={s.shareModalTitle}>{t('session.addParticipants')}</Text>
@@ -642,12 +707,10 @@ export default function SessionScreen() {
                           {foundUser.displayName.charAt(0).toUpperCase()}
                         </Text>
                       </View>
-
                       <View style={s.searchUserInfo}>
                         <Text style={s.searchUserName}>{foundUser.displayName}</Text>
                         <Text style={s.searchUserMeta}>@{foundUser.username} · {foundUser.phone}</Text>
                       </View>
-
                       {alreadyInTable ? (
                         <View style={s.alreadyInTableBadge}>
                           <Text style={s.alreadyInTableText}>{t('session.alreadyInTable')}</Text>
@@ -659,7 +722,7 @@ export default function SessionScreen() {
                           disabled={isAdding}
                         >
                           {isAdding ? (
-                            <ActivityIndicator size="small" color={colors.background} />
+                            <ActivityIndicator size="small" color="#fff" />
                           ) : (
                             <Text style={s.addUserButtonText}>{t('groups.addButton')}</Text>
                           )}
@@ -670,7 +733,7 @@ export default function SessionScreen() {
                 }}
               />
             </View>
-          </View>
+          </GlassCard>
         </View>
       </Modal>
 
@@ -682,11 +745,11 @@ export default function SessionScreen() {
         onRequestClose={() => setShowShareModal(false)}
       >
         <TouchableOpacity
-          style={s.modalOverlay}
+          style={[s.modalOverlay, { backgroundColor: colors.overlay }]}
           activeOpacity={1}
           onPress={() => setShowShareModal(false)}
         >
-          <View style={s.modalContent}>
+          <GlassCard style={s.modalContent}>
             <View style={s.shareModalInner}>
               <Text style={s.shareModalTitle}>{t('session.shareTitle')}</Text>
               <QRCode
@@ -698,26 +761,24 @@ export default function SessionScreen() {
                 <Text style={s.shareCodeLabel}>{t('session.code')}</Text>
                 <Text style={s.shareCodeValue}>{session.joinCode}</Text>
               </View>
-              <TouchableOpacity
-                style={s.shareTextButton}
-                onPress={handleTextShare}
-              >
-                <Text style={s.shareTextButtonLabel}>{t('session.sendMessage')}</Text>
+              <TouchableOpacity style={s.shareTextButton} onPress={handleTextShare}>
+                <LinearGradient
+                  colors={[colors.primary, colors.accent || colors.primary]}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                  style={s.shareTextButtonInner}
+                >
+                  <Text style={s.shareTextButtonLabel}>{t('session.sendMessage')}</Text>
+                </LinearGradient>
               </TouchableOpacity>
-              <TouchableOpacity
-                style={s.shareLinkButton}
-                onPress={handleCopyLink}
-              >
+              <TouchableOpacity style={s.shareLinkButton} onPress={handleCopyLink}>
                 <Text style={s.shareLinkButtonLabel}>{t('session.copyLink')}</Text>
               </TouchableOpacity>
-              <TouchableOpacity
-                style={s.closeModalButton}
-                onPress={() => setShowShareModal(false)}
-              >
+              <TouchableOpacity style={s.closeModalButton} onPress={() => setShowShareModal(false)}>
                 <Text style={s.closeModalText}>{t('session.close')}</Text>
               </TouchableOpacity>
             </View>
-          </View>
+          </GlassCard>
         </TouchableOpacity>
       </Modal>
     </View>
@@ -733,44 +794,56 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  errorText: {
-    color: colors.danger,
-    fontSize: fontSize.lg,
+  skeletonContainer: {
+    padding: spacing.lg,
+    gap: spacing.md,
   },
   header: {
+    margin: spacing.md,
     padding: spacing.lg,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.surfaceBorder,
+    borderRadius: borderRadius.lg,
   },
   codeRow: {
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: spacing.sm,
+    gap: spacing.xs,
   },
   joinCodeLabel: {
     fontSize: fontSize.sm,
     color: colors.textSecondary,
-    marginRight: spacing.sm,
+    marginRight: spacing.xs,
   },
   joinCode: {
     fontSize: fontSize.lg,
-    fontWeight: 'bold',
+    fontWeight: fontWeight.bold,
     color: colors.primary,
     letterSpacing: 2,
     flex: 1,
   },
+  statusBadge: {
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 3,
+    borderRadius: borderRadius.full,
+  },
+  statusBadgeText: {
+    fontSize: fontSize.xs,
+    fontWeight: fontWeight.semibold,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
   shareButton: {
-    backgroundColor: colors.surface,
+    backgroundColor: colors.glass,
     paddingVertical: spacing.xs,
     paddingHorizontal: spacing.md,
     borderRadius: borderRadius.sm,
     borderWidth: 1,
-    borderColor: colors.surfaceBorder,
+    borderColor: colors.glassBorder,
   },
   shareButtonText: {
     color: colors.primary,
     fontSize: fontSize.sm,
-    fontWeight: '600',
+    fontWeight: fontWeight.semibold,
   },
   description: {
     fontSize: fontSize.md,
@@ -780,18 +853,19 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   statsRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
+    marginTop: spacing.sm,
   },
   stat: {
     alignItems: 'center',
   },
   statValue: {
     fontSize: fontSize.md,
-    fontWeight: 'bold',
+    fontWeight: fontWeight.bold,
     color: colors.text,
   },
   statLabel: {
     fontSize: fontSize.xs,
-    color: colors.text,
+    color: colors.textSecondary,
     marginTop: 2,
   },
   progressContainer: {
@@ -801,14 +875,14 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   progressBar: {
     width: '100%',
     height: 8,
-    backgroundColor: colors.surface,
+    backgroundColor: colors.glass,
     borderRadius: borderRadius.full,
     overflow: 'hidden',
   },
-  progressFill: {
+  progressFillWrapper: {
     height: '100%',
-    backgroundColor: colors.primary,
     borderRadius: borderRadius.full,
+    overflow: 'hidden',
   },
   progressText: {
     fontSize: fontSize.sm,
@@ -822,40 +896,31 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     borderRadius: borderRadius.md,
     paddingVertical: spacing.sm,
     alignItems: 'center',
-    backgroundColor: colors.surface,
+    backgroundColor: colors.glass,
   },
   addParticipantButtonText: {
     fontSize: fontSize.sm,
-    fontWeight: '700',
+    fontWeight: fontWeight.bold,
     color: colors.primary,
   },
   list: {
-    padding: spacing.lg,
+    paddingHorizontal: spacing.md,
+    paddingBottom: spacing.lg,
   },
   participantCard: {
-    backgroundColor: colors.surface,
-    borderRadius: borderRadius.md,
     padding: spacing.md,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    borderWidth: 1,
-    borderColor: colors.surfaceBorder,
     marginBottom: spacing.sm,
-  },
-  participantPaid: {
-    borderColor: colors.primary,
-    opacity: 0.8,
-  },
-  participantReported: {
-    borderColor: colors.warning,
+    borderRadius: borderRadius.md,
   },
   participantInfo: {
     flex: 1,
   },
   participantName: {
     fontSize: fontSize.md,
-    fontWeight: '600',
+    fontWeight: fontWeight.semibold,
     color: colors.text,
   },
   participantStatus: {
@@ -868,11 +933,8 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   },
   participantAmount: {
     fontSize: fontSize.lg,
-    fontWeight: 'bold',
+    fontWeight: fontWeight.bold,
     color: colors.text,
-  },
-  amountPaid: {
-    color: colors.primary,
   },
   payButton: {
     backgroundColor: colors.primary,
@@ -883,11 +945,11 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   },
   payButtonText: {
     fontSize: fontSize.sm,
-    fontWeight: '700',
-    color: colors.background,
+    fontWeight: fontWeight.bold,
+    color: '#fff',
   },
   approveButton: {
-    backgroundColor: colors.warning,
+    backgroundColor: colors.statusPending,
     paddingVertical: spacing.xs,
     paddingHorizontal: spacing.md,
     borderRadius: borderRadius.sm,
@@ -895,28 +957,25 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   },
   approveButtonText: {
     fontSize: fontSize.sm,
-    fontWeight: '700',
-    color: colors.background,
+    fontWeight: fontWeight.bold,
+    color: '#fff',
   },
   waitingApprovalText: {
     fontSize: fontSize.xs,
-    color: colors.warning,
+    color: colors.statusPending,
     marginTop: spacing.xs,
-    fontWeight: '600',
+    fontWeight: fontWeight.semibold,
   },
   pendingApprovalBanner: {
     marginTop: spacing.md,
-    backgroundColor: colors.warning + '22',
     borderWidth: 1,
-    borderColor: colors.warning,
     borderRadius: borderRadius.md,
     paddingVertical: spacing.xs,
     paddingHorizontal: spacing.sm,
   },
   pendingApprovalText: {
     fontSize: fontSize.sm,
-    fontWeight: '600',
-    color: colors.warning,
+    fontWeight: fontWeight.semibold,
     textAlign: 'center',
   },
   emptyState: {
@@ -934,13 +993,13 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     lineHeight: 24,
   },
   bottomBar: {
-    padding: spacing.lg,
-    borderTopWidth: 1,
-    borderTopColor: colors.surfaceBorder,
+    margin: spacing.md,
+    marginTop: 0,
+    padding: spacing.md,
+    borderRadius: borderRadius.lg,
     gap: 8,
   },
   splitButton: {
-    backgroundColor: colors.primary,
     paddingVertical: spacing.md,
     borderRadius: borderRadius.md,
     alignItems: 'center',
@@ -950,18 +1009,17 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   },
   splitButtonText: {
     fontSize: fontSize.lg,
-    fontWeight: '700',
-    color: colors.background,
+    fontWeight: fontWeight.bold,
+    color: '#fff',
   },
   closedBanner: {
-    backgroundColor: colors.primary,
     padding: spacing.md,
     alignItems: 'center',
   },
   closedText: {
     fontSize: fontSize.lg,
-    fontWeight: '700',
-    color: colors.background,
+    fontWeight: fontWeight.bold,
+    color: '#fff',
   },
   closeSessionButton: {
     paddingVertical: spacing.md,
@@ -972,7 +1030,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   },
   closeSessionButtonText: {
     fontSize: fontSize.md,
-    fontWeight: '700',
+    fontWeight: fontWeight.bold,
     color: colors.danger,
   },
   deleteSessionLink: {
@@ -981,22 +1039,20 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   },
   deleteSessionLinkText: {
     fontSize: fontSize.sm,
-    fontWeight: '600',
+    fontWeight: fontWeight.semibold,
     color: colors.textMuted,
     textDecorationLine: 'underline',
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.85)',
     justifyContent: 'center',
     alignItems: 'center',
   },
   modalContent: {
-    backgroundColor: colors.background,
-    borderRadius: borderRadius.lg,
     maxWidth: 360,
     width: '90%',
     overflow: 'hidden',
+    borderRadius: borderRadius.lg,
   },
   shareModalInner: {
     padding: spacing.lg,
@@ -1017,13 +1073,13 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     paddingHorizontal: spacing.xs,
   },
   searchInput: {
-    backgroundColor: colors.surface,
+    backgroundColor: colors.glass,
     borderRadius: borderRadius.md,
     padding: spacing.md,
     fontSize: fontSize.md,
     color: colors.text,
     borderWidth: 1,
-    borderColor: colors.surfaceBorder,
+    borderColor: colors.glassBorder,
     marginBottom: spacing.sm,
   },
   searchLoading: {
@@ -1040,7 +1096,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     alignItems: 'center',
     paddingVertical: spacing.sm,
     borderBottomWidth: 1,
-    borderBottomColor: colors.surfaceBorder,
+    borderBottomColor: colors.glassBorder,
   },
   avatarBadge: {
     width: 40,
@@ -1053,7 +1109,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   },
   avatarBadgeText: {
     fontSize: fontSize.md,
-    fontWeight: '700',
+    fontWeight: fontWeight.bold,
     color: colors.primary,
   },
   searchUserInfo: {
@@ -1061,7 +1117,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   },
   searchUserName: {
     fontSize: fontSize.md,
-    fontWeight: '600',
+    fontWeight: fontWeight.semibold,
     color: colors.text,
   },
   searchUserMeta: {
@@ -1070,7 +1126,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     marginTop: 2,
   },
   alreadyInTableBadge: {
-    backgroundColor: colors.surfaceBorder,
+    backgroundColor: colors.glassBorder,
     paddingHorizontal: spacing.sm,
     paddingVertical: 4,
     borderRadius: borderRadius.sm,
@@ -1089,26 +1145,26 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   },
   addUserButtonText: {
     fontSize: fontSize.sm,
-    fontWeight: '700',
-    color: colors.background,
+    fontWeight: fontWeight.bold,
+    color: '#fff',
   },
   shareModalTitle: {
     fontSize: fontSize.xl,
-    fontWeight: 'bold',
+    fontWeight: fontWeight.bold,
     color: colors.text,
     marginBottom: spacing.lg,
   },
   shareCodeBox: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.surface,
+    backgroundColor: colors.glass,
     borderRadius: borderRadius.md,
     paddingVertical: spacing.sm,
     paddingHorizontal: spacing.md,
     marginTop: spacing.lg,
     marginBottom: spacing.md,
     borderWidth: 1,
-    borderColor: colors.surfaceBorder,
+    borderColor: colors.glassBorder,
   },
   shareCodeLabel: {
     fontSize: fontSize.sm,
@@ -1117,26 +1173,28 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   },
   shareCodeValue: {
     fontSize: fontSize.lg,
-    fontWeight: 'bold',
+    fontWeight: fontWeight.bold,
     color: colors.primary,
     letterSpacing: 2,
   },
   shareTextButton: {
-    backgroundColor: colors.primary,
     borderRadius: borderRadius.md,
-    paddingVertical: spacing.sm,
-    paddingHorizontal: spacing.lg,
+    overflow: 'hidden',
     marginBottom: spacing.sm,
     width: '100%',
+  },
+  shareTextButtonInner: {
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.lg,
     alignItems: 'center',
   },
   shareTextButtonLabel: {
     fontSize: fontSize.md,
-    fontWeight: '600',
-    color: colors.background,
+    fontWeight: fontWeight.semibold,
+    color: '#fff',
   },
   shareLinkButton: {
-    backgroundColor: colors.surface,
+    backgroundColor: colors.glass,
     borderRadius: borderRadius.md,
     paddingVertical: spacing.sm,
     paddingHorizontal: spacing.lg,
@@ -1148,7 +1206,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   },
   shareLinkButtonLabel: {
     fontSize: fontSize.md,
-    fontWeight: '600',
+    fontWeight: fontWeight.semibold,
     color: colors.primary,
   },
   closeModalButton: {
@@ -1169,7 +1227,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   },
   closeRouletteButtonText: {
     fontSize: fontSize.md,
-    fontWeight: '700',
-    color: colors.background,
+    fontWeight: fontWeight.bold,
+    color: '#fff',
   },
 });

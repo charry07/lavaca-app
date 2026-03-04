@@ -27,12 +27,13 @@
 | 📊 **División por porcentaje** | Asigna % personalizados a cada participante |
 | 🎰 **Ruleta** | Un participante aleatorio paga el total (¡o escapa!) |
 | 📲 **QR + Código de unión** | Comparte la sesión al instante sin fricciones |
-| ⚡ **Tiempo real** | Actualizaciones en vivo vía WebSockets (Socket.IO) |
+| 📷 **Escáner QR** | Escanea el QR con la cámara para unirte instantáneamente |
+| ⚡ **Tiempo real** | Actualizaciones en vivo vía WebSockets (Socket.IO) — sin polling |
 | 💳 **Múltiples métodos de pago** | Nequi, Daviplata, PSE, Transfiya, Cash y más |
-| 📷 **Escaneo de recibo (OCR)** | Sube la foto y la vaca detecta el monto |
+| 🖼️ **Escaneo de recibo (OCR)** | Sube la foto y la vaca detecta el monto |
 | 👥 **Grupos** | Crea grupos de amigos para sesiones recurrentes |
 | 📰 **Feed de actividad** | Eventos sociales: pagadores rápidos, ganadores de ruleta, etc. |
-| 🌗 **Tema claro / oscuro** | Cambia entre temas con un toque |
+| 🌗 **Glassmorphism UI** | Diseño premium oscuro con blur, gradientes y tokens de color |
 | 🌐 **Multilenguaje** | Soporte i18n (Español, Inglés y más) |
 | 🇨🇴 **Multi-moneda** | COP · USD · EUR |
 
@@ -107,9 +108,11 @@ lavaca-app/
 │   │   │   └── login.tsx       # Autenticación
 │   │   └── src/
 │   │       ├── auth/           # AuthContext + tokens
-│   │       ├── components/     # QRCode, Ruleta, Toast, Logo…
-│   │       ├── i18n/           # Traducciones ES/EN
+│   │       ├── components/     # GlassCard, SkeletonCard, EmptyState, ErrorState, Ruleta…
+│   │       ├── hooks/          # useSocket, useSessionSocket (Socket.IO)
+│   │       ├── i18n/           # Traducciones ES/EN/PT
 │   │       ├── services/       # Cliente HTTP (api.ts)
+│   │       ├── utils/          # baseUrl.ts, cameraPermission.ts
 │   │       └── theme/          # ThemeContext claro/oscuro
 │   │
 │   └── api/                    # 🖥️ Backend Express
@@ -150,6 +153,11 @@ cd lavaca-app
 
 # 2. Instalar dependencias (todos los workspaces)
 pnpm install
+
+# 3. Instalar paquetes nativos de Expo (si se instala en un entorno limpio)
+cd apps/mobile
+expo install expo-blur expo-linear-gradient expo-camera
+pnpm add socket.io-client
 ```
 
 ### Desarrollo
@@ -191,10 +199,11 @@ curl http://localhost:3001/health
 ```
 Cliente → Servidor       Servidor → Cliente
 ─────────────────────    ─────────────────────
-join-session (code)      session-updated (data)
-leave-session (code)     participant-joined
-                         payment-confirmed
+join-session (code)      session-update (data)
+leave-session (code)
 ```
+
+> El cliente se une a la room del `joinCode` y recibe `session-update` con el objeto `PaymentSession` completo cada vez que un participante se une, paga, o la sesión cambia de estado.
 
 ---
 
@@ -225,7 +234,10 @@ interface Participant {
 | **Base de datos** | SQLite (`better-sqlite3`) |
 | **Monorepo** | pnpm workspaces |
 | **Deploy** | Azure App Service + Azure Static Web Apps |
-| **QR** | `react-native-qrcode-svg` |
+| **UI / Glassmorphism** | `expo-blur` · `expo-linear-gradient` |
+| **Cámara / QR Scan** | `expo-camera` (`CameraView`) |
+| **WebSocket cliente** | `socket.io-client` |
+| **QR generación** | `react-native-qrcode-svg` |
 | **OCR / Recibos** | Carga de imagen + procesamiento en API |
 
 ---

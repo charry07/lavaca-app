@@ -11,9 +11,11 @@ import {
   ActivityIndicator,
   RefreshControl,
 } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useLocalSearchParams, useNavigation, useRouter } from 'expo-router';
 import { User } from '@lavaca/shared';
-import { spacing, borderRadius, fontSize, type ThemeColors } from '../../src/constants/theme';
+import { spacing, borderRadius, fontSize, fontWeight, type ThemeColors } from '../../src/constants/theme';
+import { GlassCard, SkeletonCard, ErrorState } from '../../src/components';
 import { useI18n } from '../../src/i18n';
 import { useTheme } from '../../src/theme';
 import { useAuth } from '../../src/auth';
@@ -48,9 +50,9 @@ export default function GroupDetailScreen() {
 
   const [group, setGroup] = useState<GroupDetail | null>(null);
   const [loading, setLoading] = useState(true);
+  const [fetchError, setFetchError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
 
-  // Add member modal state
   const [showAddModal, setShowAddModal] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<User[]>([]);
@@ -63,10 +65,7 @@ export default function GroupDetailScreen() {
       headerLeft: () => (
         <TouchableOpacity
           onPress={() => {
-            if (router.canGoBack()) {
-              router.back();
-              return;
-            }
+            if (router.canGoBack()) { router.back(); return; }
             router.replace('/(tabs)/groups');
           }}
           style={s.headerBackButton}
@@ -83,8 +82,9 @@ export default function GroupDetailScreen() {
     try {
       const data = await api.getGroup(id);
       setGroup(data as GroupDetail);
-    } catch (err) {
-      console.error('Error fetching group:', err);
+      setFetchError(null);
+    } catch (err: any) {
+      setFetchError(err.message || t('common.error'));
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -118,11 +118,6 @@ export default function GroupDetailScreen() {
     );
   };
 
-  const handleCreateSession = () => {
-    router.push('/create');
-  };
-
-  // ── Search users to add ───────────────────────────────
   useEffect(() => {
     if (searchQuery.trim().length < 2) {
       setSearchResults([]);
@@ -138,7 +133,7 @@ export default function GroupDetailScreen() {
       } finally {
         setSearching(false);
       }
-    }, 300); // debounce
+    }, 300);
     return () => clearTimeout(timer);
   }, [searchQuery]);
 
@@ -148,7 +143,6 @@ export default function GroupDetailScreen() {
     try {
       await api.addGroupMembers(group.id, [userToAdd.id]);
       await fetchGroup();
-      // Remove from search results
       setSearchResults((prev) => prev.filter((u) => u.id !== userToAdd.id));
       Alert.alert('✅', t('groups.memberAdded', { name: userToAdd.displayName }));
     } catch (err: any) {
@@ -171,11 +165,9 @@ export default function GroupDetailScreen() {
     const isMe = item.id === user?.id;
 
     return (
-      <View style={s.memberCard}>
+      <GlassCard style={s.memberCard}>
         <View style={s.avatar}>
-          <Text style={s.avatarText}>
-            {item.displayName.charAt(0).toUpperCase()}
-          </Text>
+          <Text style={s.avatarText}>{item.displayName.charAt(0).toUpperCase()}</Text>
         </View>
         <View style={s.memberInfo}>
           <Text style={s.memberName}>
@@ -190,55 +182,72 @@ export default function GroupDetailScreen() {
           </View>
         )}
         {isAdmin && !isCreator && (
-          <TouchableOpacity
-            style={s.removeButton}
-            onPress={() => handleRemoveMember(item)}
-          >
+          <TouchableOpacity style={s.removeButton} onPress={() => handleRemoveMember(item)}>
             <Text style={s.removeText}>✕</Text>
           </TouchableOpacity>
         )}
-      </View>
+      </GlassCard>
     );
   };
 
   if (loading) {
     return (
-      <View style={s.centered}>
-        <ActivityIndicator size="large" color={colors.primary} />
+      <View style={s.container}>
+        <View style={{ padding: spacing.md, gap: spacing.md }}>
+          {[0, 1, 2, 3].map((i) => <SkeletonCard key={i} />)}
+        </View>
       </View>
     );
   }
 
-  if (!group) {
+  if (fetchError || !group) {
     return (
-      <View style={s.centered}>
-        <Text style={s.emptyText}>{t('groups.groupNotFound')}</Text>
+      <View style={[s.container, s.centered]}>
+        <ErrorState message={fetchError || t('groups.groupNotFound')} onRetry={fetchGroup} />
       </View>
     );
   }
 
   return (
     <View style={s.container}>
-      <View style={s.header}>
+      {/* Header */}
+      <GlassCard style={s.header}>
+        <LinearGradient
+          colors={[colors.primary + '33', 'transparent']}
+          start={{ x: 0.5, y: 0 }}
+          end={{ x: 0.5, y: 1 }}
+          style={StyleSheet.absoluteFill}
+        />
         <Text style={s.headerIcon}>{group.icon || '👥'}</Text>
         <Text style={s.headerName}>{group.name}</Text>
-        <Text style={s.headerCount}>
-          {group.members.length} {t('groups.members')}
-        </Text>
+        <Text style={s.headerCount}>{group.members.length} {t('groups.members')}</Text>
+      </GlassCard>
+
+      {/* Actions */}
+      <View style={s.actionsRow}>
+        <TouchableOpacity
+          style={{ flex: 1, borderRadius: borderRadius.md, overflow: 'hidden' }}
+          onPress={() => router.push('/create')}
+        >
+          <LinearGradient
+            colors={[colors.primary, colors.accent || colors.primary]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+            style={s.createSessionBtn}
+          >
+            <Text style={s.createSessionText}>{t('groups.createSession')} 🐄</Text>
+          </LinearGradient>
+        </TouchableOpacity>
+
+        <TouchableOpacity style={s.addMemberBtn} onPress={openAddModal}>
+          <Text style={s.addMemberBtnText}>➕ {t('groups.addMembers')}</Text>
+        </TouchableOpacity>
       </View>
 
-      <TouchableOpacity style={s.createSessionBtn} onPress={handleCreateSession}>
-        <Text style={s.createSessionText}>{t('groups.createSession')} 🐄</Text>
-      </TouchableOpacity>
-
-      <TouchableOpacity style={s.addMemberBtn} onPress={openAddModal}>
-        <Text style={s.addMemberBtnText}>➕ {t('groups.addMembers')}</Text>
-      </TouchableOpacity>
-
-      {/* ── Add Member Modal ────────────────────────── */}
+      {/* Add Member Modal */}
       <Modal visible={showAddModal} animationType="slide" transparent>
-        <View style={s.modalOverlay}>
-          <View style={s.modalContent}>
+        <View style={[s.modalOverlay, { backgroundColor: colors.overlay }]}>
+          <GlassCard style={s.modalContent}>
             <View style={s.modalHeader}>
               <Text style={s.modalTitle}>{t('groups.addMembers')}</Text>
               <TouchableOpacity onPress={() => setShowAddModal(false)}>
@@ -260,11 +269,9 @@ export default function GroupDetailScreen() {
             {searching && (
               <ActivityIndicator size="small" color={colors.primary} style={{ marginVertical: spacing.md }} />
             )}
-
             {!searching && searchQuery.length < 2 && (
               <Text style={s.searchHint}>{t('groups.searchHint')}</Text>
             )}
-
             {!searching && searchQuery.length >= 2 && searchResults.length === 0 && (
               <Text style={s.searchHint}>{t('groups.noResults')}</Text>
             )}
@@ -279,9 +286,7 @@ export default function GroupDetailScreen() {
                 return (
                   <View style={s.searchResultCard}>
                     <View style={s.avatar}>
-                      <Text style={s.avatarText}>
-                        {searchUser.displayName.charAt(0).toUpperCase()}
-                      </Text>
+                      <Text style={s.avatarText}>{searchUser.displayName.charAt(0).toUpperCase()}</Text>
                     </View>
                     <View style={s.memberInfo}>
                       <Text style={s.memberName}>{searchUser.displayName}</Text>
@@ -298,7 +303,7 @@ export default function GroupDetailScreen() {
                         disabled={isAdding}
                       >
                         {isAdding ? (
-                          <ActivityIndicator size="small" color={colors.background} />
+                          <ActivityIndicator size="small" color="#fff" />
                         ) : (
                           <Text style={s.addBtnText}>{t('groups.addButton')}</Text>
                         )}
@@ -308,7 +313,7 @@ export default function GroupDetailScreen() {
                 );
               }}
             />
-          </View>
+          </GlassCard>
         </View>
       </Modal>
 
@@ -320,10 +325,7 @@ export default function GroupDetailScreen() {
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
-            onRefresh={() => {
-              setRefreshing(true);
-              fetchGroup();
-            }}
+            onRefresh={() => { setRefreshing(true); fetchGroup(); }}
             tintColor={colors.primary}
           />
         }
@@ -338,68 +340,61 @@ export default function GroupDetailScreen() {
 const createStyles = (colors: ThemeColors) =>
   StyleSheet.create({
     container: { flex: 1, backgroundColor: colors.background },
-    centered: {
-      flex: 1,
-      justifyContent: 'center',
-      alignItems: 'center',
-      backgroundColor: colors.background,
-    },
+    centered: { justifyContent: 'center', alignItems: 'center' },
     header: {
+      margin: spacing.md,
+      padding: spacing.xl,
       alignItems: 'center',
-      paddingVertical: spacing.xl,
-      borderBottomWidth: 1,
-      borderBottomColor: colors.surfaceBorder,
+      borderRadius: borderRadius.xl,
+      overflow: 'hidden',
     },
     headerIcon: { fontSize: 56, marginBottom: spacing.sm },
     headerName: {
       fontSize: fontSize.xl,
-      fontWeight: '700',
+      fontWeight: fontWeight.bold,
       color: colors.text,
       marginBottom: spacing.xs,
     },
-    headerCount: {
-      fontSize: fontSize.md,
-      color: colors.textSecondary,
+    headerCount: { fontSize: fontSize.md, color: colors.textSecondary },
+    actionsRow: {
+      paddingHorizontal: spacing.md,
+      gap: spacing.sm,
+      marginBottom: spacing.sm,
     },
     createSessionBtn: {
-      backgroundColor: colors.primary,
       paddingVertical: spacing.md,
       paddingHorizontal: spacing.xl,
       borderRadius: borderRadius.md,
-      margin: spacing.md,
       alignItems: 'center',
     },
     createSessionText: {
       fontSize: fontSize.md,
-      fontWeight: '700',
-      color: colors.background,
+      fontWeight: fontWeight.bold,
+      color: '#fff',
     },
     addMemberBtn: {
-      backgroundColor: 'transparent',
-      borderWidth: 2,
+      backgroundColor: colors.glass,
+      borderWidth: 1,
       borderColor: colors.primary,
       paddingVertical: spacing.sm,
       paddingHorizontal: spacing.xl,
       borderRadius: borderRadius.md,
-      marginHorizontal: spacing.md,
-      marginBottom: spacing.md,
       alignItems: 'center',
     },
     addMemberBtnText: {
       fontSize: fontSize.md,
-      fontWeight: '600',
+      fontWeight: fontWeight.semibold,
       color: colors.primary,
     },
-    // ── Modal ──
     modalOverlay: {
       flex: 1,
-      backgroundColor: 'rgba(0,0,0,0.5)',
       justifyContent: 'flex-end',
     },
     modalContent: {
-      backgroundColor: colors.background,
-      borderTopLeftRadius: 20,
-      borderTopRightRadius: 20,
+      borderBottomLeftRadius: 0,
+      borderBottomRightRadius: 0,
+      borderTopLeftRadius: borderRadius.xl,
+      borderTopRightRadius: borderRadius.xl,
       padding: spacing.lg,
       maxHeight: '80%',
     },
@@ -411,22 +406,18 @@ const createStyles = (colors: ThemeColors) =>
     },
     modalTitle: {
       fontSize: fontSize.xl,
-      fontWeight: '700',
+      fontWeight: fontWeight.bold,
       color: colors.text,
     },
-    modalClose: {
-      fontSize: 22,
-      color: colors.textMuted,
-      padding: spacing.xs,
-    },
+    modalClose: { fontSize: 22, color: colors.textMuted, padding: spacing.xs },
     searchInput: {
-      backgroundColor: colors.surface,
+      backgroundColor: colors.glass,
       borderRadius: borderRadius.md,
       padding: spacing.md,
       fontSize: fontSize.md,
       color: colors.text,
       borderWidth: 1,
-      borderColor: colors.surfaceBorder,
+      borderColor: colors.glassBorder,
       marginBottom: spacing.sm,
     },
     searchHint: {
@@ -440,18 +431,15 @@ const createStyles = (colors: ThemeColors) =>
       alignItems: 'center',
       paddingVertical: spacing.sm,
       borderBottomWidth: 1,
-      borderBottomColor: colors.surfaceBorder,
+      borderBottomColor: colors.glassBorder,
     },
     alreadyBadge: {
-      backgroundColor: colors.surfaceBorder,
+      backgroundColor: colors.glassBorder,
       paddingHorizontal: spacing.sm,
       paddingVertical: 4,
       borderRadius: borderRadius.sm,
     },
-    alreadyText: {
-      fontSize: fontSize.xs,
-      color: colors.textMuted,
-    },
+    alreadyText: { fontSize: fontSize.xs, color: colors.textMuted },
     addBtn: {
       backgroundColor: colors.primary,
       paddingHorizontal: spacing.md,
@@ -460,21 +448,14 @@ const createStyles = (colors: ThemeColors) =>
       minWidth: 70,
       alignItems: 'center',
     },
-    addBtnText: {
-      fontSize: fontSize.sm,
-      fontWeight: '600',
-      color: colors.background,
-    },
-    list: { padding: spacing.md },
+    addBtnText: { fontSize: fontSize.sm, fontWeight: fontWeight.semibold, color: '#fff' },
+    list: { padding: spacing.md, paddingBottom: spacing.xxl },
     memberCard: {
       flexDirection: 'row',
       alignItems: 'center',
-      backgroundColor: colors.surface,
-      borderRadius: borderRadius.md,
       padding: spacing.md,
       marginBottom: spacing.sm,
-      borderWidth: 1,
-      borderColor: colors.surfaceBorder,
+      borderRadius: borderRadius.md,
     },
     avatar: {
       width: 44,
@@ -487,31 +468,19 @@ const createStyles = (colors: ThemeColors) =>
     },
     avatarText: {
       fontSize: fontSize.lg,
-      fontWeight: '700',
+      fontWeight: fontWeight.bold,
       color: colors.primary,
     },
     memberInfo: { flex: 1 },
-    memberName: {
-      fontSize: fontSize.md,
-      fontWeight: '600',
-      color: colors.text,
-    },
-    memberUsername: {
-      fontSize: fontSize.sm,
-      color: colors.textMuted,
-      marginTop: 2,
-    },
+    memberName: { fontSize: fontSize.md, fontWeight: fontWeight.semibold, color: colors.text },
+    memberUsername: { fontSize: fontSize.sm, color: colors.textMuted, marginTop: 2 },
     adminBadge: {
       backgroundColor: colors.accent + '22',
       paddingHorizontal: spacing.sm,
       paddingVertical: 4,
       borderRadius: borderRadius.sm,
     },
-    adminText: {
-      fontSize: fontSize.xs,
-      fontWeight: '600',
-      color: colors.accent,
-    },
+    adminText: { fontSize: fontSize.xs, fontWeight: fontWeight.semibold, color: colors.accent },
     removeButton: {
       width: 32,
       height: 32,
@@ -520,11 +489,7 @@ const createStyles = (colors: ThemeColors) =>
       justifyContent: 'center',
       alignItems: 'center',
     },
-    removeText: {
-      fontSize: fontSize.md,
-      color: colors.danger,
-      fontWeight: '700',
-    },
+    removeText: { fontSize: fontSize.md, color: colors.danger, fontWeight: fontWeight.bold },
     emptyText: {
       fontSize: fontSize.md,
       color: colors.textMuted,
@@ -541,6 +506,6 @@ const createStyles = (colors: ThemeColors) =>
       fontSize: 26,
       lineHeight: 28,
       color: colors.primary,
-      fontWeight: '700',
+      fontWeight: fontWeight.bold,
     },
   });

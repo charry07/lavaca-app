@@ -14,9 +14,11 @@ import { ThemeProvider, useTheme } from '../src/theme';
 import { AuthProvider, useAuth } from '../src/auth';
 import { HeaderControls } from '../src/components/HeaderControls';
 import { ToastProvider } from '../src/components/Toast';
+import { AppErrorBoundary } from '../src/components/AppErrorBoundary';
 
 function AuthGuard({ children }: { children: React.ReactNode }) {
   const { user, isLoading } = useAuth();
+  const { colors } = useTheme();
   const router = useRouter();
   const segments = useSegments();
 
@@ -26,18 +28,16 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
     const inAuthGroup = segments[0] === 'login';
 
     if (!user && !inAuthGroup) {
-      // Not logged in — go to login
       router.replace('/login');
     } else if (user && inAuthGroup) {
-      // Logged in but on login page — go home
       router.replace('/(tabs)');
     }
   }, [user, isLoading, segments]);
 
   if (isLoading) {
     return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#1a1a2e' }}>
-        <ActivityIndicator size="large" color="#4ade80" />
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: colors.background }}>
+        <ActivityIndicator size="large" color={colors.primary} />
       </View>
     );
   }
@@ -109,14 +109,16 @@ function RootLayoutInner() {
 
 export default function RootLayout() {
   return (
-    <ThemeProvider>
-      <I18nProvider>
-        <AuthProvider>
-          <ToastProvider>
-            <RootLayoutInner />
-          </ToastProvider>
-        </AuthProvider>
-      </I18nProvider>
-    </ThemeProvider>
+    <AppErrorBoundary>
+      <ThemeProvider>
+        <I18nProvider>
+          <AuthProvider>
+            <ToastProvider>
+              <RootLayoutInner />
+            </ToastProvider>
+          </AuthProvider>
+        </I18nProvider>
+      </ThemeProvider>
+    </AppErrorBoundary>
   );
 }

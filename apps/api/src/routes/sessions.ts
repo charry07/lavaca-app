@@ -15,6 +15,12 @@ import db from '../db';
 
 const router = Router();
 
+// ── Emit helper ─────────────────────────────────────────
+function emitSessionUpdate(req: Request, joinCode: string, session: PaymentSession) {
+  const io = req.app.get('io');
+  if (io) io.to(joinCode).emit('session-update', session);
+}
+
 // ── Prepared statements ─────────────────────────────────
 const stmts = {
   insertSession: db.prepare(`INSERT INTO sessions (id, joinCode, adminId, totalAmount, currency, splitMode, description, status, createdAt) VALUES (?, ?, ?, ?, ?, ?, ?, 'open', ?)`),
@@ -127,7 +133,9 @@ router.post('/:joinCode/join', (req: Request, res: Response) => {
 
   // Return fresh data that includes the new participant
   const updatedSession = stmts.getSession.get(req.params.joinCode) as any;
-  res.json(buildSession(updatedSession));
+  const builtSession = buildSession(updatedSession);
+  emitSessionUpdate(req, req.params.joinCode, builtSession);
+  res.json(builtSession);
 });
 
 // POST /api/sessions/:joinCode/split
@@ -166,17 +174,29 @@ router.post('/:joinCode/split', (req: Request, res: Response) => {
         if (i === winnerIndex) {
           stmts.updateParticipantAmount.run(session.totalAmount, null, 1, 0, req.params.joinCode, p.userId);
         } else {
-          stmts.updateParticipantAmount.run(0, null, 0, 0, req.params.joinCode, p.userId);
+          // Non-winners pay 0 — mark as coward (they "escaped" the roulette)
+          stmts.updateParticipantAmount.run(0, null, 0, 1, req.params.joinCode, p.userId);
         }
       });
 
       const winner = participants[winnerIndex];
+      const cowards = participants.filter((_: any, i: number) => i !== winnerIndex);
+
       addFeedEvent({
         type: 'roulette_win',
         sessionId: session.id,
         message: `🎰 ${winner.displayName} perdio la ruleta y paga ${formatCOP(session.totalAmount)}!`,
         userIds: participants.map((p: any) => p.userId),
       });
+
+      if (cowards.length > 0) {
+        addFeedEvent({
+          type: 'roulette_coward',
+          sessionId: session.id,
+          message: `🐔 ${cowards.map((p: any) => p.displayName).join(', ')} se salvaron de la ruleta!`,
+          userIds: cowards.map((p: any) => p.userId),
+        });
+      }
     }
   });
 
@@ -187,7 +207,9 @@ router.post('/:joinCode/split', (req: Request, res: Response) => {
     return;
   }
 
-  res.json(buildSession(stmts.getSession.get(req.params.joinCode) as any));
+  const splitResult = buildSession(stmts.getSession.get(req.params.joinCode) as any);
+  emitSessionUpdate(req, req.params.joinCode, splitResult);
+  res.json(splitResult);
 });
 
 function closeSessionIfAllPaid(session: any, joinCode: string, now: string): void {
@@ -243,7 +265,9 @@ router.post('/:joinCode/pay/report', (req: Request, res: Response) => {
 
   stmts.reportParticipantPaid.run(paymentMethod || participant.paymentMethod || 'other', req.params.joinCode, userId);
   const updatedSession = stmts.getSession.get(req.params.joinCode) as any;
-  res.json(buildSession(updatedSession));
+  const reportResult = buildSession(updatedSession);
+  emitSessionUpdate(req, req.params.joinCode, reportResult);
+  res.json(reportResult);
 });
 
 // POST /api/sessions/:joinCode/pay/approve
@@ -304,7 +328,9 @@ router.post('/:joinCode/pay/approve', (req: Request, res: Response) => {
   }
 
   const updatedSession = stmts.getSession.get(req.params.joinCode) as any;
-  res.json(buildSession(updatedSession));
+  const approveResult = buildSession(updatedSession);
+  emitSessionUpdate(req, req.params.joinCode, approveResult);
+  res.json(approveResult);
 });
 
 // POST /api/sessions/:joinCode/pay
@@ -338,7 +364,9 @@ router.patch('/:joinCode/close', (req: Request, res: Response) => {
   if (session.status === 'closed') { res.json(buildSession(session)); return; }
   const now = new Date().toISOString();
   stmts.closeSession.run(now, req.params.joinCode);
-  res.json(buildSession(stmts.getSession.get(req.params.joinCode) as any));
+  const closedResult = buildSession(stmts.getSession.get(req.params.joinCode) as any);
+  emitSessionUpdate(req, req.params.joinCode, closedResult);
+  res.json(closedResult);
 });
 
 // DELETE /api/sessions/:joinCode  (admin delete)

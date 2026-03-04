@@ -12,10 +12,12 @@ import {
   FlatList,
   Modal,
 } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { SplitMode, User } from '@lavaca/shared';
 import { api } from '../src/services/api';
-import { spacing, borderRadius, fontSize, type ThemeColors } from '../src/constants/theme';
+import { spacing, borderRadius, fontSize, fontWeight, type ThemeColors } from '../src/constants/theme';
+import { GlassCard } from '../src/components';
 import { useI18n } from '../src/i18n';
 import { useTheme } from '../src/theme';
 import { useAuth } from '../src/auth';
@@ -28,6 +30,7 @@ export default function CreateScreen() {
   const { user } = useAuth();
   const { showError } = useToast();
   const s = createStyles(colors);
+
   const [amount, setAmount] = useState('');
   const [description, setDescription] = useState('');
   const [splitMode, setSplitMode] = useState<SplitMode>('equal');
@@ -94,10 +97,7 @@ export default function CreateScreen() {
     setParticipantSearchQuery('');
     setParticipantResults([]);
 
-    if (!user?.id) {
-      setFrequentParticipants([]);
-      return;
-    }
+    if (!user?.id) { setFrequentParticipants([]); return; }
 
     setLoadingFrequent(true);
     try {
@@ -108,10 +108,6 @@ export default function CreateScreen() {
     } finally {
       setLoadingFrequent(false);
     }
-  };
-
-  const closeAddParticipantModal = () => {
-    setShowAddParticipantModal(false);
   };
 
   const toggleParticipant = (foundUser: User) => {
@@ -125,34 +121,27 @@ export default function CreateScreen() {
   const selectedIds = new Set(selectedParticipants.map((p) => p.id));
 
   const frequentRank = useMemo(
-    () => new Map(frequentParticipants.map((p, index) => [p.id, index])),
+    () => new Map(frequentParticipants.map((p, i) => [p.id, i])),
     [frequentParticipants]
   );
 
   const displayedParticipants =
-    participantSearchQuery.trim().length >= 2
-      ? participantResults
-      : frequentParticipants.slice(0, 7);
+    participantSearchQuery.trim().length >= 2 ? participantResults : frequentParticipants.slice(0, 7);
 
   useEffect(() => {
     if (!showAddParticipantModal) return;
-
     const query = participantSearchQuery.trim();
-    if (query.length < 2) {
-      setParticipantResults([]);
-      setSearchingUsers(false);
-      return;
-    }
+    if (query.length < 2) { setParticipantResults([]); setSearchingUsers(false); return; }
 
     const timer = setTimeout(async () => {
       setSearchingUsers(true);
       try {
         const results = await api.searchUsers(query);
-        const filtered = results.filter((result) => result.id !== user?.id);
+        const filtered = results.filter((r) => r.id !== user?.id);
         const sorted = [...filtered].sort((a, b) => {
-          const rankA = frequentRank.has(a.id) ? (frequentRank.get(a.id) as number) : Number.MAX_SAFE_INTEGER;
-          const rankB = frequentRank.has(b.id) ? (frequentRank.get(b.id) as number) : Number.MAX_SAFE_INTEGER;
-          if (rankA !== rankB) return rankA - rankB;
+          const ra = frequentRank.has(a.id) ? (frequentRank.get(a.id) as number) : Infinity;
+          const rb = frequentRank.has(b.id) ? (frequentRank.get(b.id) as number) : Infinity;
+          if (ra !== rb) return ra - rb;
           return a.displayName.localeCompare(b.displayName);
         });
         setParticipantResults(sorted.slice(0, 7));
@@ -171,20 +160,20 @@ export default function CreateScreen() {
       style={s.container}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
-      <ScrollView
-        contentContainerStyle={s.scroll}
-        keyboardShouldPersistTaps="handled"
-      >
+      <ScrollView contentContainerStyle={s.scroll} keyboardShouldPersistTaps="handled">
+
         <Text style={s.sectionTitle}>{t('create.totalAmount')}</Text>
-        <TextInput
-          style={s.amountInput}
-          placeholder="$0"
-          placeholderTextColor={colors.textMuted}
-          keyboardType="numeric"
-          value={amount}
-          onChangeText={setAmount}
-          autoFocus
-        />
+        <GlassCard style={s.amountCard}>
+          <TextInput
+            style={s.amountInput}
+            placeholder="$0"
+            placeholderTextColor={colors.textMuted}
+            keyboardType="numeric"
+            value={amount}
+            onChangeText={setAmount}
+            autoFocus
+          />
+        </GlassCard>
 
         <Text style={s.sectionTitle}>{t('create.description')}</Text>
         <TextInput
@@ -196,40 +185,55 @@ export default function CreateScreen() {
         />
 
         <Text style={s.sectionTitle}>{t('create.currency')}</Text>
-        <View style={s.currencyContainer}>
+        <View style={s.pillRow}>
           {CURRENCIES.map((c) => (
             <TouchableOpacity
               key={c.key}
-              style={[s.currencyButton, currency === c.key && s.currencyButtonActive]}
+              style={{ flex: 1, borderRadius: borderRadius.md, overflow: 'hidden' }}
               onPress={() => setCurrency(c.key)}
             >
-              <Text style={[s.currencyLabel, currency === c.key && s.currencyLabelActive]}>
-                {c.symbol}
-              </Text>
+              {currency === c.key ? (
+                <LinearGradient
+                  colors={[colors.accent || colors.primary, colors.primary]}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                  style={s.pillActive}
+                >
+                  <Text style={s.pillTextActive}>{c.symbol}</Text>
+                </LinearGradient>
+              ) : (
+                <View style={s.pill}>
+                  <Text style={s.pillText}>{c.symbol}</Text>
+                </View>
+              )}
             </TouchableOpacity>
           ))}
         </View>
 
         <Text style={s.sectionTitle}>{t('create.howToSplit')}</Text>
-        <View style={s.modeContainer}>
+        <View style={s.pillRow}>
           {SPLIT_MODES.map((mode) => (
             <TouchableOpacity
               key={mode.key}
-              style={[
-                s.modeButton,
-                splitMode === mode.key && s.modeButtonActive,
-              ]}
+              style={{ flex: 1, borderRadius: borderRadius.md, overflow: 'hidden' }}
               onPress={() => setSplitMode(mode.key)}
             >
-              <Text style={s.modeEmoji}>{mode.emoji}</Text>
-              <Text
-                style={[
-                  s.modeLabel,
-                  splitMode === mode.key && s.modeLabelActive,
-                ]}
-              >
-                {mode.label}
-              </Text>
+              {splitMode === mode.key ? (
+                <LinearGradient
+                  colors={[colors.primary, colors.accent || colors.primary]}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                  style={s.modeButtonActive}
+                >
+                  <Text style={s.modeEmoji}>{mode.emoji}</Text>
+                  <Text style={s.modeLabelActive}>{mode.label}</Text>
+                </LinearGradient>
+              ) : (
+                <View style={s.modeButton}>
+                  <Text style={s.modeEmoji}>{mode.emoji}</Text>
+                  <Text style={s.modeLabel}>{mode.label}</Text>
+                </View>
+              )}
             </TouchableOpacity>
           ))}
         </View>
@@ -245,30 +249,39 @@ export default function CreateScreen() {
         )}
 
         <TouchableOpacity
-          style={[s.createButton, loading && s.createButtonDisabled]}
+          style={{ borderRadius: borderRadius.md, overflow: 'hidden', marginTop: spacing.xl, opacity: loading ? 0.6 : 1 }}
           onPress={handleCreate}
           disabled={loading}
         >
-          {loading ? (
-            <ActivityIndicator color={colors.background} />
-          ) : (
-            <Text style={s.createButtonText}>{t('create.createButton')}</Text>
-          )}
+          <LinearGradient
+            colors={[colors.primary, colors.accent || colors.primary]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+            style={s.createButton}
+          >
+            {loading ? (
+              <ActivityIndicator color="#fff" />
+            ) : (
+              <Text style={s.createButtonText}>{t('create.createButton')}</Text>
+            )}
+          </LinearGradient>
         </TouchableOpacity>
+
       </ScrollView>
 
+      {/* Add Participants Modal */}
       <Modal
         visible={showAddParticipantModal}
         animationType="slide"
         transparent
-        onRequestClose={closeAddParticipantModal}
+        onRequestClose={() => setShowAddParticipantModal(false)}
       >
-        <View style={s.modalOverlay}>
-          <View style={s.modalContent}>
+        <View style={[s.modalOverlay, { backgroundColor: colors.overlay }]}>
+          <GlassCard style={s.modalContent}>
             <View style={s.searchModalInner}>
               <View style={s.searchModalHeader}>
                 <Text style={s.modalTitle}>{t('session.addParticipants')}</Text>
-                <TouchableOpacity onPress={closeAddParticipantModal}>
+                <TouchableOpacity onPress={() => setShowAddParticipantModal(false)}>
                   <Text style={s.searchModalClose}>✕</Text>
                 </TouchableOpacity>
               </View>
@@ -284,14 +297,12 @@ export default function CreateScreen() {
                 autoCorrect={false}
               />
 
-              {loadingFrequent && participantSearchQuery.trim().length < 2 && (
+              {(loadingFrequent && participantSearchQuery.trim().length < 2) && (
                 <ActivityIndicator size="small" color={colors.primary} style={s.searchLoading} />
               )}
-
-              {searchingUsers && participantSearchQuery.trim().length >= 2 && (
+              {(searchingUsers && participantSearchQuery.trim().length >= 2) && (
                 <ActivityIndicator size="small" color={colors.primary} style={s.searchLoading} />
               )}
-
               {!searchingUsers && !loadingFrequent && displayedParticipants.length === 0 && (
                 <Text style={s.searchHintText}>
                   {participantSearchQuery.trim().length >= 2
@@ -299,7 +310,6 @@ export default function CreateScreen() {
                     : t('create.noFrequentPeople')}
                 </Text>
               )}
-
               {!searchingUsers && !loadingFrequent && participantSearchQuery.trim().length < 2 && displayedParticipants.length > 0 && (
                 <Text style={s.searchHintText}>{t('create.frequentPeopleHint')}</Text>
               )}
@@ -310,7 +320,6 @@ export default function CreateScreen() {
                 keyboardShouldPersistTaps="handled"
                 renderItem={({ item: foundUser }) => {
                   const isSelected = selectedIds.has(foundUser.id);
-
                   return (
                     <View style={s.searchResultCard}>
                       <View style={s.avatarBadge}>
@@ -318,12 +327,10 @@ export default function CreateScreen() {
                           {foundUser.displayName.charAt(0).toUpperCase()}
                         </Text>
                       </View>
-
                       <View style={s.searchUserInfo}>
                         <Text style={s.searchUserName}>{foundUser.displayName}</Text>
                         <Text style={s.searchUserMeta}>@{foundUser.username} · {foundUser.phone}</Text>
                       </View>
-
                       <TouchableOpacity
                         style={[s.addUserButton, isSelected && s.addUserButtonSelected]}
                         onPress={() => toggleParticipant(foundUser)}
@@ -337,7 +344,7 @@ export default function CreateScreen() {
                 }}
               />
             </View>
-          </View>
+          </GlassCard>
         </View>
       </Modal>
     </KeyboardAvoidingView>
@@ -346,103 +353,75 @@ export default function CreateScreen() {
 
 const createStyles = (colors: ThemeColors) =>
   StyleSheet.create({
-    container: {
-      flex: 1,
-      backgroundColor: colors.background,
-    },
-    scroll: {
-      padding: spacing.lg,
-      paddingBottom: spacing.xxl,
-    },
+    container: { flex: 1, backgroundColor: colors.background },
+    scroll: { padding: spacing.lg, paddingBottom: spacing.xxl },
     sectionTitle: {
       fontSize: fontSize.md,
-      fontWeight: '600',
+      fontWeight: fontWeight.semibold,
       color: colors.textSecondary,
       marginBottom: spacing.sm,
       marginTop: spacing.lg,
     },
+    amountCard: {
+      padding: 0,
+      borderRadius: borderRadius.md,
+      overflow: 'hidden',
+    },
     amountInput: {
       fontSize: fontSize.xxl,
-      fontWeight: 'bold',
+      fontWeight: fontWeight.bold,
       color: colors.text,
-      backgroundColor: colors.surface,
-      borderRadius: borderRadius.md,
       padding: spacing.lg,
-      borderWidth: 1,
-      borderColor: colors.surfaceBorder,
       textAlign: 'center',
     },
     input: {
       fontSize: fontSize.md,
       color: colors.text,
-      backgroundColor: colors.surface,
+      backgroundColor: colors.glass,
       borderRadius: borderRadius.md,
       padding: spacing.md,
       borderWidth: 1,
-      borderColor: colors.surfaceBorder,
+      borderColor: colors.glassBorder,
     },
-    modeContainer: {
-      flexDirection: 'row',
-    },
-    modeButton: {
-      flex: 1,
-      backgroundColor: colors.surface,
-      borderRadius: borderRadius.md,
-      padding: spacing.md,
-      marginHorizontal: spacing.xs,
-      alignItems: 'center',
-      borderWidth: 2,
-      borderColor: colors.surfaceBorder,
-    },
-    modeButtonActive: {
-      borderColor: colors.primary,
-      backgroundColor: colors.background,
-    },
-    modeEmoji: {
-      fontSize: 28,
-      marginBottom: spacing.xs,
-    },
-    modeLabel: {
-      fontSize: fontSize.sm,
-      color: colors.textSecondary,
-      textAlign: 'center',
-    },
-    modeLabelActive: {
-      color: colors.primary,
-      fontWeight: '600',
-    },
-    currencyContainer: {
+    pillRow: {
       flexDirection: 'row',
       gap: spacing.sm,
     },
-    currencyButton: {
+    pill: {
       flex: 1,
-      backgroundColor: colors.surface,
+      backgroundColor: colors.glass,
       borderRadius: borderRadius.md,
       paddingVertical: spacing.sm,
       alignItems: 'center',
-      borderWidth: 2,
-      borderColor: colors.surfaceBorder,
+      borderWidth: 1,
+      borderColor: colors.glassBorder,
     },
-    currencyButtonActive: {
-      borderColor: colors.accent,
-      backgroundColor: colors.background,
-    },
-    currencyLabel: {
-      fontSize: fontSize.sm,
-      color: colors.textSecondary,
-      fontWeight: '600',
-    },
-    currencyLabelActive: {
-      color: colors.accent,
-    },
-    createButton: {
-      backgroundColor: colors.primary,
-      paddingVertical: spacing.md,
-      borderRadius: borderRadius.md,
+    pillActive: {
+      flex: 1,
+      paddingVertical: spacing.sm,
       alignItems: 'center',
-      marginTop: spacing.xl,
+      borderRadius: borderRadius.md,
     },
+    pillText: { fontSize: fontSize.sm, color: colors.textSecondary, fontWeight: fontWeight.semibold },
+    pillTextActive: { fontSize: fontSize.sm, color: '#fff', fontWeight: fontWeight.bold },
+    modeButton: {
+      flex: 1,
+      backgroundColor: colors.glass,
+      borderRadius: borderRadius.md,
+      padding: spacing.md,
+      alignItems: 'center',
+      borderWidth: 1,
+      borderColor: colors.glassBorder,
+    },
+    modeButtonActive: {
+      flex: 1,
+      borderRadius: borderRadius.md,
+      padding: spacing.md,
+      alignItems: 'center',
+    },
+    modeEmoji: { fontSize: 28, marginBottom: spacing.xs },
+    modeLabel: { fontSize: fontSize.sm, color: colors.textSecondary, textAlign: 'center' },
+    modeLabelActive: { fontSize: fontSize.sm, color: '#fff', textAlign: 'center', fontWeight: fontWeight.semibold },
     addParticipantButton: {
       marginTop: spacing.lg,
       borderWidth: 1,
@@ -450,11 +429,11 @@ const createStyles = (colors: ThemeColors) =>
       borderRadius: borderRadius.md,
       paddingVertical: spacing.sm,
       alignItems: 'center',
-      backgroundColor: colors.surface,
+      backgroundColor: colors.glass,
     },
     addParticipantButtonText: {
       fontSize: fontSize.sm,
-      fontWeight: '700',
+      fontWeight: fontWeight.bold,
       color: colors.primary,
     },
     selectedCountText: {
@@ -463,60 +442,48 @@ const createStyles = (colors: ThemeColors) =>
       color: colors.textSecondary,
       textAlign: 'center',
     },
-    createButtonDisabled: {
-      opacity: 0.6,
+    createButton: {
+      paddingVertical: spacing.md,
+      borderRadius: borderRadius.md,
+      alignItems: 'center',
     },
     createButtonText: {
       fontSize: fontSize.lg,
-      fontWeight: '700',
-      color: colors.background,
+      fontWeight: fontWeight.bold,
+      color: '#fff',
     },
     modalOverlay: {
       flex: 1,
-      backgroundColor: 'rgba(0, 0, 0, 0.85)',
       justifyContent: 'center',
       alignItems: 'center',
     },
     modalContent: {
-      backgroundColor: colors.background,
       borderRadius: borderRadius.lg,
       maxWidth: 360,
       width: '90%',
       overflow: 'hidden',
       maxHeight: '80%',
     },
-    searchModalInner: {
-      padding: spacing.lg,
-    },
+    searchModalInner: { padding: spacing.lg },
     searchModalHeader: {
       flexDirection: 'row',
       justifyContent: 'space-between',
       alignItems: 'center',
       marginBottom: spacing.md,
     },
-    modalTitle: {
-      fontSize: fontSize.xl,
-      fontWeight: 'bold',
-      color: colors.text,
-    },
-    searchModalClose: {
-      fontSize: 22,
-      color: colors.textMuted,
-      paddingHorizontal: spacing.xs,
-    },
+    modalTitle: { fontSize: fontSize.xl, fontWeight: fontWeight.bold, color: colors.text },
+    searchModalClose: { fontSize: 22, color: colors.textMuted, paddingHorizontal: spacing.xs },
     searchInput: {
-      backgroundColor: colors.surface,
+      backgroundColor: colors.glass,
       borderRadius: borderRadius.md,
       padding: spacing.md,
       fontSize: fontSize.md,
       color: colors.text,
       borderWidth: 1,
-      borderColor: colors.surfaceBorder,
+      borderColor: colors.glassBorder,
       marginBottom: spacing.sm,
     },
-    searchLoading: {
-      marginVertical: spacing.md,
-    },
+    searchLoading: { marginVertical: spacing.md },
     searchHintText: {
       fontSize: fontSize.sm,
       color: colors.textMuted,
@@ -528,7 +495,7 @@ const createStyles = (colors: ThemeColors) =>
       alignItems: 'center',
       paddingVertical: spacing.sm,
       borderBottomWidth: 1,
-      borderBottomColor: colors.surfaceBorder,
+      borderBottomColor: colors.glassBorder,
     },
     avatarBadge: {
       width: 40,
@@ -539,24 +506,10 @@ const createStyles = (colors: ThemeColors) =>
       alignItems: 'center',
       marginRight: spacing.md,
     },
-    avatarBadgeText: {
-      fontSize: fontSize.md,
-      fontWeight: '700',
-      color: colors.primary,
-    },
-    searchUserInfo: {
-      flex: 1,
-    },
-    searchUserName: {
-      fontSize: fontSize.md,
-      fontWeight: '600',
-      color: colors.text,
-    },
-    searchUserMeta: {
-      fontSize: fontSize.xs,
-      color: colors.textMuted,
-      marginTop: 2,
-    },
+    avatarBadgeText: { fontSize: fontSize.md, fontWeight: fontWeight.bold, color: colors.primary },
+    searchUserInfo: { flex: 1 },
+    searchUserName: { fontSize: fontSize.md, fontWeight: fontWeight.semibold, color: colors.text },
+    searchUserMeta: { fontSize: fontSize.xs, color: colors.textMuted, marginTop: 2 },
     addUserButton: {
       backgroundColor: colors.primary,
       paddingHorizontal: spacing.md,
@@ -566,16 +519,10 @@ const createStyles = (colors: ThemeColors) =>
       alignItems: 'center',
     },
     addUserButtonSelected: {
-      backgroundColor: colors.surface,
+      backgroundColor: colors.glass,
       borderWidth: 1,
       borderColor: colors.primary,
     },
-    addUserButtonText: {
-      fontSize: fontSize.sm,
-      fontWeight: '700',
-      color: colors.background,
-    },
-    addUserButtonTextSelected: {
-      color: colors.primary,
-    },
+    addUserButtonText: { fontSize: fontSize.sm, fontWeight: fontWeight.bold, color: '#fff' },
+    addUserButtonTextSelected: { color: colors.primary },
   });
