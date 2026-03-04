@@ -6,13 +6,13 @@
 
 [![Node.js](https://img.shields.io/badge/Node.js-≥20-339933?style=for-the-badge&logo=node.js&logoColor=white)](https://nodejs.org/)
 [![pnpm](https://img.shields.io/badge/pnpm-≥9-F69220?style=for-the-badge&logo=pnpm&logoColor=white)](https://pnpm.io/)
-[![Expo](https://img.shields.io/badge/Expo-SDK51-000020?style=for-the-badge&logo=expo&logoColor=white)](https://expo.dev/)
+[![Expo](https://img.shields.io/badge/Expo-SDK54-000020?style=for-the-badge&logo=expo&logoColor=white)](https://expo.dev/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.x-3178C6?style=for-the-badge&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![License](https://img.shields.io/badge/License-Private-red?style=for-the-badge)](.)
 
 ---
 
-> **La Vaca** es una app móvil para dividir y gestionar pagos grupales en tiempo real.  
+> **La Vaca** es una app móvil para dividir y gestionar pagos grupales en tiempo real.
 > Crea una sesión, comparte el código o QR, y deja que la vaca lo maneje todo. 🐄
 
 </div>
@@ -29,13 +29,13 @@
 | 📲 **QR + Código de unión** | Comparte la sesión al instante sin fricciones |
 | 📷 **Escáner QR** | Escanea el QR con la cámara para unirte instantáneamente |
 | ⚡ **Tiempo real** | Actualizaciones en vivo vía WebSockets (Socket.IO) — sin polling |
-| 💳 **Múltiples métodos de pago** | Nequi, Daviplata, PSE, Transfiya, Cash y más |
-| 🖼️ **Escaneo de recibo (OCR)** | Sube la foto y la vaca detecta el monto |
+| 👥 **Participantes frecuentes** | Los 7 más recientes aparecen al instante al crear una mesa; rellena con sugeridos si no hay suficientes |
 | 👥 **Grupos** | Crea grupos de amigos para sesiones recurrentes |
 | 📰 **Feed de actividad** | Eventos sociales: pagadores rápidos, ganadores de ruleta, etc. |
-| 🌗 **Glassmorphism UI** | Diseño premium oscuro con blur, gradientes y tokens de color |
-| 🌐 **Multilenguaje** | Soporte i18n (Español, Inglés y más) |
+| 🌗 **Diseño espresso & dorado** | Paleta colombiana — fondo café, acento dorado, verde esmeralda; barra lateral de acento por estado en todas las tarjetas |
+| 🌐 **Multilenguaje** | i18n completo: Español · Inglés · Português |
 | 🇨🇴 **Multi-moneda** | COP · USD · EUR |
+| 🔒 **Seguridad** | Helmet, CORS por entorno, rate limiting OTP, límite de body 256 KB |
 
 ---
 
@@ -69,9 +69,9 @@
 │  │                      │◄────►│                          │    │
 │  │  • Expo Router       │ REST │  • /api/sessions         │    │
 │  │  • AuthContext       │  +   │  • /api/users            │    │
-│  │  • i18n (ES/EN)      │  WS  │  • /api/feed             │    │
+│  │  • i18n (ES/EN/PT)   │  WS  │  • /api/feed             │    │
 │  │  • ThemeContext      │      │  • /api/groups           │    │
-│  │  • QR & Ruleta       │      │  • SQLite (mejor-sqlite3)│    │
+│  │  • QR & Ruleta       │      │  • SQLite (better-sqlite3│    │
 │  └──────────────────────┘      └──────────────────────────┘    │
 │              │                              │                   │
 │              └──────────┬───────────────────┘                   │
@@ -91,7 +91,7 @@
 ```
 lavaca-app/
 ├── apps/
-│   ├── mobile/                 # 📱 App React Native (Expo)
+│   ├── mobile/                 # 📱 App React Native (Expo SDK 54)
 │   │   ├── app/
 │   │   │   ├── (tabs)/         # Pestañas principales
 │   │   │   │   ├── index.tsx   #  → Inicio / Sesiones activas
@@ -104,11 +104,12 @@ lavaca-app/
 │   │   │   ├── group/
 │   │   │   │   └── [id].tsx        # Detalle de grupo
 │   │   │   ├── create.tsx      # Crear nueva sesión
-│   │   │   ├── join.tsx        # Unirse con código
-│   │   │   └── login.tsx       # Autenticación
+│   │   │   ├── join.tsx        # Unirse con código o QR
+│   │   │   └── login.tsx       # Autenticación OTP
 │   │   └── src/
-│   │       ├── auth/           # AuthContext + tokens
-│   │       ├── components/     # GlassCard, SkeletonCard, EmptyState, ErrorState, Ruleta…
+│   │       ├── auth/           # AuthContext + flujo OTP
+│   │       ├── components/     # GlassCard, SkeletonCard, EmptyState, ErrorState…
+│   │       ├── constants/      # theme.ts — tokens de diseño
 │   │       ├── hooks/          # useSocket, useSessionSocket (Socket.IO)
 │   │       ├── i18n/           # Traducciones ES/EN/PT
 │   │       ├── services/       # Cliente HTTP (api.ts)
@@ -117,18 +118,20 @@ lavaca-app/
 │   │
 │   └── api/                    # 🖥️ Backend Express
 │       └── src/
-│           ├── index.ts        # Entry point + Socket.IO
-│           ├── db.ts           # Configuración SQLite
+│           ├── index.ts        # Entry point + helmet + CORS + Socket.IO
+│           ├── db.ts           # Configuración SQLite (WAL mode)
+│           ├── middleware/
+│           │   └── rateLimiter.ts   # Rate limiter en memoria
 │           └── routes/
-│               ├── sessions.ts # CRUD sesiones + pagos
-│               ├── users.ts    # Registro / perfil
-│               ├── groups.ts   # Grupos
+│               ├── sessions.ts # CRUD sesiones + pagos + ruleta
+│               ├── users.ts    # Auth OTP, registro, perfil, frecuentes, aleatorios
+│               ├── groups.ts   # Grupos de amigos
 │               └── feed.ts     # Eventos del feed
 │
 └── packages/
-    └── shared/                 # 📦 Tipos y utilidades
+    └── shared/                 # 📦 Tipos y utilidades compartidas
         └── src/
-            ├── types.ts        # Interfaces (Session, User, Debt…)
+            ├── types.ts        # Interfaces (Session, User, Participant, Debt…)
             └── utils.ts        # formatCOP, helpers
 ```
 
@@ -151,26 +154,24 @@ lavaca-app/
 git clone https://github.com/charry07/lavaca-app.git
 cd lavaca-app
 
-# 2. Instalar dependencias (todos los workspaces)
+# 2. Instalar todas las dependencias (todos los workspaces)
 pnpm install
-
-# 3. Instalar paquetes nativos de Expo (si se instala en un entorno limpio)
-cd apps/mobile
-expo install expo-blur expo-linear-gradient expo-camera
-pnpm add socket.io-client
 ```
 
 ### Desarrollo
 
 ```bash
-# Iniciar la API backend (puerto 3001)
+# Terminal 1 — API backend (puerto 3001)
 pnpm dev:api
 
-# Iniciar la app móvil (Expo)
+# Terminal 2 — App móvil (Expo)
 pnpm dev:mobile
+
+# Para web (útil en desarrollo rápido)
+cd apps/mobile && npx expo start --web
 ```
 
-> Escanea el QR con **Expo Go** en tu teléfono o presiona `i` para iOS / `a` para Android en el emulador.
+> Escanea el QR con **Expo Go** en tu teléfono o presiona `w` para web, `i` para iOS, `a` para Android.
 
 ### Verificar la API
 
@@ -183,16 +184,36 @@ curl http://localhost:3001/health
 
 ## 🛰️ API Endpoints
 
+### Usuarios
+
 | Método | Ruta | Descripción |
 |---|---|---|
-| `GET` | `/health` | Estado de la API |
+| `POST` | `/api/users/send-otp` | Enviar OTP al teléfono |
+| `POST` | `/api/users/resend-otp` | Reenviar OTP (cooldown 60s) |
+| `POST` | `/api/users/verify-otp` | Verificar código OTP |
+| `POST` | `/api/users/register` | Registrar nuevo usuario |
+| `POST` | `/api/users/login` | Login por teléfono |
+| `GET` | `/api/users/search?q=` | Buscar usuarios (mín. 2 chars) |
+| `GET` | `/api/users/random?limit=&exclude=` | Usuarios aleatorios para sugerencias |
+| `GET` | `/api/users/:id` | Perfil de usuario |
+| `PUT` | `/api/users/:id` | Actualizar perfil (avatar hasta 4 MB) |
+| `DELETE` | `/api/users/:id` | Eliminar cuenta |
+| `GET` | `/api/users/:id/history` | Historial de mesas |
+| `GET` | `/api/users/:id/frequent?limit=7` | Personas con quienes más comparte mesas |
+
+### Sesiones
+
+| Método | Ruta | Descripción |
+|---|---|---|
 | `POST` | `/api/sessions` | Crear sesión de pago |
 | `GET` | `/api/sessions/:joinCode` | Obtener sesión por código |
 | `POST` | `/api/sessions/:joinCode/join` | Unirse a una sesión |
-| `POST` | `/api/sessions/:joinCode/pay` | Registrar pago |
-| `GET` | `/api/users/:id` | Perfil de usuario |
-| `GET` | `/api/groups` | Listar grupos |
-| `GET` | `/api/feed` | Feed de eventos |
+| `POST` | `/api/sessions/:joinCode/split` | Calcular división |
+| `POST` | `/api/sessions/:joinCode/pay` | Admin marca pago (directo) |
+| `POST` | `/api/sessions/:joinCode/pay/report` | Participante reporta pago |
+| `POST` | `/api/sessions/:joinCode/pay/approve` | Admin aprueba pago reportado |
+| `PATCH` | `/api/sessions/:joinCode/close` | Cerrar sesión (admin) |
+| `DELETE` | `/api/sessions/:joinCode` | Eliminar sesión (admin) |
 
 ### WebSocket events
 
@@ -203,22 +224,46 @@ join-session (code)      session-update (data)
 leave-session (code)
 ```
 
-> El cliente se une a la room del `joinCode` y recibe `session-update` con el objeto `PaymentSession` completo cada vez que un participante se une, paga, o la sesión cambia de estado.
+---
+
+## 🎨 Sistema de diseño
+
+La paleta está inspirada en el interior de un café colombiano de noche:
+
+| Token | Valor (dark) | Significado |
+|---|---|---|
+| `background` | `#0f0f0e` | Fondo base — casi neutro oscuro |
+| `surface2` | `#232220` | Superficie elevada — tarjetas |
+| `accent` | `#f0a830` | Dorado — billetes de peso colombiano |
+| `primary` | `#2ed97b` | Esmeralda tropical |
+| `surfaceBorder` | `rgba(240,168,48,0.10)` | Borde dorado suave |
+
+**Elemento firma:** Barra de acento izquierda de 3px en todas las tarjetas de sesión, historial y participantes — coloreada según el estado (verde=abierta, rojo=cerrada, gris=cancelada).
 
 ---
 
 ## 🧩 Tipos principales
 
 ```typescript
-// Un participante en una sesión de pago
+interface PaymentSession {
+  id: string;
+  joinCode: string;          // e.g. "VACA-Y6QM"
+  adminId: string;
+  totalAmount: number;
+  currency: string;
+  splitMode: 'equal' | 'percentage' | 'roulette';
+  status: 'open' | 'closed' | 'cancelled';
+  participants: Participant[];
+  createdAt: Date;
+}
+
 interface Participant {
   userId: string;
   displayName: string;
   amount: number;
-  status: 'pending' | 'confirmed' | 'failed' | 'rejected';
-  paymentMethod?: 'nequi' | 'daviplata' | 'pse' | 'transfiya' | 'cash' | 'other';
-  isRouletteWinner?: boolean;   // 🎰 ganó la ruleta (paga todo)
-  isRouletteCoward?: boolean;   // 🐔 se rindió antes de que la ruleta girara
+  status: 'pending' | 'reported' | 'confirmed' | 'rejected' | 'failed';
+  isRouletteWinner?: boolean;   // 🎰 paga todo
+  isRouletteCoward?: boolean;   // 🐔 escapó antes del giro
 }
 ```
 
@@ -228,17 +273,16 @@ interface Participant {
 
 | Capa | Tecnología |
 |---|---|
-| **App móvil** | React Native · Expo · Expo Router |
+| **App móvil** | React Native · Expo SDK 54 · Expo Router |
 | **Lenguaje** | TypeScript 5 |
 | **Backend** | Node.js · Express · Socket.IO |
-| **Base de datos** | SQLite (`better-sqlite3`) |
+| **Seguridad** | Helmet · CORS env-aware · Rate limiter en memoria |
+| **Base de datos** | SQLite (`better-sqlite3`, WAL mode) |
 | **Monorepo** | pnpm workspaces |
-| **Deploy** | Azure App Service + Azure Static Web Apps |
-| **UI / Glassmorphism** | `expo-blur` · `expo-linear-gradient` |
+| **UI** | `expo-blur` · `expo-linear-gradient` · diseño espresso & dorado |
 | **Cámara / QR Scan** | `expo-camera` (`CameraView`) |
 | **WebSocket cliente** | `socket.io-client` |
 | **QR generación** | `react-native-qrcode-svg` |
-| **OCR / Recibos** | Carga de imagen + procesamiento en API |
 
 ---
 
@@ -253,17 +297,17 @@ interface Participant {
   │  abierta  │◄──────────────────────────      join-session WS
   └───────────┘
         │
-        │  cada pago actualiza en tiempo real
+        │  Admin divide la cuenta → cada participante recibe su monto
         ▼
-  ┌───────────────────────────────┐
-  │  ✅ confirmado   ⏳ pendiente  │
-  │  ❌ rechazado   💸 recordatorio│
-  └───────────────────────────────┘
+  ┌─────────────────────────────────────┐
+  │  pending → reported → confirmed     │
+  │  (participante reporta, admin aprueba│
+  └─────────────────────────────────────┘
         │
-   todos pagan
+   todos confirmed
         │
         ▼
-  [Sesión cerrada → aparece en Feed + Historial]
+  [Admin cierra sesión → aparece en Feed + Historial]
 ```
 
 ---
@@ -274,8 +318,8 @@ interface Participant {
 pnpm dev:mobile       # Iniciar app Expo
 pnpm dev:api          # Iniciar API con hot-reload
 pnpm build:api        # Build de producción de la API
+pnpm typecheck        # Verificación de tipos TypeScript (todos los workspaces)
 pnpm lint             # Lint en todos los workspaces
-pnpm typecheck        # Verificación de tipos TypeScript
 pnpm clean            # Limpiar builds
 ```
 

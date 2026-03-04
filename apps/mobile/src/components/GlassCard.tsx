@@ -1,5 +1,5 @@
+import { Platform, StyleProp, StyleSheet, View, ViewStyle } from 'react-native';
 import { BlurView } from 'expo-blur';
-import { StyleProp, StyleSheet, ViewStyle } from 'react-native';
 import { useTheme } from '../theme';
 import { borderRadius as br } from '../constants/theme';
 
@@ -17,8 +17,27 @@ export function GlassCard({
   borderRadiusKey = 'lg',
 }: GlassCardProps) {
   const { colors, isDark } = useTheme();
-  const blurIntensity = intensity ?? (isDark ? 20 : 40);
   const radius = br[borderRadiusKey];
+  const blurIntensity = intensity ?? (isDark ? 18 : 35);
+
+  // On web, BlurView is not supported — use a warm surface View instead
+  if (Platform.OS === 'web') {
+    return (
+      <View
+        style={[
+          styles.base,
+          {
+            borderRadius: radius,
+            backgroundColor: colors.surface2,
+            borderColor: colors.glassBorder,
+          },
+          style,
+        ]}
+      >
+        {children}
+      </View>
+    );
+  }
 
   return (
     <BlurView

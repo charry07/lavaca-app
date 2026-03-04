@@ -11,7 +11,7 @@ import { useRouter } from 'expo-router';
 import { PaymentSession } from '@lavaca/shared';
 import { formatCOP } from '@lavaca/shared';
 import { spacing, borderRadius, fontSize, fontWeight, type ThemeColors } from '../../src/constants/theme';
-import { GlassCard, SkeletonCard, EmptyState } from '../../src/components';
+import { SkeletonCard, EmptyState } from '../../src/components';
 import { useI18n } from '../../src/i18n';
 import { useTheme } from '../../src/theme';
 import { useAuth } from '../../src/auth';
@@ -27,6 +27,12 @@ const MODE_EMOJI: Record<string, string> = {
   equal: '⚖️',
   percentage: '📊',
   roulette: '🎰',
+};
+
+const STATUS_COLOR: Record<string, (c: ThemeColors) => string> = {
+  open: (c) => c.statusOpen,
+  closed: (c) => c.statusClosed,
+  cancelled: (c) => c.statusCancelled,
 };
 
 function formatAmount(amount: number, currency = 'COP'): string {
@@ -82,12 +88,12 @@ export default function HistoryTab() {
     const myAmount = myParticipation?.amount || 0;
     const isAdmin = item.adminId === user?.id;
     const isPaid = myParticipation?.status === 'confirmed';
+    const accentBar = STATUS_COLOR[item.status]?.(colors) ?? colors.statusOpen;
 
     return (
-      <TouchableOpacity onPress={() => router.push(`/session/${item.joinCode}` as any)}>
-        <GlassCard style={s.card}>
+      <TouchableOpacity onPress={() => router.push(`/session/${item.joinCode}` as any)} activeOpacity={0.75}>
+        <View style={[s.card, { borderLeftColor: accentBar }]}>
           <View style={s.cardHeader}>
-            <Text style={s.statusEmoji}>{STATUS_EMOJI[item.status] || '🟢'}</Text>
             <View style={s.cardHeaderInfo}>
               <Text style={s.cardTitle} numberOfLines={1}>
                 {item.description || t('history.untitled')}
@@ -97,23 +103,27 @@ export default function HistoryTab() {
             <Text style={s.modeEmoji}>{MODE_EMOJI[item.splitMode] || '⚖️'}</Text>
           </View>
 
+          {/* Stats row */}
           <View style={s.cardBody}>
             <View style={s.stat}>
               <Text style={s.statLabel}>{t('session.total')}</Text>
               <Text style={s.statValue}>{formatAmount(item.totalAmount, item.currency)}</Text>
             </View>
+            <View style={s.statDivider} />
             <View style={s.stat}>
               <Text style={s.statLabel}>{t('history.myPart')}</Text>
               <Text style={[s.statValue, { color: colors.accent }]}>
                 {formatAmount(myAmount, item.currency)}
               </Text>
             </View>
+            <View style={s.statDivider} />
             <View style={s.stat}>
               <Text style={s.statLabel}>{t('session.people')}</Text>
               <Text style={s.statValue}>{item.participants.length}</Text>
             </View>
           </View>
 
+          {/* Footer */}
           <View style={s.cardFooter}>
             <Text style={s.roleTag}>
               {isAdmin ? '👑 ' + t('history.organizer') : '👤 ' + t('history.participant')}
@@ -122,8 +132,8 @@ export default function HistoryTab() {
               <View style={[
                 s.paymentBadge,
                 isPaid
-                  ? { backgroundColor: colors.statusOpenBg, borderColor: colors.statusOpen }
-                  : { backgroundColor: colors.statusPendingBg, borderColor: colors.statusPending },
+                  ? { backgroundColor: colors.statusOpenBg }
+                  : { backgroundColor: colors.statusPendingBg },
               ]}>
                 <Text style={[s.paymentBadgeText, { color: isPaid ? colors.statusOpen : colors.statusPending }]}>
                   {isPaid ? t('session.paid') : t('session.pending')}
@@ -131,7 +141,7 @@ export default function HistoryTab() {
               </View>
             )}
           </View>
-        </GlassCard>
+        </View>
       </TouchableOpacity>
     );
   };
@@ -175,38 +185,58 @@ const createStyles = (colors: ThemeColors) =>
   StyleSheet.create({
     container: { flex: 1, backgroundColor: colors.background },
     emptyWrapper: { flex: 1, justifyContent: 'center', padding: spacing.xl },
-    list: { padding: spacing.md },
-    card: { padding: spacing.md, marginBottom: spacing.sm, borderRadius: borderRadius.lg },
-    cardHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: spacing.sm },
-    statusEmoji: { fontSize: 20, marginRight: spacing.sm },
+    list: { padding: spacing.md, gap: spacing.xs + 2 },
+    // Card with colored left-border signature
+    card: {
+      backgroundColor: colors.surface2,
+      borderRadius: borderRadius.md,
+      padding: spacing.md,
+      borderWidth: 1,
+      borderColor: colors.surfaceBorder,
+      borderLeftWidth: 3,
+    },
+    cardHeader: {
+      flexDirection: 'row',
+      alignItems: 'flex-start',
+      marginBottom: spacing.sm,
+    },
     cardHeaderInfo: { flex: 1 },
-    cardTitle: { fontSize: fontSize.md, fontWeight: fontWeight.bold, color: colors.text },
-    cardTime: { fontSize: fontSize.xs, color: colors.textMuted, marginTop: 2 },
-    modeEmoji: { fontSize: 20 },
+    cardTitle: {
+      fontSize: fontSize.md,
+      fontWeight: fontWeight.semibold,
+      color: colors.text,
+      marginBottom: 2,
+    },
+    cardTime: { fontSize: fontSize.xs, color: colors.textMuted },
+    modeEmoji: { fontSize: 18, marginLeft: spacing.sm },
     cardBody: {
       flexDirection: 'row',
-      justifyContent: 'space-between',
+      alignItems: 'center',
       paddingVertical: spacing.sm,
-      borderTopWidth: 1,
-      borderTopColor: colors.glassBorder,
-      borderBottomWidth: 1,
-      borderBottomColor: colors.glassBorder,
+      borderTopWidth: StyleSheet.hairlineWidth,
+      borderTopColor: colors.surfaceBorder,
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: colors.surfaceBorder,
     },
-    stat: { alignItems: 'center', flex: 1 },
+    stat: { flex: 1, alignItems: 'center' },
+    statDivider: {
+      width: StyleSheet.hairlineWidth,
+      height: 28,
+      backgroundColor: colors.surfaceBorder,
+    },
     statLabel: { fontSize: fontSize.xs, color: colors.textMuted, marginBottom: 2 },
-    statValue: { fontSize: fontSize.md, fontWeight: fontWeight.bold, color: colors.text },
+    statValue: { fontSize: fontSize.sm, fontWeight: fontWeight.bold, color: colors.text },
     cardFooter: {
       flexDirection: 'row',
       justifyContent: 'space-between',
       alignItems: 'center',
       marginTop: spacing.sm,
     },
-    roleTag: { fontSize: fontSize.sm, color: colors.textSecondary },
+    roleTag: { fontSize: fontSize.xs, color: colors.textSecondary },
     paymentBadge: {
       paddingHorizontal: spacing.sm,
-      paddingVertical: 2,
+      paddingVertical: 3,
       borderRadius: borderRadius.sm,
-      borderWidth: 1,
     },
     paymentBadgeText: { fontSize: fontSize.xs, fontWeight: fontWeight.bold },
   });

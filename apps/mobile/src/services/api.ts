@@ -106,6 +106,10 @@ export const api = {
   getFrequentUsers: (userId: string, limit = 7) =>
     request<User[]>(`/api/users/${userId}/frequent?limit=${encodeURIComponent(String(limit))}`),
 
+  /** Get random users, excluding the given IDs (used to fill suggestion slots) */
+  getRandomUsers: (limit: number, excludeIds: string[]) =>
+    request<User[]>(`/api/users/random?limit=${limit}&exclude=${encodeURIComponent(excludeIds.join(','))}`),
+
   // ── Feed ──────────────────────────────────────────────
   /** Get global feed */
   getFeed: () =>

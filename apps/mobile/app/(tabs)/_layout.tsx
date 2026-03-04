@@ -4,18 +4,22 @@ import { useTheme } from '../../src/theme';
 import { useI18n } from '../../src/i18n';
 
 interface TabIconProps {
-  emoji: string;
+  icon: string;
   label: string;
   focused: boolean;
   activeColor: string;
   inactiveColor: string;
+  accent: string;
 }
 
-function TabIcon({ emoji, label, focused, activeColor, inactiveColor }: TabIconProps) {
+function TabIcon({ icon, label, focused, activeColor, inactiveColor, accent }: TabIconProps) {
   return (
     <View style={styles.iconWrapper}>
-      <View style={[styles.iconPill, focused && { backgroundColor: activeColor + '22' }]}>
-        <Text style={styles.emoji}>{emoji}</Text>
+      <View style={[
+        styles.iconPill,
+        focused && { backgroundColor: activeColor + '20', borderColor: activeColor + '40', borderWidth: 1 },
+      ]}>
+        <Text style={[styles.emoji, { opacity: focused ? 1 : 0.55 }]}>{icon}</Text>
       </View>
       <Text
         style={[
@@ -27,7 +31,9 @@ function TabIcon({ emoji, label, focused, activeColor, inactiveColor }: TabIconP
       >
         {label}
       </Text>
-      {focused && <View style={[styles.activeDot, { backgroundColor: activeColor }]} />}
+      {focused && (
+        <View style={[styles.activeDot, { backgroundColor: accent }]} />
+      )}
     </View>
   );
 }
@@ -36,21 +42,29 @@ const styles = StyleSheet.create({
   iconWrapper: {
     alignItems: 'center',
     justifyContent: 'center',
-    paddingTop: 6,
+    paddingTop: 4,
     width: 64,
     gap: 2,
   },
   iconPill: {
-    width: 44,
+    width: 46,
     height: 28,
     borderRadius: 14,
     alignItems: 'center',
     justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: 'transparent',
   },
-  emoji: { fontSize: 18, lineHeight: 22 },
-  iconLabel: { fontSize: 10, fontWeight: '500', letterSpacing: 0.2 },
+  emoji: { fontSize: 17, lineHeight: 22 },
+  iconLabel: { fontSize: 10, fontWeight: '500', letterSpacing: 0.1 },
   iconLabelActive: { fontWeight: '700' },
-  activeDot: { width: 4, height: 4, borderRadius: 2, marginTop: 1 },
+  // Golden dorado dot — the signature accent on active tabs
+  activeDot: {
+    width: 5,
+    height: 5,
+    borderRadius: 2.5,
+    marginTop: 1,
+  },
 });
 
 export default function TabLayout() {
@@ -60,24 +74,23 @@ export default function TabLayout() {
   return (
     <Tabs
       screenOptions={{
-        headerStyle: { backgroundColor: colors.background },
+        headerStyle: { backgroundColor: colors.surface },
         headerTintColor: colors.primary,
-        headerTitleStyle: { fontWeight: '700' },
+        headerTitleStyle: { fontWeight: '700', color: colors.text },
         headerShadowVisible: false,
         tabBarShowLabel: false,
         tabBarStyle: {
-          // Glass tab bar
-          backgroundColor: colors.glass,
+          backgroundColor: colors.surface,
           borderTopWidth: 1,
-          borderTopColor: colors.glassBorder,
+          borderTopColor: colors.surfaceBorder,
           elevation: 0,
           height: Platform.OS === 'ios' ? 82 : 64,
           paddingBottom: Platform.OS === 'ios' ? 20 : 6,
           paddingTop: 4,
           shadowColor: '#000',
-          shadowOffset: { width: 0, height: -2 },
-          shadowOpacity: 0.15,
-          shadowRadius: 12,
+          shadowOffset: { width: 0, height: -4 },
+          shadowOpacity: 0.2,
+          shadowRadius: 16,
         },
         tabBarActiveTintColor: colors.primary,
         tabBarInactiveTintColor: colors.textMuted,
@@ -89,7 +102,10 @@ export default function TabLayout() {
           title: t('tabs.home'),
           headerShown: false,
           tabBarIcon: ({ focused }) => (
-            <TabIcon emoji="🏠" label={t('tabs.home')} focused={focused} activeColor={colors.primary} inactiveColor={colors.textMuted} />
+            <TabIcon
+              icon="🏠" label={t('tabs.home')} focused={focused}
+              activeColor={colors.primary} inactiveColor={colors.textMuted} accent={colors.accent}
+            />
           ),
         }}
       />
@@ -98,7 +114,10 @@ export default function TabLayout() {
         options={{
           title: t('tabs.groups'),
           tabBarIcon: ({ focused }) => (
-            <TabIcon emoji="👥" label={t('tabs.groups')} focused={focused} activeColor={colors.primary} inactiveColor={colors.textMuted} />
+            <TabIcon
+              icon="👥" label={t('tabs.groups')} focused={focused}
+              activeColor={colors.primary} inactiveColor={colors.textMuted} accent={colors.accent}
+            />
           ),
         }}
       />
@@ -107,7 +126,10 @@ export default function TabLayout() {
         options={{
           title: t('tabs.history'),
           tabBarIcon: ({ focused }) => (
-            <TabIcon emoji="📋" label={t('tabs.history')} focused={focused} activeColor={colors.primary} inactiveColor={colors.textMuted} />
+            <TabIcon
+              icon="📋" label={t('tabs.history')} focused={focused}
+              activeColor={colors.primary} inactiveColor={colors.textMuted} accent={colors.accent}
+            />
           ),
         }}
       />
@@ -116,7 +138,10 @@ export default function TabLayout() {
         options={{
           title: t('tabs.feed'),
           tabBarIcon: ({ focused }) => (
-            <TabIcon emoji="📰" label={t('tabs.feed')} focused={focused} activeColor={colors.primary} inactiveColor={colors.textMuted} />
+            <TabIcon
+              icon="📰" label={t('tabs.feed')} focused={focused}
+              activeColor={colors.primary} inactiveColor={colors.textMuted} accent={colors.accent}
+            />
           ),
         }}
       />
@@ -125,7 +150,10 @@ export default function TabLayout() {
         options={{
           title: t('tabs.profile'),
           tabBarIcon: ({ focused }) => (
-            <TabIcon emoji="👤" label={t('tabs.profile')} focused={focused} activeColor={colors.primary} inactiveColor={colors.textMuted} />
+            <TabIcon
+              icon="👤" label={t('tabs.profile')} focused={focused}
+              activeColor={colors.primary} inactiveColor={colors.textMuted} accent={colors.accent}
+            />
           ),
         }}
       />

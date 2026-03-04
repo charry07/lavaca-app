@@ -1,4 +1,4 @@
-import { Router, Request, Response } from 'express';
+import express, { Router, Request, Response } from 'express';
 import { User } from '@lavaca/shared';
 import db from '../db';
 import { rateLimiter } from '../middleware/rateLimiter';
@@ -73,7 +73,9 @@ router.post('/send-otp', rateLimiter(5, 10 * 60 * 1000), (req: Request, res: Res
 
   console.log(`\n📱 OTP for ${cleanPhone}: ${code}\n`);
 
-  res.json({ success: true, message: 'OTP sent', dev_code: code });
+  const payload: Record<string, unknown> = { success: true, message: 'OTP sent' };
+  if (process.env.NODE_ENV !== 'production') payload.dev_code = code;
+  res.json(payload);
 });
 
 // POST /api/users/resend-otp
@@ -104,7 +106,9 @@ router.post('/resend-otp', rateLimiter(5, 10 * 60 * 1000), (req: Request, res: R
 
   console.log(`\n📱 Resend OTP for ${cleanPhone}: ${code}\n`);
 
-  res.json({ success: true, message: 'OTP resent', dev_code: code });
+  const payload: Record<string, unknown> = { success: true, message: 'OTP resent' };
+  if (process.env.NODE_ENV !== 'production') payload.dev_code = code;
+  res.json(payload);
 });
 
 // POST /api/users/verify-otp
@@ -158,14 +162,20 @@ router.post('/register', (req: Request, res: Response) => {
   const cleanPhone = phone.replace(/[^0-9+]/g, '');
   const cleanUsername = username.trim().toLowerCase().replace(/[^a-z0-9._]/g, '');
   const cleanDocumentId = documentId.trim();
+  const cleanDisplayName = (displayName as string).trim().slice(0, 60);
 
-  if (cleanUsername.length < 3) {
-    res.status(400).json({ error: 'Username must be at least 3 characters' });
+  if (!cleanDisplayName) {
+    res.status(400).json({ error: 'Display name is required' });
     return;
   }
 
-  if (!cleanDocumentId) {
-    res.status(400).json({ error: 'Document ID (cédula) is required' });
+  if (cleanUsername.length < 3 || cleanUsername.length > 30) {
+    res.status(400).json({ error: 'Username must be 3–30 characters' });
+    return;
+  }
+
+  if (!cleanDocumentId || cleanDocumentId.length > 20) {
+    res.status(400).json({ error: 'Document ID (cédula) is required and must be ≤ 20 characters' });
     return;
   }
 
@@ -196,7 +206,7 @@ router.post('/register', (req: Request, res: Response) => {
   const user = {
     id: 'user-' + Math.random().toString(36).substring(2, 10),
     phone: cleanPhone,
-    displayName: displayName.trim(),
+    displayName: cleanDisplayName,
     username: cleanUsername,
     documentId: cleanDocumentId,
     avatarUrl: null,
@@ -307,6 +317,28 @@ router.get('/:id/history', (req: Request, res: Response) => {
   res.json(result);
 });
 
+// GET /api/users/random?limit=7&exclude=userId1,userId2
+router.get('/random', (req: Request, res: Response) => {
+  const rawLimit = Number(req.query.limit);
+  const limit = Number.isFinite(rawLimit) && rawLimit > 0 ? Math.min(Math.floor(rawLimit), 20) : 7;
+
+  const excludeParam = typeof req.query.exclude === 'string' ? req.query.exclude : '';
+  const excludeIds = excludeParam
+    .split(',')
+    .map((id) => id.trim())
+    .filter(Boolean);
+
+  // Build exclusion placeholders safely
+  const placeholders = excludeIds.length > 0 ? excludeIds.map(() => '?').join(', ') : null;
+  const sql = placeholders
+    ? `SELECT id, displayName, username, phone, avatarUrl, createdAt FROM users WHERE id NOT IN (${placeholders}) ORDER BY RANDOM() LIMIT ?`
+    : `SELECT id, displayName, username, phone, avatarUrl, createdAt FROM users ORDER BY RANDOM() LIMIT ?`;
+
+  const params = placeholders ? [...excludeIds, limit] : [limit];
+  const rows = db.prepare(sql).all(...params) as any[];
+  res.json(rows.map((r) => rowToUser(r)));
+});
+
 // GET /api/users/:id/frequent?limit=7
 router.get('/:id/frequent', (req: Request, res: Response) => {
   const user = stmts.getUserById.get(req.params.id) as any;
@@ -323,8 +355,8 @@ router.get('/:id/frequent', (req: Request, res: Response) => {
   res.json(result);
 });
 
-// PUT /api/users/:id
-router.put('/:id', (req: Request, res: Response) => {
+// PUT /api/users/:id  (5 MB limit for base64 avatar uploads)
+router.put('/:id', express.json({ limit: '5mb' }), (req: Request, res: Response) => {
   const existing = stmts.getUserById.get(req.params.id) as any;
   if (!existing) {
     res.status(404).json({ error: 'User not found' });
@@ -364,7 +396,21 @@ router.put('/:id', (req: Request, res: Response) => {
     }
   }
 
-  if (req.body.avatarUrl !== undefined) avatarUrl = req.body.avatarUrl;
+  if (req.body.avatarUrl !== undefined) {
+    const av = req.body.avatarUrl;
+    if (av !== null && typeof av === 'string') {
+      // Reject base64 data URIs larger than 4 MB decoded (~5.3 MB base64)
+      if (av.length > 5_500_000) {
+        res.status(413).json({ error: 'Avatar image exceeds the 4 MB limit' });
+        return;
+      }
+      if (!av.startsWith('data:image/') && !av.startsWith('http')) {
+        res.status(400).json({ error: 'Invalid avatar URL format' });
+        return;
+      }
+    }
+    avatarUrl = av;
+  }
 
   stmts.updateUser.run({ id: req.params.id, displayName, username, documentId, avatarUrl });
 

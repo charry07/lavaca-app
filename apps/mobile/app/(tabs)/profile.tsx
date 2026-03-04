@@ -119,36 +119,38 @@ export default function ProfileTab() {
 
   const renderField = (label: string, field: string, value: string, editable = true) => (
     <View key={field}>
-      <Text style={s.label}>{label}</Text>
-      {editingField === field ? (
-        <View style={s.editRow}>
-          <TextInput
-            style={s.editInput}
-            value={editValue}
-            onChangeText={setEditValue}
-            autoFocus
-            autoCapitalize={field === 'username' ? 'none' : 'words'}
-          />
-          <TouchableOpacity style={s.saveBtn} onPress={saveEdit} disabled={saving}>
-            {saving
-              ? <ActivityIndicator size="small" color="#fff" />
-              : <Text style={s.saveBtnText}>✓</Text>}
+      <View style={{ paddingHorizontal: spacing.lg, paddingVertical: spacing.md }}>
+        <Text style={s.label}>{label}</Text>
+        {editingField === field ? (
+          <View style={s.editRow}>
+            <TextInput
+              style={s.editInput}
+              value={editValue}
+              onChangeText={setEditValue}
+              autoFocus
+              autoCapitalize={field === 'username' ? 'none' : 'words'}
+            />
+            <TouchableOpacity style={s.saveBtn} onPress={saveEdit} disabled={saving}>
+              {saving
+                ? <ActivityIndicator size="small" color={colors.background} />
+                : <Text style={s.saveBtnText}>✓</Text>}
+            </TouchableOpacity>
+            <TouchableOpacity style={s.cancelBtn} onPress={cancelEdit}>
+              <Text style={s.cancelBtnText}>✕</Text>
+            </TouchableOpacity>
+          </View>
+        ) : (
+          <TouchableOpacity
+            activeOpacity={0.6}
+            onPress={() => editable && startEdit(field, value)}
+            disabled={!editable}
+          >
+            <Text style={s.value}>
+              {value || '—'} {editable ? ' ✏️' : ''}
+            </Text>
           </TouchableOpacity>
-          <TouchableOpacity style={s.cancelBtn} onPress={cancelEdit}>
-            <Text style={s.cancelBtnText}>✕</Text>
-          </TouchableOpacity>
-        </View>
-      ) : (
-        <TouchableOpacity
-          activeOpacity={0.6}
-          onPress={() => editable && startEdit(field, value)}
-          disabled={!editable}
-        >
-          <Text style={s.value}>
-            {value || '—'} {editable ? '✏️' : ''}
-          </Text>
-        </TouchableOpacity>
-      )}
+        )}
+      </View>
       <View style={s.divider} />
     </View>
   );
@@ -184,8 +186,11 @@ export default function ProfileTab() {
         {renderField(t('profile.phone'), 'phone', user.phone, false)}
         {renderField(t('profile.document'), 'documentId', user.documentId || '', true)}
 
-        <Text style={s.label}>{t('profile.memberSince')}</Text>
-        <Text style={s.value}>{new Date(user.createdAt).toLocaleDateString()}</Text>
+        <View style={s.divider} />
+        <View style={{ paddingHorizontal: spacing.lg, paddingVertical: spacing.md }}>
+          <Text style={s.label}>{t('profile.memberSince')}</Text>
+          <Text style={s.value}>{new Date(user.createdAt).toLocaleDateString()}</Text>
+        </View>
       </GlassCard>
 
       {/* Logout */}
@@ -249,12 +254,12 @@ const createStyles = (colors: ThemeColors) =>
     },
     avatarRing: {
       borderRadius: 56,
-      borderWidth: 3,
-      borderColor: colors.primary,
+      borderWidth: 2,
+      borderColor: colors.accent,         // dorado ring
       padding: 3,
-      shadowColor: colors.primary,
-      shadowOpacity: 0.4,
-      shadowRadius: 12,
+      shadowColor: colors.accent,
+      shadowOpacity: 0.3,
+      shadowRadius: 10,
       shadowOffset: { width: 0, height: 0 },
     },
     avatar: {
@@ -271,51 +276,54 @@ const createStyles = (colors: ThemeColors) =>
       borderRadius: 50,
     },
     avatarText: {
-      fontSize: fontSize.hero,
+      fontSize: 42,
       fontWeight: fontWeight.bold,
-      color: '#fff',
+      color: colors.background,
     },
     cameraIcon: {
       position: 'absolute',
       bottom: 0,
       right: '35%',
-      backgroundColor: colors.glass,
+      backgroundColor: colors.surface2,
       borderRadius: 16,
       width: 32,
       height: 32,
       justifyContent: 'center',
       alignItems: 'center',
       borderWidth: 1,
-      borderColor: colors.glassBorder,
+      borderColor: colors.surfaceBorder,
     },
-    cameraText: { fontSize: 16 },
+    cameraText: { fontSize: 15 },
     card: {
-      padding: spacing.lg,
+      padding: 0,
       borderRadius: borderRadius.lg,
+      backgroundColor: colors.surface2,
+      borderWidth: 1,
+      borderColor: colors.surfaceBorder,
+      overflow: 'hidden',
     },
     label: {
       fontSize: fontSize.xs,
       color: colors.textMuted,
       textTransform: 'uppercase',
-      letterSpacing: 1,
-      marginBottom: spacing.xs,
+      letterSpacing: 0.8,
+      marginBottom: 2,
     },
     value: {
-      fontSize: fontSize.lg,
+      fontSize: fontSize.md,
       color: colors.text,
       fontWeight: fontWeight.medium,
     },
     divider: {
-      height: 1,
-      backgroundColor: colors.glassBorder,
-      marginVertical: spacing.md,
+      height: StyleSheet.hairlineWidth,
+      backgroundColor: colors.surfaceBorder,
     },
     editRow: { flexDirection: 'row', alignItems: 'center' },
     editInput: {
       flex: 1,
-      fontSize: fontSize.lg,
+      fontSize: fontSize.md,
       color: colors.text,
-      backgroundColor: colors.glass,
+      backgroundColor: colors.surface,
       borderRadius: borderRadius.sm,
       padding: spacing.sm,
       borderWidth: 1,
@@ -324,33 +332,35 @@ const createStyles = (colors: ThemeColors) =>
     saveBtn: {
       marginLeft: spacing.sm,
       backgroundColor: colors.primary,
-      width: 36,
-      height: 36,
-      borderRadius: 18,
+      width: 34,
+      height: 34,
+      borderRadius: 17,
       justifyContent: 'center',
       alignItems: 'center',
     },
-    saveBtnText: { color: '#fff', fontSize: fontSize.md, fontWeight: fontWeight.bold },
+    saveBtnText: { color: colors.background, fontSize: fontSize.md, fontWeight: fontWeight.bold },
     cancelBtn: {
       marginLeft: spacing.xs,
-      backgroundColor: colors.danger,
-      width: 36,
-      height: 36,
-      borderRadius: 18,
+      backgroundColor: colors.surface,
+      width: 34,
+      height: 34,
+      borderRadius: 17,
       justifyContent: 'center',
       alignItems: 'center',
+      borderWidth: 1,
+      borderColor: colors.surfaceBorder,
     },
-    cancelBtnText: { color: '#fff', fontSize: fontSize.md, fontWeight: fontWeight.bold },
+    cancelBtnText: { color: colors.textMuted, fontSize: fontSize.md, fontWeight: fontWeight.bold },
     logoutButton: {
       marginTop: spacing.xl,
       paddingVertical: spacing.md,
       borderRadius: borderRadius.md,
-      borderWidth: 2,
-      borderColor: colors.danger,
+      borderWidth: 1.5,
+      borderColor: colors.danger + '60',
       alignItems: 'center',
     },
     logoutButtonText: {
-      fontSize: fontSize.md,
+      fontSize: fontSize.sm,
       fontWeight: fontWeight.semibold,
       color: colors.danger,
     },
@@ -361,7 +371,7 @@ const createStyles = (colors: ThemeColors) =>
       alignItems: 'center',
     },
     deleteButtonText: {
-      fontSize: fontSize.sm,
+      fontSize: fontSize.xs,
       fontWeight: fontWeight.medium,
       color: colors.textMuted,
       textDecorationLine: 'underline',
@@ -370,8 +380,9 @@ const createStyles = (colors: ThemeColors) =>
       marginTop: spacing.md,
       padding: spacing.lg,
       borderRadius: borderRadius.lg,
-      borderWidth: 1.5,
-      borderColor: colors.danger,
+      borderWidth: 1,
+      borderColor: colors.danger + '40',
+      backgroundColor: colors.danger + '08',
     },
     deleteConfirmTitle: {
       fontSize: fontSize.md,
@@ -391,7 +402,7 @@ const createStyles = (colors: ThemeColors) =>
       paddingVertical: spacing.sm,
       borderRadius: borderRadius.md,
       borderWidth: 1,
-      borderColor: colors.glassBorder,
+      borderColor: colors.surfaceBorder,
       alignItems: 'center',
     },
     deleteCancelBtnText: {

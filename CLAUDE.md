@@ -18,6 +18,9 @@ pnpm dev:mobile          # or: pnpm --filter @lavaca/mobile start
 # Start the API backend with hot-reload (port 3001)
 pnpm dev:api             # or: pnpm --filter @lavaca/api dev
 
+# Web mode (fast for development/testing)
+cd apps/mobile && npx expo start --web
+
 # Build API for production
 pnpm build:api
 
@@ -46,19 +49,26 @@ lavaca-app/               ← pnpm monorepo root
 
 ### `@lavaca/api` — Backend
 
-- Entry: [apps/api/src/index.ts](apps/api/src/index.ts) — sets up Express, Socket.IO, mounts routers, exposes `io` via `app.set('io', io)`.
-- DB: [apps/api/src/db.ts](apps/api/src/db.ts) — `better-sqlite3` with WAL mode; DB file at `apps/api/data/lavaca.db`. Schema is created inline on startup.
+- Entry: [apps/api/src/index.ts](apps/api/src/index.ts) — Express + Socket.IO + helmet + CORS env-aware.
+- DB: [apps/api/src/db.ts](apps/api/src/db.ts) — `better-sqlite3` WAL mode; DB at `apps/api/data/lavaca.db`.
 - Routes: `apps/api/src/routes/` — `sessions.ts`, `users.ts`, `groups.ts`, `feed.ts`.
-- Real-time: Routes emit Socket.IO events to session rooms (keyed by `joinCode`). Client events: `join-session`, `leave-session`; server events: `session-updated`, `participant-joined`, `payment-confirmed`.
-- Auth: OTP-based (phone number). OTPs stored in `otps` table; `dev_code` returned in development for easy testing.
-- Run with `tsx watch` in dev; `tsc` + `node dist/index.js` in production.
+- Real-time: Routes emit Socket.IO events to rooms keyed by `joinCode`. Client: `join-session`, `leave-session`; server: `session-update`.
+- Auth: OTP-based (phone). `dev_code` only returned when `NODE_ENV !== 'production'`. Dev bypass code `123456`.
+- Security: `helmet`, CORS restricted by `ALLOWED_ORIGINS` env in production, body limit 256 KB globally (PUT `/api/users/:id` overrides to 5 MB for avatar).
+- Run: `tsx watch` dev; `tsc` + `node dist/index.js` production.
+
+**Key API endpoints (users):**
+- `GET /api/users/random?limit=N&exclude=id1,id2` — random users for participant suggestions
+- `GET /api/users/:id/frequent?limit=7` — users most frequently sharing mesas with `:id`
+- `GET /api/users/search?q=` — search by name/username/phone/document (min 2 chars)
+- `PUT /api/users/:id` — update profile; validates avatarUrl format + size (≤ 5.5M chars base64)
 
 ### `@lavaca/mobile` — React Native App
 
 - File-based routing via **Expo Router** (`apps/mobile/app/`).
-- Root layout: [apps/mobile/app/_layout.tsx](apps/mobile/app/_layout.tsx) — wraps everything in `ThemeProvider → I18nProvider → AuthProvider → ToastProvider`, plus `AuthGuard` for protected routes.
+- Root layout: [apps/mobile/app/_layout.tsx](apps/mobile/app/_layout.tsx) — `ThemeProvider → I18nProvider → AuthProvider → ToastProvider` + `AuthGuard`.
 - Tabs: `(tabs)/` — Home (index), Feed, Groups, History, Profile.
-- Modals: `create.tsx` (new session), `join.tsx` (join by code).
+- Modals: `create.tsx` (new session), `join.tsx` (join by code/QR).
 - Dynamic routes: `session/[joinCode].tsx`, `group/[id].tsx`.
 
 **Contexts (all in `apps/mobile/src/`):**
@@ -68,71 +78,81 @@ lavaca-app/               ← pnpm monorepo root
 | `auth/AuthContext.tsx` | `useAuth()` | `user`, OTP flow, `logout`, `deleteAccount`, `updateProfile` |
 | `theme/ThemeContext.tsx` | `useTheme()` | `colors`, `isDark`, `toggleTheme` |
 | `i18n/I18nContext.tsx` | `useI18n()` | `t()`, `locale`, `setLocale` |
-| `components/Toast.tsx` | `useToast()` | `showToast()` |
+| `components/Toast.tsx` | `useToast()` | `showToast()`, `showError()`, `showSuccess()` |
 
-**Styling:**
-- All colors come from `useTheme().colors` (never hardcode colors).
-- Design tokens (spacing, borderRadius, fontSize) live in [apps/mobile/src/constants/theme.ts](apps/mobile/src/constants/theme.ts).
-- Pattern: `const s = createStyles(colors)` with `StyleSheet.create()` at bottom of each screen.
+**Styling rules — always follow these:**
+- All colors from `useTheme().colors` — never hardcode hex values.
+- Design tokens: `spacing`, `borderRadius`, `fontSize`, `fontWeight` from [apps/mobile/src/constants/theme.ts](apps/mobile/src/constants/theme.ts).
+- Pattern: `const s = createStyles(colors)` + `StyleSheet.create()` at the bottom of every screen.
+- **Signature element**: all session/history/participant cards use `borderLeftWidth: 3, borderLeftColor: <statusColor>` — colored by status.
 
 **i18n:**
-- Translation keys in [apps/mobile/src/i18n/translations.ts](apps/mobile/src/i18n/translations.ts) — supports `es`, `en`, `pt`.
+- Translation keys in [apps/mobile/src/i18n/translations.ts](apps/mobile/src/i18n/translations.ts) — `es`, `en`, `pt`.
 - Use `t('key')` for all user-facing strings. Supports `{{variable}}` interpolation.
+- When adding a new key, add it to all three locales.
 
 **API client:**
 - Single client in [apps/mobile/src/services/api.ts](apps/mobile/src/services/api.ts) — exports `api` object.
-- Auto-detects host IP from Expo Go's `debuggerHost` (works on physical devices). Falls back to `10.0.2.2` for Android emulator.
+- Auto-detects host from Expo Go's `debuggerHost`; falls back to `10.0.2.2` for Android emulator.
 
 ### `@lavaca/shared` — Shared Types
 
-- [packages/shared/src/types.ts](packages/shared/src/types.ts) — all domain interfaces: `User`, `PaymentSession`, `Participant`, `Group`, `FeedEvent`, `Debt`.
-- [packages/shared/src/utils.ts](packages/shared/src/utils.ts) — `formatCOP` and other helpers.
-- Import as `@lavaca/shared` in both `api` and `mobile`.
+- [packages/shared/src/types.ts](packages/shared/src/types.ts) — `User`, `PaymentSession`, `Participant`, `Group`, `FeedEvent`, `Debt`.
+- [packages/shared/src/utils.ts](packages/shared/src/utils.ts) — `formatCOP` and helpers.
+- Import as `@lavaca/shared` in both workspaces.
 
 ## Key Domain Concepts
 
-- **Mesa / Session** (`PaymentSession`): identified by a short `joinCode`. Has `splitMode`: `equal | percentage | roulette`.
-- **Participant**: status flow is `pending → reported → confirmed | rejected | failed`.
-- **Roulette**: one participant is randomly selected as winner (pays all) or coward (escaped before spin). Tracked with `isRouletteWinner` / `isRouletteCoward` flags.
+- **Mesa / Session** (`PaymentSession`): identified by `joinCode` (e.g. `VACA-Y6QM`). `splitMode`: `equal | percentage | roulette`.
+- **Participant status flow**: `pending → reported → confirmed | rejected | failed`.
+- **Roulette**: one participant randomly pays all (`isRouletteWinner`) or escapes (`isRouletteCoward`).
 - **Payment flow**: participant calls `reportPaid` → admin calls `approvePaid` (or `markPaid` directly if admin).
-- **Feed events**: auto-generated on roulette win/coward, fast payer, session close. Stored in `feed_events` + `feed_event_users` tables.
+- **Feed events**: auto-generated on roulette win/coward, fast payer, session close.
+- **Frequent users**: `GET /api/users/:id/frequent` returns users most co-present in shared mesas — used for the participant picker.
+- **Random users**: `GET /api/users/random` fills remaining participant suggestion slots when frequent < 7.
 
-## New Architecture Notes (post-refactor)
+## Design System
 
-### New Mobile Packages
-```bash
-# Install once (already done):
-expo install expo-blur expo-linear-gradient expo-camera
-pnpm add socket.io-client  # in apps/mobile
-```
+Palette: warm espresso & dorado — inspired by a Colombian café interior at night.
 
-### Shared Components (`apps/mobile/src/components/`)
-- `GlassCard` — frosted-glass card using `expo-blur` `BlurView`. Use instead of plain `View` for elevated surfaces.
-- `SkeletonCard` / `SkeletonLoader` — animated loading placeholder; use in all loading states.
-- `EmptyState` — empty list state with emoji, title, hint, optional action button.
-- `ErrorState` — error state with retry button; replaces silent `// silently ignore` catch blocks.
-- `AppErrorBoundary` — React class error boundary wrapping the root layout.
-- All exported from `src/components/index.ts` barrel.
+| Token | Dark | Light | Purpose |
+|---|---|---|---|
+| `background` | `#0f0f0e` | `#f9f8f6` | Base canvas |
+| `surface` | `#1a1917` | `#ffffff` | Elevated 1 |
+| `surface2` | `#232220` | `#f2f0ed` | Cards, modals |
+| `accent` | `#f0a830` | `#c47c10` | Dorado — amounts, avatar ring, join code |
+| `primary` | `#2ed97b` | `#1a9b56` | Tropical emerald — CTAs, active states |
+| `surfaceBorder` | `rgba(240,168,48,0.10)` | `rgba(160,120,60,0.13)` | Card borders |
 
-### New Hooks (`apps/mobile/src/hooks/`)
-- `useSocket()` — singleton `socket.io-client` connection. Uses `transports: ['websocket']` (required for React Native).
-- `useSessionSocket(joinCode, onUpdate)` — joins a Socket.IO room and fires `onUpdate` on `session-update` events.
+**GlassCard** (`src/components/GlassCard.tsx`): uses `expo-blur` on native, falls back to `colors.surface2` plain `View` on web.
 
-### Utilities
-- `src/utils/baseUrl.ts` — `getBaseUrl()` shared by `api.ts` and socket hooks (extracted from `api.ts`).
-- `src/utils/cameraPermission.ts` — `requestCameraPermission()` wrapper for `expo-camera`.
+**Tab bar**: active tab shows dorado golden dot (`colors.accent`) below icon.
 
-### Design Tokens (extended)
-New tokens on `ThemeColors` (in `src/constants/theme.ts`):
-- `glass`, `glassBorder`, `overlay` — frosted-glass surface colors.
-- `statusOpen`, `statusClosed`, `statusCancelled`, `statusPending` and their `*Bg` variants — replace all hardcoded status hex values.
-- `fontWeight` constant: `regular | medium | semibold | bold | black`.
+## Component Inventory
 
-### Backend Middleware
-- `apps/api/src/middleware/rateLimiter.ts` — in-memory Map-based rate limiter. Applied to `send-otp` (5/10 min) and `verify-otp` (10/10 min).
-- `POST /api/users/resend-otp` — resends OTP with 60s cooldown.
-- `emitSessionUpdate()` helper in `sessions.ts` — emits `session-update` Socket.IO event after every mutation.
-- Dev OTP bypass (`123456`) is gated on `NODE_ENV !== 'production'`.
+- `GlassCard` — elevated card (BlurView native / warm View web)
+- `SkeletonCard` / `SkeletonLoader` — animated loading placeholders
+- `EmptyState` — emoji + title + hint + optional action
+- `ErrorState` — error with retry button
+- `VacaLogo` — animated logo component
+- `HeaderControls` — language + theme toggle in top-right
+- `AppErrorBoundary` — React class error boundary at root
 
-### QR Scanner
-`join.tsx` includes a `CameraView` (expo-camera) scanner modal. `app.json` includes `NSCameraUsageDescription` for iOS and `expo-camera` in plugins.
+## Hooks
+
+- `useSocket()` — singleton Socket.IO connection (`transports: ['websocket']`)
+- `useSessionSocket(joinCode, onUpdate)` — joins room, fires callback on `session-update`
+
+## Utilities
+
+- `src/utils/baseUrl.ts` — `getBaseUrl()` used by `api.ts` and socket hooks
+- `src/utils/cameraPermission.ts` — `requestCameraPermission()` for `expo-camera`
+
+## Security Notes
+
+- Never hardcode `ALLOWED_ORIGINS` — use env var in production
+- OTP `dev_code` only in non-production responses
+- Body limit 256 KB global; only avatar upload (`PUT /api/users/:id`) gets 5 MB
+- Rate limiter: `send-otp` 5/10min, `resend-otp` 5/10min + 60s cooldown, `verify-otp` 10/10min
+- Avatar validation: max 5.5M chars, must start with `data:image/` or `http`
+- `documentId` (cédula) is validated unique and ≤ 20 chars at registration

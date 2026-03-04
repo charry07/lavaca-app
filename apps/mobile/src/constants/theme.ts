@@ -3,10 +3,11 @@ export type ColorScheme = 'dark' | 'light';
 export interface ThemeColors {
   background: string;
   surface: string;
+  surface2: string;        // elevated surface — cards on top of surface
   surfaceBorder: string;
   primary: string;
   primaryDark: string;
-  accent: string;
+  accent: string;          // dorado — golden peso tone
   text: string;
   textSecondary: string;
   textMuted: string;
@@ -29,62 +30,69 @@ export interface ThemeColors {
   statusPendingBg: string;
 }
 
+// ── Dark — Espresso & Dorado ─────────────────────────────
+// Inspired by the warm interior of a Colombian café at night:
+// deep tobacco shadows, golden peso bills, tropical emerald money
 export const darkColors: ThemeColors = {
-  background: '#1a1a2e',
-  surface: '#16213e',
-  surfaceBorder: '#2d3a5e',
-  primary: '#4ade80',
-  primaryDark: '#22c55e',
-  accent: '#38bdf8',
-  text: '#e2e8f0',
-  textSecondary: '#94a3b8',
-  textMuted: '#64748b',
-  danger: '#ef4444',
-  warning: '#f59e0b',
-  success: '#4ade80',
-  white: '#ffffff',
+  background:    '#0f0f0e',               // near-neutral dark — barely warm
+  surface:       '#1a1917',               // one step up — very subtle warmth
+  surface2:      '#232220',               // elevated surface — cards
+  surfaceBorder: 'rgba(240, 168, 48, 0.10)', // golden amber border, softer
+  primary:       '#2ed97b',               // tropical emerald — warm green
+  primaryDark:   '#22b866',
+  accent:        '#f0a830',               // dorado — Colombian peso gold
+  text:          '#f5edd8',               // warm crema
+  textSecondary: '#b8a68c',               // warm tan
+  textMuted:     '#7a6a54',               // muted warm brown
+  danger:        '#f05a5a',
+  warning:       '#f0a830',               // same as accent — intentional
+  success:       '#2ed97b',
+  white:         '#ffffff',
   // Glassmorphism
-  glass: 'rgba(22, 33, 62, 0.6)',
-  glassBorder: 'rgba(255, 255, 255, 0.08)',
-  overlay: 'rgba(0, 0, 0, 0.85)',
+  glass:         'rgba(30, 23, 16, 0.72)',        // warm dark glass
+  glassBorder:   'rgba(240, 168, 48, 0.14)',      // golden border
+  overlay:       'rgba(8, 6, 3, 0.88)',
   // Status tokens
-  statusOpen: '#4ade80',
-  statusClosed: '#ef4444',
-  statusCancelled: '#64748b',
-  statusPending: '#f59e0b',
-  statusOpenBg: 'rgba(74, 222, 128, 0.13)',
-  statusClosedBg: 'rgba(239, 68, 68, 0.13)',
-  statusCancelledBg: 'rgba(100, 116, 139, 0.13)',
-  statusPendingBg: 'rgba(245, 158, 11, 0.13)',
+  statusOpen:           '#2ed97b',
+  statusClosed:         '#f05a5a',
+  statusCancelled:      '#7a6a54',
+  statusPending:        '#f0a830',
+  statusOpenBg:         'rgba(46, 217, 123, 0.12)',
+  statusClosedBg:       'rgba(240, 90, 90, 0.12)',
+  statusCancelledBg:    'rgba(122, 106, 84, 0.12)',
+  statusPendingBg:      'rgba(240, 168, 48, 0.12)',
 };
 
+// ── Light — Parchment & Pasto ─────────────────────────────
+// Warm Colombian daylight: parchment paper, fresh mint, warm earth
 export const lightColors: ThemeColors = {
-  background: '#f8fafc',
-  surface: '#ffffff',
-  surfaceBorder: '#e2e8f0',
-  primary: '#16a34a',
-  primaryDark: '#15803d',
-  accent: '#0284c7',
-  text: '#1e293b',
-  textSecondary: '#475569',
-  textMuted: '#94a3b8',
-  danger: '#dc2626',
-  warning: '#d97706',
-  success: '#16a34a',
-  white: '#ffffff',
+  background:    '#f9f8f6',               // barely warm white
+  surface:       '#ffffff',
+  surface2:      '#f2f0ed',               // very light warm gray
+  surfaceBorder: 'rgba(160, 120, 60, 0.13)',
+  primary:       '#1a9b56',               // deep pasto green
+  primaryDark:   '#157843',
+  accent:        '#c47c10',               // warm honey-amber
+  text:          '#1a1209',               // deep espresso on light
+  textSecondary: '#5a4832',               // warm sienna
+  textMuted:     '#a08060',               // warm sand
+  danger:        '#c0392b',
+  warning:       '#c47c10',
+  success:       '#1a9b56',
+  white:         '#ffffff',
   // Glassmorphism
-  glass: 'rgba(255, 255, 255, 0.65)',
-  glassBorder: 'rgba(0, 0, 0, 0.06)',
-  overlay: 'rgba(0, 0, 0, 0.5)',
+  glass:         'rgba(255, 248, 240, 0.72)',
+  glassBorder:   'rgba(160, 120, 60, 0.14)',
+  overlay:       'rgba(20, 12, 0, 0.5)',
   // Status tokens
-  statusOpen: '#16a34a',
-  statusClosed: '#dc2626',
-  statusCancelled: '#475569',
-  statusPending: '#d97706',
-  statusOpenBg: 'rgba(22, 163, 74, 0.12)',
-  statusClosedBg: 'rgba(220, 38, 38, 0.12)',
-  statusCancelledBg: 'rgba(71, 85, 105, 0.12)',
-  statusPendingBg: 'rgba(217, 119, 6, 0.12)',
+  statusOpen:           '#1a9b56',
+  statusClosed:         '#c0392b',
+  statusCancelled:      '#a08060',
+  statusPending:        '#c47c10',
+  statusOpenBg:         'rgba(26, 155, 86, 0.11)',
+  statusClosedBg:       'rgba(192, 57, 43, 0.11)',
+  statusCancelledBg:    'rgba(160, 128, 96, 0.11)',
+  statusPendingBg:      'rgba(196, 124, 16, 0.11)',
 };
 
 // Default export for backward compat — will be overridden by ThemeContext at runtime
@@ -100,27 +108,27 @@ export const spacing = {
 };
 
 export const borderRadius = {
-  sm: 8,
-  md: 12,
+  sm: 6,
+  md: 10,
   lg: 16,
   xl: 24,
   full: 9999,
 };
 
 export const fontSize = {
-  xs: 12,
-  sm: 14,
-  md: 16,
-  lg: 18,
-  xl: 24,
-  xxl: 32,
+  xs: 11,
+  sm: 13,
+  md: 15,
+  lg: 17,
+  xl: 22,
+  xxl: 30,
   hero: 48,
 };
 
 export const fontWeight = {
-  regular: '400' as const,
-  medium: '500' as const,
+  regular:  '400' as const,
+  medium:   '500' as const,
   semibold: '600' as const,
-  bold: '700' as const,
-  black: '900' as const,
+  bold:     '700' as const,
+  black:    '900' as const,
 };

@@ -19,7 +19,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { PaymentSession, Participant, User, formatCOP } from '@lavaca/shared';
 import { api } from '../../src/services/api';
 import { spacing, borderRadius, fontSize, fontWeight, type ThemeColors } from '../../src/constants/theme';
-import { GlassCard, SkeletonCard, ErrorState } from '../../src/components';
+import { SkeletonCard, ErrorState } from '../../src/components';
 import { RouletteWheel } from '../../src/components/RouletteWheel';
 import { QRCode } from '../../src/components/QRCode';
 import { useI18n } from '../../src/i18n';
@@ -408,14 +408,15 @@ export default function SessionScreen() {
           ? t('session.pendingApproval')
           : t('session.pending');
 
-    const cardBorderColor = isPaid
+    // Left-border accent — the signature element (like flagging a bill)
+    const accentBarColor = isPaid
       ? colors.statusOpen
       : isReported
         ? colors.statusPending
-        : colors.glassBorder;
+        : colors.surfaceBorder;
 
     return (
-      <GlassCard style={[s.participantCard, { borderColor: cardBorderColor }]}>
+      <View style={[s.participantCard, { borderLeftColor: accentBarColor }]}>
         <View style={s.participantInfo}>
           <Text style={s.participantName}>
             {item.displayName}
@@ -448,7 +449,7 @@ export default function SessionScreen() {
             <Text style={s.waitingApprovalText}>{t('session.waitingApproval')}</Text>
           )}
         </View>
-      </GlassCard>
+      </View>
     );
   };
 
@@ -457,7 +458,7 @@ export default function SessionScreen() {
   return (
     <View style={s.container}>
       {/* Session Header */}
-      <GlassCard style={s.header}>
+      <View style={s.header}>
         <View style={s.codeRow}>
           <Text style={s.joinCodeLabel}>{t('session.code')}</Text>
           <TouchableOpacity onPress={handleCopyCode} activeOpacity={0.6} style={{ flex: 1 }}>
@@ -536,7 +537,7 @@ export default function SessionScreen() {
             <Text style={s.addParticipantButtonText}>➕ {t('session.addParticipants')}</Text>
           </TouchableOpacity>
         )}
-      </GlassCard>
+      </View>
 
       {/* Participants List */}
       <FlatList
@@ -561,7 +562,7 @@ export default function SessionScreen() {
 
       {/* Bottom Actions */}
       {!allSplit && totalCount > 0 && (
-        <GlassCard style={s.bottomBar}>
+        <View style={s.bottomBar}>
           <TouchableOpacity
             onPress={handleSplit}
             disabled={splitting}
@@ -580,11 +581,11 @@ export default function SessionScreen() {
               )}
             </LinearGradient>
           </TouchableOpacity>
-        </GlassCard>
+        </View>
       )}
 
       {(session.status === 'open' && allSplit && user?.id === session.adminId) || user?.id === session.adminId ? (
-        <GlassCard style={s.bottomBar}>
+        <View style={s.bottomBar}>
           {session.status === 'open' && allSplit && user?.id === session.adminId && (
             <TouchableOpacity
               style={[s.closeSessionButton, closing && s.splitButtonDisabled]}
@@ -612,7 +613,7 @@ export default function SessionScreen() {
               )}
             </TouchableOpacity>
           )}
-        </GlassCard>
+        </View>
       ) : null}
 
       {session.status === 'closed' && (
@@ -634,7 +635,7 @@ export default function SessionScreen() {
         onRequestClose={handleCloseRouletteModal}
       >
         <View style={[s.modalOverlay, { backgroundColor: colors.overlay }]}>
-          <GlassCard style={s.modalContent}>
+          <View style={s.modalContent}>
             <RouletteWheel
               participants={session.participants}
               winnerIndex={rouletteWinner}
@@ -648,7 +649,7 @@ export default function SessionScreen() {
                 <Text style={s.closeRouletteButtonText}>{t('session.closeRoulette')}</Text>
               </TouchableOpacity>
             )}
-          </GlassCard>
+          </View>
         </View>
       </Modal>
 
@@ -660,7 +661,7 @@ export default function SessionScreen() {
         onRequestClose={() => setShowAddParticipantModal(false)}
       >
         <View style={[s.modalOverlay, { backgroundColor: colors.overlay }]}>
-          <GlassCard style={s.modalContent}>
+          <View style={s.modalContent}>
             <View style={s.searchModalInner}>
               <View style={s.searchModalHeader}>
                 <Text style={s.shareModalTitle}>{t('session.addParticipants')}</Text>
@@ -733,7 +734,7 @@ export default function SessionScreen() {
                 }}
               />
             </View>
-          </GlassCard>
+          </View>
         </View>
       </Modal>
 
@@ -749,7 +750,7 @@ export default function SessionScreen() {
           activeOpacity={1}
           onPress={() => setShowShareModal(false)}
         >
-          <GlassCard style={s.modalContent}>
+          <View style={s.modalContent}>
             <View style={s.shareModalInner}>
               <Text style={s.shareModalTitle}>{t('session.shareTitle')}</Text>
               <QRCode
@@ -778,7 +779,7 @@ export default function SessionScreen() {
                 <Text style={s.closeModalText}>{t('session.close')}</Text>
               </TouchableOpacity>
             </View>
-          </GlassCard>
+          </View>
         </TouchableOpacity>
       </Modal>
     </View>
@@ -798,10 +799,14 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     padding: spacing.lg,
     gap: spacing.md,
   },
+  // Header card — warm surface
   header: {
     margin: spacing.md,
     padding: spacing.lg,
     borderRadius: borderRadius.lg,
+    backgroundColor: colors.surface2,
+    borderWidth: 1,
+    borderColor: colors.surfaceBorder,
   },
   codeRow: {
     flexDirection: 'row',
@@ -810,50 +815,56 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     gap: spacing.xs,
   },
   joinCodeLabel: {
-    fontSize: fontSize.sm,
-    color: colors.textSecondary,
-    marginRight: spacing.xs,
+    fontSize: fontSize.xs,
+    color: colors.textMuted,
+    fontWeight: fontWeight.semibold,
+    textTransform: 'uppercase',
+    letterSpacing: 0.6,
   },
   joinCode: {
     fontSize: fontSize.lg,
     fontWeight: fontWeight.bold,
-    color: colors.primary,
+    color: colors.accent,        // dorado for join code
     letterSpacing: 2,
     flex: 1,
   },
   statusBadge: {
     paddingHorizontal: spacing.sm,
     paddingVertical: 3,
-    borderRadius: borderRadius.full,
+    borderRadius: borderRadius.sm,
   },
   statusBadgeText: {
     fontSize: fontSize.xs,
-    fontWeight: fontWeight.semibold,
+    fontWeight: fontWeight.bold,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
   },
   shareButton: {
-    backgroundColor: colors.glass,
-    paddingVertical: spacing.xs,
-    paddingHorizontal: spacing.md,
+    backgroundColor: colors.surface,
+    paddingVertical: 5,
+    paddingHorizontal: spacing.sm,
     borderRadius: borderRadius.sm,
     borderWidth: 1,
-    borderColor: colors.glassBorder,
+    borderColor: colors.primary + '50',
   },
   shareButtonText: {
     color: colors.primary,
-    fontSize: fontSize.sm,
+    fontSize: fontSize.xs,
     fontWeight: fontWeight.semibold,
   },
   description: {
     fontSize: fontSize.md,
     color: colors.textSecondary,
     marginBottom: spacing.md,
+    lineHeight: 22,
   },
   statsRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    justifyContent: 'space-around',
     marginTop: spacing.sm,
+    paddingTop: spacing.sm,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: colors.surfaceBorder,
   },
   stat: {
     alignItems: 'center',
@@ -865,17 +876,16 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   },
   statLabel: {
     fontSize: fontSize.xs,
-    color: colors.textSecondary,
+    color: colors.textMuted,
     marginTop: 2,
   },
   progressContainer: {
     marginTop: spacing.md,
-    alignItems: 'center',
   },
   progressBar: {
     width: '100%',
-    height: 8,
-    backgroundColor: colors.glass,
+    height: 6,
+    backgroundColor: colors.surface,
     borderRadius: borderRadius.full,
     overflow: 'hidden',
   },
@@ -885,35 +895,44 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     overflow: 'hidden',
   },
   progressText: {
-    fontSize: fontSize.sm,
-    color: colors.textSecondary,
+    fontSize: fontSize.xs,
+    color: colors.textMuted,
     marginTop: spacing.xs,
+    textAlign: 'right',
   },
   addParticipantButton: {
     marginTop: spacing.md,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
     borderWidth: 1,
-    borderColor: colors.primary,
+    borderColor: colors.primary + '50',
     borderRadius: borderRadius.md,
     paddingVertical: spacing.sm,
-    alignItems: 'center',
-    backgroundColor: colors.glass,
+    gap: spacing.xs,
+    backgroundColor: colors.surface,
   },
   addParticipantButtonText: {
     fontSize: fontSize.sm,
-    fontWeight: fontWeight.bold,
+    fontWeight: fontWeight.semibold,
     color: colors.primary,
   },
   list: {
     paddingHorizontal: spacing.md,
     paddingBottom: spacing.lg,
   },
+  // Participant card — warm surface with colored left-border (signature)
   participantCard: {
     padding: spacing.md,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: spacing.sm,
+    marginBottom: spacing.xs + 2,
     borderRadius: borderRadius.md,
+    backgroundColor: colors.surface2,
+    borderWidth: 1,
+    borderColor: colors.surfaceBorder,
+    borderLeftWidth: 3,
   },
   participantInfo: {
     flex: 1,
@@ -924,7 +943,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     color: colors.text,
   },
   participantStatus: {
-    fontSize: fontSize.sm,
+    fontSize: fontSize.xs,
     color: colors.textMuted,
     marginTop: 2,
   },
@@ -934,31 +953,31 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   participantAmount: {
     fontSize: fontSize.lg,
     fontWeight: fontWeight.bold,
-    color: colors.text,
+    color: colors.textSecondary,
   },
   payButton: {
     backgroundColor: colors.primary,
-    paddingVertical: spacing.xs,
-    paddingHorizontal: spacing.md,
+    paddingVertical: 5,
+    paddingHorizontal: spacing.sm,
     borderRadius: borderRadius.sm,
     marginTop: spacing.xs,
   },
   payButtonText: {
-    fontSize: fontSize.sm,
+    fontSize: fontSize.xs,
     fontWeight: fontWeight.bold,
-    color: '#fff',
+    color: colors.background,
   },
   approveButton: {
     backgroundColor: colors.statusPending,
-    paddingVertical: spacing.xs,
-    paddingHorizontal: spacing.md,
+    paddingVertical: 5,
+    paddingHorizontal: spacing.sm,
     borderRadius: borderRadius.sm,
     marginTop: spacing.xs,
   },
   approveButtonText: {
-    fontSize: fontSize.sm,
+    fontSize: fontSize.xs,
     fontWeight: fontWeight.bold,
-    color: '#fff',
+    color: colors.background,
   },
   waitingApprovalText: {
     fontSize: fontSize.xs,
@@ -983,20 +1002,23 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     paddingVertical: spacing.xxl,
   },
   emptyEmoji: {
-    fontSize: 48,
+    fontSize: 44,
     marginBottom: spacing.md,
   },
   emptyText: {
     fontSize: fontSize.md,
     color: colors.textSecondary,
     textAlign: 'center',
-    lineHeight: 24,
+    lineHeight: 22,
   },
   bottomBar: {
     margin: spacing.md,
     marginTop: 0,
     padding: spacing.md,
     borderRadius: borderRadius.lg,
+    backgroundColor: colors.surface2,
+    borderWidth: 1,
+    borderColor: colors.surfaceBorder,
     gap: 8,
   },
   splitButton: {
@@ -1005,12 +1027,13 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     alignItems: 'center',
   },
   splitButtonDisabled: {
-    opacity: 0.6,
+    opacity: 0.55,
   },
   splitButtonText: {
-    fontSize: fontSize.lg,
+    fontSize: fontSize.md,
     fontWeight: fontWeight.bold,
-    color: '#fff',
+    color: colors.background,
+    letterSpacing: 0.2,
   },
   closedBanner: {
     padding: spacing.md,
@@ -1019,17 +1042,17 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   closedText: {
     fontSize: fontSize.lg,
     fontWeight: fontWeight.bold,
-    color: '#fff',
+    color: colors.background,
   },
   closeSessionButton: {
-    paddingVertical: spacing.md,
+    paddingVertical: spacing.sm + 2,
     borderRadius: borderRadius.md,
     alignItems: 'center',
-    borderWidth: 2,
-    borderColor: colors.danger,
+    borderWidth: 1.5,
+    borderColor: colors.danger + '80',
   },
   closeSessionButtonText: {
-    fontSize: fontSize.md,
+    fontSize: fontSize.sm,
     fontWeight: fontWeight.bold,
     color: colors.danger,
   },
@@ -1038,8 +1061,8 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     alignItems: 'center',
   },
   deleteSessionLinkText: {
-    fontSize: fontSize.sm,
-    fontWeight: fontWeight.semibold,
+    fontSize: fontSize.xs,
+    fontWeight: fontWeight.medium,
     color: colors.textMuted,
     textDecorationLine: 'underline',
   },
@@ -1053,6 +1076,9 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     width: '90%',
     overflow: 'hidden',
     borderRadius: borderRadius.lg,
+    backgroundColor: colors.surface2,
+    borderWidth: 1,
+    borderColor: colors.surfaceBorder,
   },
   shareModalInner: {
     padding: spacing.lg,
@@ -1068,18 +1094,18 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     marginBottom: spacing.md,
   },
   searchModalClose: {
-    fontSize: 22,
+    fontSize: 20,
     color: colors.textMuted,
     paddingHorizontal: spacing.xs,
   },
   searchInput: {
-    backgroundColor: colors.glass,
+    backgroundColor: colors.surface,
     borderRadius: borderRadius.md,
     padding: spacing.md,
     fontSize: fontSize.md,
     color: colors.text,
     borderWidth: 1,
-    borderColor: colors.glassBorder,
+    borderColor: colors.surfaceBorder,
     marginBottom: spacing.sm,
   },
   searchLoading: {
@@ -1094,23 +1120,25 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   searchResultCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: spacing.sm,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.glassBorder,
+    paddingVertical: spacing.sm + 2,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: colors.surfaceBorder,
+    gap: spacing.sm,
   },
   avatarBadge: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: colors.primary + '33',
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.surfaceBorder,
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: spacing.md,
   },
   avatarBadgeText: {
     fontSize: fontSize.md,
     fontWeight: fontWeight.bold,
-    color: colors.primary,
+    color: colors.textSecondary,
   },
   searchUserInfo: {
     flex: 1,
@@ -1123,13 +1151,15 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   searchUserMeta: {
     fontSize: fontSize.xs,
     color: colors.textMuted,
-    marginTop: 2,
+    marginTop: 1,
   },
   alreadyInTableBadge: {
-    backgroundColor: colors.glassBorder,
+    backgroundColor: colors.surface,
     paddingHorizontal: spacing.sm,
     paddingVertical: 4,
     borderRadius: borderRadius.sm,
+    borderWidth: 1,
+    borderColor: colors.surfaceBorder,
   },
   alreadyInTableText: {
     fontSize: fontSize.xs,
@@ -1137,44 +1167,47 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   },
   addUserButton: {
     backgroundColor: colors.primary,
-    paddingHorizontal: spacing.md,
+    paddingHorizontal: spacing.sm,
     paddingVertical: 6,
     borderRadius: borderRadius.sm,
-    minWidth: 70,
+    minWidth: 60,
     alignItems: 'center',
   },
   addUserButtonText: {
-    fontSize: fontSize.sm,
+    fontSize: fontSize.xs,
     fontWeight: fontWeight.bold,
-    color: '#fff',
+    color: colors.background,
   },
   shareModalTitle: {
     fontSize: fontSize.xl,
     fontWeight: fontWeight.bold,
     color: colors.text,
     marginBottom: spacing.lg,
+    letterSpacing: -0.2,
   },
   shareCodeBox: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.glass,
+    backgroundColor: colors.surface,
     borderRadius: borderRadius.md,
     paddingVertical: spacing.sm,
     paddingHorizontal: spacing.md,
     marginTop: spacing.lg,
     marginBottom: spacing.md,
     borderWidth: 1,
-    borderColor: colors.glassBorder,
+    borderColor: colors.surfaceBorder,
+    gap: spacing.sm,
   },
   shareCodeLabel: {
-    fontSize: fontSize.sm,
-    color: colors.textSecondary,
-    marginRight: spacing.sm,
+    fontSize: fontSize.xs,
+    color: colors.textMuted,
+    textTransform: 'uppercase',
+    letterSpacing: 0.6,
   },
   shareCodeValue: {
     fontSize: fontSize.lg,
     fontWeight: fontWeight.bold,
-    color: colors.primary,
+    color: colors.accent,
     letterSpacing: 2,
   },
   shareTextButton: {
@@ -1184,28 +1217,28 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     width: '100%',
   },
   shareTextButtonInner: {
-    paddingVertical: spacing.sm,
+    paddingVertical: spacing.sm + 2,
     paddingHorizontal: spacing.lg,
     alignItems: 'center',
   },
   shareTextButtonLabel: {
-    fontSize: fontSize.md,
+    fontSize: fontSize.sm,
     fontWeight: fontWeight.semibold,
-    color: '#fff',
+    color: colors.background,
   },
   shareLinkButton: {
-    backgroundColor: colors.glass,
+    backgroundColor: colors.surface,
     borderRadius: borderRadius.md,
-    paddingVertical: spacing.sm,
+    paddingVertical: spacing.sm + 2,
     paddingHorizontal: spacing.lg,
     marginBottom: spacing.sm,
     width: '100%',
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: colors.primary,
+    borderColor: colors.primary + '50',
   },
   shareLinkButtonLabel: {
-    fontSize: fontSize.md,
+    fontSize: fontSize.sm,
     fontWeight: fontWeight.semibold,
     color: colors.primary,
   },
@@ -1213,8 +1246,8 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     paddingVertical: spacing.sm,
   },
   closeModalText: {
-    fontSize: fontSize.md,
-    color: colors.textSecondary,
+    fontSize: fontSize.sm,
+    color: colors.textMuted,
   },
   closeRouletteButton: {
     marginHorizontal: spacing.lg,
@@ -1222,12 +1255,12 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     marginTop: spacing.sm,
     backgroundColor: colors.primary,
     borderRadius: borderRadius.md,
-    paddingVertical: spacing.sm,
+    paddingVertical: spacing.sm + 2,
     alignItems: 'center',
   },
   closeRouletteButtonText: {
-    fontSize: fontSize.md,
+    fontSize: fontSize.sm,
     fontWeight: fontWeight.bold,
-    color: '#fff',
+    color: colors.background,
   },
 });

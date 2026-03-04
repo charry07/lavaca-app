@@ -13,7 +13,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import { PaymentSession } from '@lavaca/shared';
 import { spacing, borderRadius, fontSize, fontWeight, type ThemeColors } from '../../src/constants/theme';
 import { formatCOP } from '@lavaca/shared';
-import { GlassCard, SkeletonCard, ErrorState } from '../../src/components';
+import { SkeletonCard, ErrorState } from '../../src/components';
 import { useI18n } from '../../src/i18n';
 import { useTheme } from '../../src/theme';
 import { VacaLogo } from '../../src/components/VacaLogo';
@@ -65,17 +65,20 @@ export default function HomeTab() {
     const statusBg = isOpen ? colors.statusOpenBg : isClosed ? colors.statusClosedBg : colors.statusCancelledBg;
     const statusLabel = isOpen ? t('home.open') : isClosed ? t('home.closed') : t('home.cancelled');
 
+    // Signature: colored left-border bar — like flagging a bill
+    const accentBar = isOpen ? colors.statusOpen : isClosed ? colors.statusClosed : colors.statusCancelled;
+
     return (
-      <TouchableOpacity onPress={() => router.push(`/session/${item.joinCode}`)} activeOpacity={0.7}>
-        <GlassCard style={s.sessionCard}>
+      <TouchableOpacity onPress={() => router.push(`/session/${item.joinCode}`)} activeOpacity={0.75}>
+        <View style={[s.sessionCard, { borderLeftColor: accentBar }]}>
           <View style={s.sessionCardHeader}>
             <Text style={s.sessionCardTitle} numberOfLines={1}>
               {item.description || t('history.untitled')}
             </Text>
             <View style={s.badgeRow}>
               {hasPendingApproval && (
-                <View style={[s.badge, { backgroundColor: colors.statusPendingBg, borderColor: colors.statusPending }]}>
-                  <Text style={[s.badgeText, { color: colors.statusPending }]}>{t('home.pendingApproval')}</Text>
+                <View style={[s.badge, { backgroundColor: colors.statusPendingBg }]}>
+                  <Text style={[s.badgeText, { color: colors.statusPending }]}>⏳</Text>
                 </View>
               )}
               <View style={[s.badge, { backgroundColor: statusBg }]}>
@@ -89,7 +92,7 @@ export default function HomeTab() {
               {participantCount} {participantCount === 1 ? t('common.person') : t('common.people')} · {item.joinCode}
             </Text>
           </View>
-        </GlassCard>
+        </View>
       </TouchableOpacity>
     );
   };
@@ -133,30 +136,41 @@ export default function HomeTab() {
             <Text style={s.tagline}>{t('home.tagline')}</Text>
           </View>
 
+          {/* Action buttons */}
           <View style={s.actions}>
             <TouchableOpacity
-              style={{ borderRadius: borderRadius.md, overflow: 'hidden', marginBottom: spacing.md }}
+              style={s.createButtonWrap}
               onPress={() => router.push('/create')}
+              activeOpacity={0.85}
             >
               <LinearGradient
-                colors={[colors.primary, colors.accent || colors.primary]}
+                colors={[colors.primary, colors.primaryDark]}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 0 }}
-                style={s.button}
+                style={s.createButton}
               >
-                <Text style={s.buttonText}>{t('home.createTable')}</Text>
+                <Text style={s.createButtonIcon}>🍽️</Text>
+                <Text style={s.createButtonText}>{t('home.createTable')}</Text>
               </LinearGradient>
             </TouchableOpacity>
 
-            <TouchableOpacity style={s.buttonSecondary} onPress={() => router.push('/join')}>
-              <Text style={s.buttonTextSecondary}>{t('home.joinTable')}</Text>
+            <TouchableOpacity style={s.joinButton} onPress={() => router.push('/join')} activeOpacity={0.8}>
+              <Text style={s.joinButtonIcon}>🔗</Text>
+              <Text style={s.joinButtonText}>{t('home.joinTable')}</Text>
             </TouchableOpacity>
           </View>
 
+          {/* Section header */}
           <View style={s.sectionHeader}>
             <Text style={s.sectionTitle}>{t('home.myTables')}</Text>
+            {sessions.length > 0 && (
+              <View style={s.countBadge}>
+                <Text style={s.countBadgeText}>{sessions.length}</Text>
+              </View>
+            )}
           </View>
 
+          {/* Filter chips */}
           <View style={s.filtersRow}>
             {FILTERS.map((f) => (
               <TouchableOpacity
@@ -183,7 +197,7 @@ export default function HomeTab() {
 
           {!loadingSessions && !fetchError && filteredSessions.length === 0 && (
             <View style={s.emptyContainer}>
-              <Text style={s.emptyText}>🐄</Text>
+              <Text style={s.emptyEmoji}>🐄</Text>
               <Text style={s.emptyLabel}>{t('home.noTables')}</Text>
               <Text style={s.emptyHint}>{t('home.noTablesHint')}</Text>
             </View>
@@ -197,7 +211,7 @@ export default function HomeTab() {
 const createStyles = (colors: ThemeColors) =>
   StyleSheet.create({
     container: {
-      paddingHorizontal: spacing.lg,
+      paddingHorizontal: spacing.md,
       paddingTop: spacing.lg,
       paddingBottom: spacing.xxl,
     },
@@ -210,50 +224,75 @@ const createStyles = (colors: ThemeColors) =>
       marginBottom: spacing.xl,
     },
     tagline: {
-      fontSize: fontSize.md,
+      fontSize: fontSize.sm,
       color: colors.textSecondary,
       textAlign: 'center',
-      lineHeight: 24,
+      lineHeight: 22,
       marginTop: spacing.sm,
     },
     actions: {
       marginBottom: spacing.xl,
+      gap: spacing.sm,
     },
-    button: {
-      paddingVertical: spacing.md,
-      paddingHorizontal: spacing.xl,
+    createButtonWrap: {
       borderRadius: borderRadius.md,
-      alignItems: 'center',
+      overflow: 'hidden',
     },
-    buttonText: {
-      fontSize: fontSize.lg,
+    createButton: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingVertical: spacing.md + 2,
+      gap: spacing.sm,
+    },
+    createButtonIcon: { fontSize: 18 },
+    createButtonText: {
+      fontSize: fontSize.md,
       fontWeight: fontWeight.bold,
-      color: '#fff',
+      color: colors.background,
+      letterSpacing: 0.2,
     },
-    buttonSecondary: {
-      backgroundColor: colors.glass,
-      borderWidth: 1.5,
-      borderColor: colors.primary,
-      paddingVertical: spacing.md,
-      paddingHorizontal: spacing.xl,
-      borderRadius: borderRadius.md,
+    joinButton: {
+      flexDirection: 'row',
       alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: colors.surface2,
+      borderWidth: 1,
+      borderColor: colors.primary + '50',
+      paddingVertical: spacing.md,
+      borderRadius: borderRadius.md,
+      gap: spacing.sm,
     },
-    buttonTextSecondary: {
-      fontSize: fontSize.lg,
+    joinButtonIcon: { fontSize: 18 },
+    joinButtonText: {
+      fontSize: fontSize.md,
       fontWeight: fontWeight.semibold,
       color: colors.primary,
     },
     sectionHeader: {
       flexDirection: 'row',
-      justifyContent: 'space-between',
       alignItems: 'center',
       marginBottom: spacing.md,
+      gap: spacing.sm,
     },
     sectionTitle: {
-      fontSize: fontSize.xl,
+      fontSize: fontSize.lg,
       fontWeight: fontWeight.bold,
       color: colors.text,
+      letterSpacing: -0.2,
+    },
+    countBadge: {
+      backgroundColor: colors.surface2,
+      borderRadius: borderRadius.full,
+      paddingHorizontal: spacing.sm,
+      paddingVertical: 2,
+      borderWidth: 1,
+      borderColor: colors.surfaceBorder,
+    },
+    countBadgeText: {
+      fontSize: fontSize.xs,
+      fontWeight: fontWeight.bold,
+      color: colors.textMuted,
     },
     filtersRow: {
       flexDirection: 'row',
@@ -262,29 +301,34 @@ const createStyles = (colors: ThemeColors) =>
       marginBottom: spacing.md,
     },
     filterChip: {
-      paddingHorizontal: spacing.sm,
-      paddingVertical: 6,
+      paddingHorizontal: spacing.sm + 2,
+      paddingVertical: 5,
       borderRadius: borderRadius.full,
-      backgroundColor: colors.glass,
+      backgroundColor: colors.surface2,
       borderWidth: 1,
-      borderColor: colors.glassBorder,
+      borderColor: colors.surfaceBorder,
     },
     filterChipActive: {
-      backgroundColor: colors.primary + '22',
-      borderColor: colors.primary,
+      backgroundColor: colors.primary + '18',
+      borderColor: colors.primary + '60',
     },
     filterChipText: {
       fontSize: fontSize.xs,
       fontWeight: fontWeight.semibold,
-      color: colors.textSecondary,
+      color: colors.textMuted,
     },
     filterChipTextActive: {
       color: colors.primary,
     },
+    // Session card — warm surface with colored left-border accent bar (signature)
     sessionCard: {
+      backgroundColor: colors.surface2,
+      borderRadius: borderRadius.md,
       padding: spacing.md,
       marginBottom: spacing.sm,
-      borderRadius: borderRadius.lg,
+      borderWidth: 1,
+      borderColor: colors.surfaceBorder,
+      borderLeftWidth: 3,
     },
     sessionCardHeader: {
       flexDirection: 'row',
@@ -306,9 +350,8 @@ const createStyles = (colors: ThemeColors) =>
     },
     badge: {
       paddingHorizontal: spacing.sm,
-      paddingVertical: 2,
+      paddingVertical: 3,
       borderRadius: borderRadius.sm,
-      borderWidth: 1,
     },
     badgeText: {
       fontSize: fontSize.xs,
@@ -317,23 +360,25 @@ const createStyles = (colors: ThemeColors) =>
     sessionCardBody: {
       flexDirection: 'row',
       justifyContent: 'space-between',
-      alignItems: 'center',
+      alignItems: 'baseline',
+      marginTop: spacing.xs,
     },
     sessionAmount: {
       fontSize: fontSize.lg,
       fontWeight: fontWeight.bold,
       color: colors.accent,
+      letterSpacing: -0.2,
     },
     sessionMeta: {
-      fontSize: fontSize.sm,
+      fontSize: fontSize.xs,
       color: colors.textMuted,
     },
     emptyContainer: {
       alignItems: 'center',
-      paddingVertical: spacing.xl,
+      paddingVertical: spacing.xxl,
     },
-    emptyText: {
-      fontSize: 48,
+    emptyEmoji: {
+      fontSize: 44,
       marginBottom: spacing.sm,
     },
     emptyLabel: {
@@ -346,5 +391,6 @@ const createStyles = (colors: ThemeColors) =>
       fontSize: fontSize.sm,
       color: colors.textMuted,
       textAlign: 'center',
+      lineHeight: 20,
     },
   });

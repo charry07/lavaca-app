@@ -1,5 +1,6 @@
 import express from 'express';
 import cors from 'cors';
+import helmet from 'helmet';
 import http from 'http';
 import { Server as SocketIOServer } from 'socket.io';
 import { sessionRouter } from './routes/sessions';
@@ -10,16 +11,35 @@ import { groupRouter } from './routes/groups';
 const app = express();
 const server = http.createServer(app);
 
+const isDev = process.env.NODE_ENV !== 'production';
+
+// In dev allow any origin (Expo DevTools connects from dynamic IPs).
+// In production, set ALLOWED_ORIGINS env var (comma-separated).
+const allowedOrigins: string | string[] | boolean = isDev
+  ? true
+  : (process.env.ALLOWED_ORIGINS?.split(',').map((o) => o.trim()) ?? false);
+
+const corsOptions: cors.CorsOptions = {
+  origin: allowedOrigins,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  credentials: true,
+};
+
 const io = new SocketIOServer(server, {
   cors: {
-    origin: '*',
+    origin: allowedOrigins,
     methods: ['GET', 'POST'],
   },
 });
 
-app.use(cors());
-app.use(express.json({ limit: '5mb' }));
-app.use(express.urlencoded({ extended: true, limit: '5mb' }));
+// Security headers (disable frameguard for API; keep the rest)
+app.use(helmet({ frameguard: false, contentSecurityPolicy: false }));
+app.use(cors(corsOptions));
+
+// Default body limit 256 KB — avatar upload endpoint overrides inline
+app.use(express.json({ limit: '256kb' }));
+app.use(express.urlencoded({ extended: true, limit: '256kb' }));
 
 // Health check
 app.get('/health', (_req, res) => {

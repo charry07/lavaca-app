@@ -57,7 +57,8 @@ const es = {
   'create.selectedParticipants': '{{count}} participante(s) seleccionados',
   'create.added': 'Agregado',
   'create.noFrequentPeople': 'Aun no tienes mesas compartidas con otras personas',
-  'create.frequentPeopleHint': 'Tus 7 personas mas frecuentes',
+  'create.frequentPeopleHint': 'Recientes',
+  'create.suggestedPeople': 'Sugeridos',
 
   // Join
   'join.title': 'Unirme a una mesa',
@@ -142,6 +143,7 @@ const es = {
 
   // Common
   'common.error': 'Error',
+  'common.cancel': 'Cancelar',
   'common.now': 'ahora',
   'common.person': 'persona',
   'common.people': 'personas',
@@ -305,7 +307,8 @@ const en: TranslationKeys = {
   'create.selectedParticipants': '{{count}} selected participant(s)',
   'create.added': 'Added',
   'create.noFrequentPeople': 'You do not have shared tables with other people yet',
-  'create.frequentPeopleHint': 'Your 7 most frequent people',
+  'create.frequentPeopleHint': 'Recent',
+  'create.suggestedPeople': 'Suggested',
 
   // Join
   'join.title': 'Join a table',
@@ -390,6 +393,7 @@ const en: TranslationKeys = {
 
   // Common
   'common.error': 'Error',
+  'common.cancel': 'Cancel',
   'common.now': 'now',
   'common.person': 'person',
   'common.people': 'people',
@@ -553,7 +557,8 @@ const pt: TranslationKeys = {
   'create.selectedParticipants': '{{count}} participante(s) selecionado(s)',
   'create.added': 'Adicionado',
   'create.noFrequentPeople': 'Você ainda não tem mesas compartilhadas com outras pessoas',
-  'create.frequentPeopleHint': 'Suas 7 pessoas mais frequentes',
+  'create.frequentPeopleHint': 'Recentes',
+  'create.suggestedPeople': 'Sugeridos',
 
   // Join
   'join.title': 'Entrar numa mesa',
@@ -638,6 +643,7 @@ const pt: TranslationKeys = {
 
   // Common
   'common.error': 'Erro',
+  'common.cancel': 'Cancelar',
   'common.now': 'agora',
   'common.person': 'pessoa',
   'common.people': 'pessoas',

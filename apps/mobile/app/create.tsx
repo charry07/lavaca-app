@@ -17,7 +17,6 @@ import { useRouter } from 'expo-router';
 import { SplitMode, User } from '@lavaca/shared';
 import { api } from '../src/services/api';
 import { spacing, borderRadius, fontSize, fontWeight, type ThemeColors } from '../src/constants/theme';
-import { GlassCard } from '../src/components';
 import { useI18n } from '../src/i18n';
 import { useTheme } from '../src/theme';
 import { useAuth } from '../src/auth';
@@ -40,6 +39,7 @@ export default function CreateScreen() {
   const [participantSearchQuery, setParticipantSearchQuery] = useState('');
   const [participantResults, setParticipantResults] = useState<User[]>([]);
   const [frequentParticipants, setFrequentParticipants] = useState<User[]>([]);
+  const [suggestedParticipants, setSuggestedParticipants] = useState<User[]>([]);
   const [selectedParticipants, setSelectedParticipants] = useState<User[]>([]);
   const [loadingFrequent, setLoadingFrequent] = useState(false);
   const [searchingUsers, setSearchingUsers] = useState(false);
@@ -50,10 +50,10 @@ export default function CreateScreen() {
     { key: 'EUR', symbol: '🇪🇺 EUR' },
   ];
 
-  const SPLIT_MODES: { key: SplitMode; label: string; emoji: string }[] = [
-    { key: 'equal', label: t('create.equalParts'), emoji: '⚖️' },
-    { key: 'percentage', label: t('create.percentage'), emoji: '📊' },
-    { key: 'roulette', label: t('create.roulette'), emoji: '🎰' },
+  const SPLIT_MODES: { key: SplitMode; label: string; emoji: string; desc: string }[] = [
+    { key: 'equal', label: t('create.equalParts'), emoji: '⚖️', desc: 'Todos pagan igual' },
+    { key: 'percentage', label: t('create.percentage'), emoji: '📊', desc: 'Por porcentaje' },
+    { key: 'roulette', label: t('create.roulette'), emoji: '🎰', desc: 'A la suerte' },
   ];
 
   const handleCreate = async () => {
@@ -96,15 +96,26 @@ export default function CreateScreen() {
     setShowAddParticipantModal(true);
     setParticipantSearchQuery('');
     setParticipantResults([]);
+    setSuggestedParticipants([]);
 
     if (!user?.id) { setFrequentParticipants([]); return; }
 
     setLoadingFrequent(true);
     try {
       const frequent = await api.getFrequentUsers(user.id, 7);
-      setFrequentParticipants(frequent.slice(0, 7));
+      const frequentSlice = frequent.slice(0, 7);
+      setFrequentParticipants(frequentSlice);
+
+      // Fill remaining slots (up to 7 total) with random users
+      const remaining = 7 - frequentSlice.length;
+      if (remaining > 0) {
+        const excludeIds = [user.id, ...frequentSlice.map((u) => u.id)];
+        const random = await api.getRandomUsers(remaining, excludeIds);
+        setSuggestedParticipants(random);
+      }
     } catch {
       setFrequentParticipants([]);
+      setSuggestedParticipants([]);
     } finally {
       setLoadingFrequent(false);
     }
@@ -125,8 +136,10 @@ export default function CreateScreen() {
     [frequentParticipants]
   );
 
-  const displayedParticipants =
-    participantSearchQuery.trim().length >= 2 ? participantResults : frequentParticipants.slice(0, 7);
+  const isSearching = participantSearchQuery.trim().length >= 2;
+  const displayedParticipants = isSearching
+    ? participantResults
+    : [...frequentParticipants, ...suggestedParticipants];
 
   useEffect(() => {
     if (!showAddParticipantModal) return;
@@ -162,20 +175,25 @@ export default function CreateScreen() {
     >
       <ScrollView contentContainerStyle={s.scroll} keyboardShouldPersistTaps="handled">
 
-        <Text style={s.sectionTitle}>{t('create.totalAmount')}</Text>
-        <GlassCard style={s.amountCard}>
-          <TextInput
-            style={s.amountInput}
-            placeholder="$0"
-            placeholderTextColor={colors.textMuted}
-            keyboardType="numeric"
-            value={amount}
-            onChangeText={setAmount}
-            autoFocus
-          />
-        </GlassCard>
+        {/* Amount input — hero field */}
+        <View style={s.amountSection}>
+          <Text style={s.sectionLabel}>{t('create.totalAmount')}</Text>
+          <View style={s.amountInputWrap}>
+            <Text style={s.amountCurrencySymbol}>$</Text>
+            <TextInput
+              style={s.amountInput}
+              placeholder="0"
+              placeholderTextColor={colors.textMuted}
+              keyboardType="numeric"
+              value={amount}
+              onChangeText={setAmount}
+              autoFocus
+            />
+          </View>
+        </View>
 
-        <Text style={s.sectionTitle}>{t('create.description')}</Text>
+        {/* Description */}
+        <Text style={s.sectionLabel}>{t('create.description')}</Text>
         <TextInput
           style={s.input}
           placeholder={t('create.descriptionPlaceholder')}
@@ -184,83 +202,67 @@ export default function CreateScreen() {
           onChangeText={setDescription}
         />
 
-        <Text style={s.sectionTitle}>{t('create.currency')}</Text>
+        {/* Currency selector */}
+        <Text style={s.sectionLabel}>{t('create.currency')}</Text>
         <View style={s.pillRow}>
           {CURRENCIES.map((c) => (
             <TouchableOpacity
               key={c.key}
-              style={{ flex: 1, borderRadius: borderRadius.md, overflow: 'hidden' }}
+              style={[s.currencyPill, currency === c.key && s.currencyPillActive]}
               onPress={() => setCurrency(c.key)}
             >
-              {currency === c.key ? (
-                <LinearGradient
-                  colors={[colors.accent || colors.primary, colors.primary]}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 0 }}
-                  style={s.pillActive}
-                >
-                  <Text style={s.pillTextActive}>{c.symbol}</Text>
-                </LinearGradient>
-              ) : (
-                <View style={s.pill}>
-                  <Text style={s.pillText}>{c.symbol}</Text>
-                </View>
-              )}
+              <Text style={[s.currencyPillText, currency === c.key && s.currencyPillTextActive]}>
+                {c.symbol}
+              </Text>
             </TouchableOpacity>
           ))}
         </View>
 
-        <Text style={s.sectionTitle}>{t('create.howToSplit')}</Text>
-        <View style={s.pillRow}>
+        {/* Split mode selector */}
+        <Text style={s.sectionLabel}>{t('create.howToSplit')}</Text>
+        <View style={s.modeRow}>
           {SPLIT_MODES.map((mode) => (
             <TouchableOpacity
               key={mode.key}
-              style={{ flex: 1, borderRadius: borderRadius.md, overflow: 'hidden' }}
+              style={[s.modeCard, splitMode === mode.key && s.modeCardActive]}
               onPress={() => setSplitMode(mode.key)}
             >
-              {splitMode === mode.key ? (
-                <LinearGradient
-                  colors={[colors.primary, colors.accent || colors.primary]}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 0 }}
-                  style={s.modeButtonActive}
-                >
-                  <Text style={s.modeEmoji}>{mode.emoji}</Text>
-                  <Text style={s.modeLabelActive}>{mode.label}</Text>
-                </LinearGradient>
-              ) : (
-                <View style={s.modeButton}>
-                  <Text style={s.modeEmoji}>{mode.emoji}</Text>
-                  <Text style={s.modeLabel}>{mode.label}</Text>
-                </View>
+              {splitMode === mode.key && (
+                <View style={s.modeActiveBar} />
               )}
+              <Text style={s.modeEmoji}>{mode.emoji}</Text>
+              <Text style={[s.modeLabel, splitMode === mode.key && s.modeLabelActive]}>
+                {mode.label}
+              </Text>
             </TouchableOpacity>
           ))}
         </View>
 
+        {/* Add participants */}
         <TouchableOpacity style={s.addParticipantButton} onPress={openAddParticipantModal}>
-          <Text style={s.addParticipantButtonText}>➕ {t('session.addParticipants')}</Text>
+          <Text style={s.addParticipantIcon}>+</Text>
+          <Text style={s.addParticipantText}>{t('session.addParticipants')}</Text>
+          {selectedParticipants.length > 0 && (
+            <View style={s.selectedBadge}>
+              <Text style={s.selectedBadgeText}>{selectedParticipants.length}</Text>
+            </View>
+          )}
         </TouchableOpacity>
 
-        {selectedParticipants.length > 0 && (
-          <Text style={s.selectedCountText}>
-            {t('create.selectedParticipants', { count: selectedParticipants.length })}
-          </Text>
-        )}
-
+        {/* Create button */}
         <TouchableOpacity
-          style={{ borderRadius: borderRadius.md, overflow: 'hidden', marginTop: spacing.xl, opacity: loading ? 0.6 : 1 }}
+          style={[s.createButtonWrap, loading && { opacity: 0.55 }]}
           onPress={handleCreate}
           disabled={loading}
         >
           <LinearGradient
-            colors={[colors.primary, colors.accent || colors.primary]}
+            colors={[colors.primary, colors.primaryDark]}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 0 }}
             style={s.createButton}
           >
             {loading ? (
-              <ActivityIndicator color="#fff" />
+              <ActivityIndicator color={colors.background} />
             ) : (
               <Text style={s.createButtonText}>{t('create.createButton')}</Text>
             )}
@@ -276,44 +278,100 @@ export default function CreateScreen() {
         transparent
         onRequestClose={() => setShowAddParticipantModal(false)}
       >
-        <View style={[s.modalOverlay, { backgroundColor: colors.overlay }]}>
-          <GlassCard style={s.modalContent}>
-            <View style={s.searchModalInner}>
-              <View style={s.searchModalHeader}>
-                <Text style={s.modalTitle}>{t('session.addParticipants')}</Text>
-                <TouchableOpacity onPress={() => setShowAddParticipantModal(false)}>
-                  <Text style={s.searchModalClose}>✕</Text>
-                </TouchableOpacity>
-              </View>
+        <View style={s.modalOverlay}>
+          <View style={[s.modalContent, { backgroundColor: colors.surface }]}>
+            <View style={s.modalHandle} />
+            <View style={s.searchModalHeader}>
+              <Text style={s.modalTitle}>{t('session.addParticipants')}</Text>
+              <TouchableOpacity onPress={() => setShowAddParticipantModal(false)} style={s.modalCloseBtn}>
+                <Text style={s.modalCloseBtnText}>✕</Text>
+              </TouchableOpacity>
+            </View>
 
-              <TextInput
-                style={s.searchInput}
-                placeholder={t('session.searchPeoplePlaceholder')}
-                placeholderTextColor={colors.textMuted}
-                value={participantSearchQuery}
-                onChangeText={setParticipantSearchQuery}
-                autoFocus
-                autoCapitalize="none"
-                autoCorrect={false}
+            <TextInput
+              style={s.searchInput}
+              placeholder={t('session.searchPeoplePlaceholder')}
+              placeholderTextColor={colors.textMuted}
+              value={participantSearchQuery}
+              onChangeText={setParticipantSearchQuery}
+              autoFocus
+              autoCapitalize="none"
+              autoCorrect={false}
+            />
+
+            {/* Selected participants chips */}
+            {selectedParticipants.length > 0 && (
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                style={s.chipsScroll}
+                contentContainerStyle={s.chipsContainer}
+                keyboardShouldPersistTaps="handled"
+              >
+                {selectedParticipants.map((p) => (
+                  <TouchableOpacity
+                    key={p.id}
+                    style={s.chip}
+                    onPress={() => toggleParticipant(p)}
+                    activeOpacity={0.7}
+                  >
+                    <View style={s.chipAvatar}>
+                      <Text style={s.chipAvatarText}>{p.displayName.charAt(0).toUpperCase()}</Text>
+                    </View>
+                    <Text style={s.chipName} numberOfLines={1}>{p.displayName.split(' ')[0]}</Text>
+                    <Text style={s.chipRemove}>×</Text>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+            )}
+
+            {(loadingFrequent || (searchingUsers && isSearching)) && (
+              <ActivityIndicator size="small" color={colors.primary} style={{ marginVertical: spacing.md }} />
+            )}
+            {!loadingFrequent && !searchingUsers && isSearching && displayedParticipants.length === 0 && (
+              <Text style={s.searchHintText}>{t('session.noUserResults')}</Text>
+            )}
+
+            {!loadingFrequent && !isSearching && (
+              <FlatList
+                data={[
+                  ...(frequentParticipants.length > 0
+                    ? [{ type: 'label', id: '__recent__', label: t('create.frequentPeopleHint') }, ...frequentParticipants.map((u) => ({ type: 'user', ...u }))]
+                    : []),
+                  ...(suggestedParticipants.length > 0
+                    ? [{ type: 'label', id: '__suggested__', label: t('create.suggestedPeople') }, ...suggestedParticipants.map((u) => ({ type: 'user', ...u }))]
+                    : []),
+                ] as any[]}
+                keyExtractor={(item) => item.id}
+                keyboardShouldPersistTaps="handled"
+                renderItem={({ item }) => {
+                  if (item.type === 'label') {
+                    return <Text style={s.searchSectionLabel}>{item.label}</Text>;
+                  }
+                  const isSelected = selectedIds.has(item.id);
+                  return (
+                    <TouchableOpacity
+                      style={[s.userRow, isSelected && s.userRowSelected]}
+                      onPress={() => toggleParticipant(item as User)}
+                      activeOpacity={0.7}
+                    >
+                      <View style={[s.avatar, isSelected && { backgroundColor: colors.primary }]}>
+                        <Text style={s.avatarText}>{item.displayName.charAt(0).toUpperCase()}</Text>
+                      </View>
+                      <View style={s.userInfo}>
+                        <Text style={s.userName}>{item.displayName}</Text>
+                        <Text style={s.userMeta}>@{item.username}</Text>
+                      </View>
+                      <View style={[s.checkCircle, isSelected && s.checkCircleActive]}>
+                        {isSelected && <Text style={s.checkMark}>✓</Text>}
+                      </View>
+                    </TouchableOpacity>
+                  );
+                }}
               />
+            )}
 
-              {(loadingFrequent && participantSearchQuery.trim().length < 2) && (
-                <ActivityIndicator size="small" color={colors.primary} style={s.searchLoading} />
-              )}
-              {(searchingUsers && participantSearchQuery.trim().length >= 2) && (
-                <ActivityIndicator size="small" color={colors.primary} style={s.searchLoading} />
-              )}
-              {!searchingUsers && !loadingFrequent && displayedParticipants.length === 0 && (
-                <Text style={s.searchHintText}>
-                  {participantSearchQuery.trim().length >= 2
-                    ? t('session.noUserResults')
-                    : t('create.noFrequentPeople')}
-                </Text>
-              )}
-              {!searchingUsers && !loadingFrequent && participantSearchQuery.trim().length < 2 && displayedParticipants.length > 0 && (
-                <Text style={s.searchHintText}>{t('create.frequentPeopleHint')}</Text>
-              )}
-
+            {!loadingFrequent && isSearching && (
               <FlatList
                 data={displayedParticipants}
                 keyExtractor={(item) => item.id}
@@ -321,30 +379,27 @@ export default function CreateScreen() {
                 renderItem={({ item: foundUser }) => {
                   const isSelected = selectedIds.has(foundUser.id);
                   return (
-                    <View style={s.searchResultCard}>
-                      <View style={s.avatarBadge}>
-                        <Text style={s.avatarBadgeText}>
-                          {foundUser.displayName.charAt(0).toUpperCase()}
-                        </Text>
+                    <TouchableOpacity
+                      style={[s.userRow, isSelected && s.userRowSelected]}
+                      onPress={() => toggleParticipant(foundUser)}
+                      activeOpacity={0.7}
+                    >
+                      <View style={[s.avatar, isSelected && { backgroundColor: colors.primary }]}>
+                        <Text style={s.avatarText}>{foundUser.displayName.charAt(0).toUpperCase()}</Text>
                       </View>
-                      <View style={s.searchUserInfo}>
-                        <Text style={s.searchUserName}>{foundUser.displayName}</Text>
-                        <Text style={s.searchUserMeta}>@{foundUser.username} · {foundUser.phone}</Text>
+                      <View style={s.userInfo}>
+                        <Text style={s.userName}>{foundUser.displayName}</Text>
+                        <Text style={s.userMeta}>@{foundUser.username}</Text>
                       </View>
-                      <TouchableOpacity
-                        style={[s.addUserButton, isSelected && s.addUserButtonSelected]}
-                        onPress={() => toggleParticipant(foundUser)}
-                      >
-                        <Text style={[s.addUserButtonText, isSelected && s.addUserButtonTextSelected]}>
-                          {isSelected ? t('create.added') : t('groups.addButton')}
-                        </Text>
-                      </TouchableOpacity>
-                    </View>
+                      <View style={[s.checkCircle, isSelected && s.checkCircleActive]}>
+                        {isSelected && <Text style={s.checkMark}>✓</Text>}
+                      </View>
+                    </TouchableOpacity>
                   );
                 }}
               />
-            </View>
-          </GlassCard>
+            )}
+          </View>
         </View>
       </Modal>
     </KeyboardAvoidingView>
@@ -355,174 +410,340 @@ const createStyles = (colors: ThemeColors) =>
   StyleSheet.create({
     container: { flex: 1, backgroundColor: colors.background },
     scroll: { padding: spacing.lg, paddingBottom: spacing.xxl },
-    sectionTitle: {
-      fontSize: fontSize.md,
+    // Amount hero section
+    amountSection: {
+      backgroundColor: colors.surface2,
+      borderRadius: borderRadius.lg,
+      padding: spacing.lg,
+      marginBottom: spacing.lg,
+      borderWidth: 1,
+      borderColor: colors.surfaceBorder,
+      alignItems: 'center',
+    },
+    sectionLabel: {
+      fontSize: fontSize.xs,
       fontWeight: fontWeight.semibold,
-      color: colors.textSecondary,
+      color: colors.textMuted,
       marginBottom: spacing.sm,
-      marginTop: spacing.lg,
+      textTransform: 'uppercase',
+      letterSpacing: 0.8,
     },
-    amountCard: {
-      padding: 0,
-      borderRadius: borderRadius.md,
-      overflow: 'hidden',
+    amountInputWrap: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: spacing.xs,
     },
-    amountInput: {
+    amountCurrencySymbol: {
       fontSize: fontSize.xxl,
       fontWeight: fontWeight.bold,
-      color: colors.text,
-      padding: spacing.lg,
+      color: colors.textMuted,
+    },
+    amountInput: {
+      fontSize: fontSize.xxl + 8,
+      fontWeight: fontWeight.bold,
+      color: colors.accent,
+      minWidth: 120,
       textAlign: 'center',
     },
     input: {
       fontSize: fontSize.md,
       color: colors.text,
-      backgroundColor: colors.glass,
+      backgroundColor: colors.surface2,
       borderRadius: borderRadius.md,
       padding: spacing.md,
       borderWidth: 1,
-      borderColor: colors.glassBorder,
+      borderColor: colors.surfaceBorder,
+      marginBottom: spacing.lg,
     },
     pillRow: {
       flexDirection: 'row',
       gap: spacing.sm,
+      marginBottom: spacing.lg,
     },
-    pill: {
+    currencyPill: {
       flex: 1,
-      backgroundColor: colors.glass,
+      backgroundColor: colors.surface2,
       borderRadius: borderRadius.md,
-      paddingVertical: spacing.sm,
+      paddingVertical: spacing.sm + 2,
       alignItems: 'center',
       borderWidth: 1,
-      borderColor: colors.glassBorder,
+      borderColor: colors.surfaceBorder,
     },
-    pillActive: {
-      flex: 1,
-      paddingVertical: spacing.sm,
-      alignItems: 'center',
-      borderRadius: borderRadius.md,
-    },
-    pillText: { fontSize: fontSize.sm, color: colors.textSecondary, fontWeight: fontWeight.semibold },
-    pillTextActive: { fontSize: fontSize.sm, color: '#fff', fontWeight: fontWeight.bold },
-    modeButton: {
-      flex: 1,
-      backgroundColor: colors.glass,
-      borderRadius: borderRadius.md,
-      padding: spacing.md,
-      alignItems: 'center',
-      borderWidth: 1,
-      borderColor: colors.glassBorder,
-    },
-    modeButtonActive: {
-      flex: 1,
-      borderRadius: borderRadius.md,
-      padding: spacing.md,
-      alignItems: 'center',
-    },
-    modeEmoji: { fontSize: 28, marginBottom: spacing.xs },
-    modeLabel: { fontSize: fontSize.sm, color: colors.textSecondary, textAlign: 'center' },
-    modeLabelActive: { fontSize: fontSize.sm, color: '#fff', textAlign: 'center', fontWeight: fontWeight.semibold },
-    addParticipantButton: {
-      marginTop: spacing.lg,
-      borderWidth: 1,
+    currencyPillActive: {
       borderColor: colors.primary,
-      borderRadius: borderRadius.md,
-      paddingVertical: spacing.sm,
-      alignItems: 'center',
-      backgroundColor: colors.glass,
+      backgroundColor: colors.primary + '14',
     },
-    addParticipantButtonText: {
-      fontSize: fontSize.sm,
-      fontWeight: fontWeight.bold,
-      color: colors.primary,
-    },
-    selectedCountText: {
-      marginTop: spacing.xs,
+    currencyPillText: {
       fontSize: fontSize.sm,
       color: colors.textSecondary,
+      fontWeight: fontWeight.semibold,
+    },
+    currencyPillTextActive: {
+      color: colors.primary,
+    },
+    modeRow: {
+      flexDirection: 'row',
+      gap: spacing.sm,
+      marginBottom: spacing.lg,
+    },
+    modeCard: {
+      flex: 1,
+      backgroundColor: colors.surface2,
+      borderRadius: borderRadius.md,
+      padding: spacing.md,
+      alignItems: 'center',
+      borderWidth: 1,
+      borderColor: colors.surfaceBorder,
+      overflow: 'hidden',
+      position: 'relative',
+    },
+    modeCardActive: {
+      borderColor: colors.primary + '60',
+      backgroundColor: colors.primary + '0e',
+    },
+    // Active bar — thin top accent line (signature element variant)
+    modeActiveBar: {
+      position: 'absolute',
+      top: 0,
+      left: 0,
+      right: 0,
+      height: 2,
+      backgroundColor: colors.primary,
+    },
+    modeEmoji: { fontSize: 26, marginBottom: spacing.xs },
+    modeLabel: {
+      fontSize: fontSize.xs,
+      color: colors.textSecondary,
       textAlign: 'center',
+      fontWeight: fontWeight.medium,
+    },
+    modeLabelActive: {
+      color: colors.primary,
+      fontWeight: fontWeight.semibold,
+    },
+    addParticipantButton: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      borderWidth: 1,
+      borderColor: colors.primary + '50',
+      borderRadius: borderRadius.md,
+      paddingVertical: spacing.sm + 2,
+      paddingHorizontal: spacing.md,
+      backgroundColor: colors.surface2,
+      marginBottom: spacing.lg,
+      gap: spacing.sm,
+    },
+    addParticipantIcon: {
+      fontSize: fontSize.xl,
+      color: colors.primary,
+      fontWeight: fontWeight.bold,
+      lineHeight: fontSize.xl,
+    },
+    addParticipantText: {
+      flex: 1,
+      fontSize: fontSize.sm,
+      fontWeight: fontWeight.semibold,
+      color: colors.primary,
+    },
+    selectedBadge: {
+      backgroundColor: colors.primary,
+      borderRadius: borderRadius.full,
+      width: 22,
+      height: 22,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    selectedBadgeText: {
+      fontSize: fontSize.xs,
+      fontWeight: fontWeight.bold,
+      color: colors.background,
+    },
+    createButtonWrap: {
+      borderRadius: borderRadius.md,
+      overflow: 'hidden',
     },
     createButton: {
-      paddingVertical: spacing.md,
+      paddingVertical: spacing.md + 2,
       borderRadius: borderRadius.md,
       alignItems: 'center',
     },
     createButtonText: {
-      fontSize: fontSize.lg,
+      fontSize: fontSize.md,
       fontWeight: fontWeight.bold,
-      color: '#fff',
+      color: colors.background,
+      letterSpacing: 0.2,
     },
+    // Modal
     modalOverlay: {
       flex: 1,
-      justifyContent: 'center',
-      alignItems: 'center',
+      backgroundColor: colors.overlay,
+      justifyContent: 'flex-end',
     },
     modalContent: {
-      borderRadius: borderRadius.lg,
-      maxWidth: 360,
-      width: '90%',
-      overflow: 'hidden',
-      maxHeight: '80%',
+      borderTopLeftRadius: 20,
+      borderTopRightRadius: 20,
+      maxHeight: '75%',
+      paddingBottom: spacing.xxl,
+      paddingHorizontal: spacing.lg,
     },
-    searchModalInner: { padding: spacing.lg },
+    modalHandle: {
+      width: 40,
+      height: 4,
+      backgroundColor: colors.surfaceBorder,
+      borderRadius: 2,
+      alignSelf: 'center',
+      marginTop: spacing.sm,
+      marginBottom: spacing.md,
+    },
     searchModalHeader: {
       flexDirection: 'row',
       justifyContent: 'space-between',
       alignItems: 'center',
       marginBottom: spacing.md,
     },
-    modalTitle: { fontSize: fontSize.xl, fontWeight: fontWeight.bold, color: colors.text },
-    searchModalClose: { fontSize: 22, color: colors.textMuted, paddingHorizontal: spacing.xs },
+    modalTitle: {
+      fontSize: fontSize.lg,
+      fontWeight: fontWeight.bold,
+      color: colors.text,
+    },
+    modalCloseBtn: {
+      width: 30,
+      height: 30,
+      borderRadius: 15,
+      backgroundColor: colors.surface2,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    modalCloseBtnText: {
+      fontSize: fontSize.sm,
+      color: colors.textMuted,
+    },
     searchInput: {
-      backgroundColor: colors.glass,
+      backgroundColor: colors.surface2,
       borderRadius: borderRadius.md,
       padding: spacing.md,
       fontSize: fontSize.md,
       color: colors.text,
       borderWidth: 1,
-      borderColor: colors.glassBorder,
+      borderColor: colors.surfaceBorder,
       marginBottom: spacing.sm,
     },
-    searchLoading: { marginVertical: spacing.md },
     searchHintText: {
       fontSize: fontSize.sm,
       color: colors.textMuted,
       textAlign: 'center',
       paddingVertical: spacing.md,
     },
-    searchResultCard: {
+    searchSectionLabel: {
+      fontSize: fontSize.xs,
+      color: colors.textMuted,
+      fontWeight: fontWeight.semibold,
+      textTransform: 'uppercase',
+      letterSpacing: 0.6,
+      marginBottom: spacing.sm,
+    },
+    // User rows in modal
+    userRow: {
       flexDirection: 'row',
       alignItems: 'center',
-      paddingVertical: spacing.sm,
-      borderBottomWidth: 1,
-      borderBottomColor: colors.glassBorder,
+      paddingVertical: spacing.sm + 2,
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: colors.surfaceBorder,
+      gap: spacing.sm,
     },
-    avatarBadge: {
+    userRowSelected: {
+      backgroundColor: colors.primary + '08',
+    },
+    avatar: {
       width: 40,
       height: 40,
       borderRadius: 20,
-      backgroundColor: colors.primary + '33',
+      backgroundColor: colors.surface2,
+      borderWidth: 1,
+      borderColor: colors.surfaceBorder,
       justifyContent: 'center',
       alignItems: 'center',
-      marginRight: spacing.md,
     },
-    avatarBadgeText: { fontSize: fontSize.md, fontWeight: fontWeight.bold, color: colors.primary },
-    searchUserInfo: { flex: 1 },
-    searchUserName: { fontSize: fontSize.md, fontWeight: fontWeight.semibold, color: colors.text },
-    searchUserMeta: { fontSize: fontSize.xs, color: colors.textMuted, marginTop: 2 },
-    addUserButton: {
-      backgroundColor: colors.primary,
-      paddingHorizontal: spacing.md,
-      paddingVertical: 6,
-      borderRadius: borderRadius.sm,
-      minWidth: 86,
+    avatarText: {
+      fontSize: fontSize.md,
+      fontWeight: fontWeight.bold,
+      color: colors.text,
+    },
+    userInfo: { flex: 1 },
+    userName: {
+      fontSize: fontSize.md,
+      fontWeight: fontWeight.semibold,
+      color: colors.text,
+    },
+    userMeta: {
+      fontSize: fontSize.xs,
+      color: colors.textMuted,
+      marginTop: 1,
+    },
+    checkCircle: {
+      width: 24,
+      height: 24,
+      borderRadius: 12,
+      borderWidth: 1.5,
+      borderColor: colors.surfaceBorder,
       alignItems: 'center',
+      justifyContent: 'center',
     },
-    addUserButtonSelected: {
-      backgroundColor: colors.glass,
-      borderWidth: 1,
+    checkCircleActive: {
+      backgroundColor: colors.primary,
       borderColor: colors.primary,
     },
-    addUserButtonText: { fontSize: fontSize.sm, fontWeight: fontWeight.bold, color: '#fff' },
-    addUserButtonTextSelected: { color: colors.primary },
+    checkMark: {
+      fontSize: 12,
+      color: colors.background,
+      fontWeight: fontWeight.bold,
+    },
+    // Selected chips row
+    chipsScroll: {
+      marginBottom: spacing.sm,
+    },
+    chipsContainer: {
+      flexDirection: 'row',
+      gap: spacing.xs,
+      paddingHorizontal: 2,
+      paddingVertical: spacing.xs,
+    },
+    chip: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: colors.primary + '18',
+      borderRadius: borderRadius.full,
+      borderWidth: 1,
+      borderColor: colors.primary + '50',
+      paddingVertical: 5,
+      paddingLeft: 5,
+      paddingRight: spacing.sm,
+      gap: spacing.xs,
+      maxWidth: 130,
+    },
+    chipAvatar: {
+      width: 22,
+      height: 22,
+      borderRadius: 11,
+      backgroundColor: colors.primary,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    chipAvatarText: {
+      fontSize: 11,
+      fontWeight: fontWeight.bold,
+      color: colors.background,
+    },
+    chipName: {
+      fontSize: fontSize.xs,
+      fontWeight: fontWeight.semibold,
+      color: colors.primary,
+      flex: 1,
+    },
+    chipRemove: {
+      fontSize: fontSize.md,
+      color: colors.primary,
+      fontWeight: fontWeight.bold,
+      lineHeight: fontSize.md,
+    },
   });

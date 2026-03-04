@@ -20,7 +20,6 @@ import { useTheme } from '../src/theme';
 import { useAuth } from '../src/auth';
 import { VacaLogo } from '../src/components/VacaLogo';
 import { HeaderControls } from '../src/components/HeaderControls';
-import { GlassCard } from '../src/components/GlassCard';
 
 // ── Country data ────────────────────────────────────────
 interface Country {
@@ -107,7 +106,7 @@ function PhoneStep() {
         >
           <Text style={s.countryFlag}>{country.flag}</Text>
           <Text style={s.countryDial}>{country.dial}</Text>
-          <Text style={s.countryArrow}>▼</Text>
+          <Text style={s.countryArrow}>▾</Text>
         </TouchableOpacity>
 
         <TextInput
@@ -146,7 +145,7 @@ function PhoneStep() {
       {/* Country picker modal */}
       <Modal visible={showPicker} animationType="slide" transparent>
         <View style={s.modalOverlay}>
-          <View style={[s.modalContainer, { backgroundColor: colors.background }]}>
+          <View style={[s.modalContainer, { backgroundColor: colors.surface }]}>
             <View style={s.modalHeader}>
               <Text style={s.modalTitle}>{t('auth.selectCountry')}</Text>
               <TouchableOpacity onPress={() => { setShowPicker(false); setSearch(''); }}>
@@ -214,7 +213,6 @@ function OTPStep() {
   const countdownRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const resendTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  // Start resend cooldown on mount (code was just sent)
   useEffect(() => {
     resendTimerRef.current = setInterval(() => {
       setResendCooldown(prev => {
@@ -337,10 +335,8 @@ function OTPStep() {
       </Text>
 
       {devCode && (
-        <View style={[s.devBanner, { backgroundColor: colors.accent + '22' }]}>
-          <Text style={[s.devBannerText, { color: colors.accent }]}>
-            🔧 Dev code: {devCode}
-          </Text>
+        <View style={s.devBanner}>
+          <Text style={s.devBannerText}>🔧 Dev code: <Text style={{ color: colors.accent, fontWeight: fontWeight.bold }}>{devCode}</Text></Text>
         </View>
       )}
 
@@ -366,19 +362,13 @@ function OTPStep() {
         ))}
       </View>
 
-      {/* Error / blocked message */}
       {errorMsg ? (
-        <View style={[s.errorBanner, isBlocked && { backgroundColor: colors.warning + '22' }]}>
+        <View style={[s.errorBanner, isBlocked && { borderColor: colors.warning }]}>
           <Text style={[s.errorText, isBlocked && { color: colors.warning }]}>
             {isBlocked
               ? t('auth.tooManyAttempts') + '\n' + t('auth.blockedFor', { s: String(blockedSecsLeft) })
               : errorMsg}
           </Text>
-          {isBlocked && (
-            <Text style={[s.errorText, { color: colors.textMuted, fontSize: 12, marginTop: 4 }]}>
-              {t('auth.blockedReturn')}
-            </Text>
-          )}
         </View>
       ) : null}
 
@@ -401,10 +391,9 @@ function OTPStep() {
         </LinearGradient>
       </TouchableOpacity>
 
-      {/* Resend code */}
       <View style={s.resendRow}>
         {resendCooldown > 0 ? (
-          <Text style={[s.resendCooldown, { color: colors.textMuted }]}>
+          <Text style={s.resendCooldown}>
             {t('auth.resendIn', { s: String(resendCooldown) })}
           </Text>
         ) : (
@@ -412,9 +401,7 @@ function OTPStep() {
             {resending ? (
               <ActivityIndicator size="small" color={colors.primary} />
             ) : (
-              <Text style={[s.resendLink, { color: colors.primary }]}>
-                {t('auth.resendCode')}
-              </Text>
+              <Text style={s.resendLink}>{t('auth.resendCode')}</Text>
             )}
           </TouchableOpacity>
         )}
@@ -534,9 +521,10 @@ export default function LoginScreen() {
   const { authStep } = useAuth();
   const s = createStyles(colors);
 
+  // Warm espresso gradient — like the inside of a café at night
   const gradientColors: [string, string, string] = isDark
-    ? ['#0f0f23', '#1a1a2e', '#16213e']
-    : ['#e8f4e8', '#f0f7f0', '#f8fafc'];
+    ? ['#0c0a06', '#131008', '#1a1510']
+    : ['#fdf8f0', '#f5ede0', '#eee0cb'];
 
   return (
     <LinearGradient colors={gradientColors} style={s.container}>
@@ -554,14 +542,14 @@ export default function LoginScreen() {
 
           <VacaLogo size="lg" style={{ marginTop: spacing.xxl }} />
 
-          {/* Form card */}
-          <GlassCard style={s.card}>
+          {/* Form card — warm surface with golden border */}
+          <View style={[s.card, { backgroundColor: colors.surface2, borderColor: colors.surfaceBorder }]}>
             <View style={s.cardInner}>
               {authStep === 'phone' && <PhoneStep />}
               {authStep === 'otp' && <OTPStep />}
               {authStep === 'register' && <RegisterStep />}
             </View>
-          </GlassCard>
+          </View>
         </ScrollView>
       </KeyboardAvoidingView>
     </LinearGradient>
@@ -570,12 +558,8 @@ export default function LoginScreen() {
 
 const createStyles = (colors: ThemeColors) =>
   StyleSheet.create({
-    flex: {
-      flex: 1,
-    },
-    container: {
-      flex: 1,
-    },
+    flex: { flex: 1 },
+    container: { flex: 1 },
     content: {
       flexGrow: 1,
       padding: spacing.lg,
@@ -590,6 +574,9 @@ const createStyles = (colors: ThemeColors) =>
     card: {
       width: '100%',
       marginTop: spacing.xl,
+      borderRadius: borderRadius.lg,
+      borderWidth: 1,
+      overflow: 'hidden',
     },
     cardInner: {
       padding: spacing.lg,
@@ -602,29 +589,33 @@ const createStyles = (colors: ThemeColors) =>
       marginTop: spacing.sm,
       marginBottom: spacing.xs,
       textAlign: 'center',
+      letterSpacing: -0.3,
     },
     subtitle: {
       fontSize: fontSize.sm,
       color: colors.textSecondary,
       textAlign: 'center',
       marginBottom: spacing.xl,
+      lineHeight: 20,
     },
     fieldLabel: {
-      fontSize: fontSize.sm,
+      fontSize: fontSize.xs,
       fontWeight: fontWeight.semibold,
-      color: colors.textSecondary,
+      color: colors.textMuted,
       alignSelf: 'flex-start',
       marginBottom: spacing.xs,
       marginTop: spacing.sm,
+      textTransform: 'uppercase',
+      letterSpacing: 0.8,
     },
     input: {
       fontSize: fontSize.md,
       color: colors.text,
-      backgroundColor: colors.glass,
+      backgroundColor: colors.surface,
       borderRadius: borderRadius.md,
       padding: spacing.md,
       borderWidth: 1,
-      borderColor: colors.glassBorder,
+      borderColor: colors.surfaceBorder,
       width: '100%',
       marginBottom: spacing.sm,
     },
@@ -634,24 +625,24 @@ const createStyles = (colors: ThemeColors) =>
       overflow: 'hidden',
       marginTop: spacing.md,
     },
-    buttonDisabled: {
-      opacity: 0.6,
-    },
+    buttonDisabled: { opacity: 0.55 },
     buttonGradient: {
-      paddingVertical: spacing.md,
+      paddingVertical: spacing.md + 2,
       paddingHorizontal: spacing.xxl,
       alignItems: 'center',
     },
     buttonText: {
-      fontSize: fontSize.lg,
+      fontSize: fontSize.md,
       fontWeight: fontWeight.bold,
       color: colors.background,
+      letterSpacing: 0.3,
     },
     hint: {
       fontSize: fontSize.xs,
       color: colors.textMuted,
       textAlign: 'center',
       marginTop: spacing.lg,
+      lineHeight: 18,
     },
     hintDev: {
       fontSize: fontSize.xs,
@@ -664,41 +655,38 @@ const createStyles = (colors: ThemeColors) =>
       flexDirection: 'row',
       width: '100%',
       marginBottom: spacing.sm,
+      gap: spacing.xs,
     },
     countryButton: {
       flexDirection: 'row',
       alignItems: 'center',
-      backgroundColor: colors.glass,
+      backgroundColor: colors.surface,
       borderRadius: borderRadius.md,
       borderWidth: 1,
-      borderColor: colors.glassBorder,
+      borderColor: colors.surfaceBorder,
       paddingHorizontal: spacing.sm,
       paddingVertical: spacing.md,
-      marginRight: spacing.xs,
+      gap: 4,
     },
-    countryFlag: {
-      fontSize: 22,
-      marginRight: 4,
-    },
+    countryFlag: { fontSize: 20 },
     countryDial: {
       fontSize: fontSize.md,
       color: colors.text,
       fontWeight: fontWeight.semibold,
-      marginRight: 4,
     },
     countryArrow: {
-      fontSize: 10,
+      fontSize: 11,
       color: colors.textMuted,
     },
     phoneInput: {
       flex: 1,
       fontSize: fontSize.md,
       color: colors.text,
-      backgroundColor: colors.glass,
+      backgroundColor: colors.surface,
       borderRadius: borderRadius.md,
       padding: spacing.md,
       borderWidth: 1,
-      borderColor: colors.glassBorder,
+      borderColor: colors.surfaceBorder,
     },
     // Country picker modal
     modalOverlay: {
@@ -717,7 +705,7 @@ const createStyles = (colors: ThemeColors) =>
       justifyContent: 'space-between',
       alignItems: 'center',
       padding: spacing.lg,
-      borderBottomWidth: 1,
+      borderBottomWidth: StyleSheet.hairlineWidth,
       borderBottomColor: colors.surfaceBorder,
     },
     modalTitle: {
@@ -733,12 +721,12 @@ const createStyles = (colors: ThemeColors) =>
     modalSearch: {
       fontSize: fontSize.md,
       color: colors.text,
-      backgroundColor: colors.glass,
+      backgroundColor: colors.surface2,
       borderRadius: borderRadius.md,
       padding: spacing.md,
       margin: spacing.md,
       borderWidth: 1,
-      borderColor: colors.glassBorder,
+      borderColor: colors.surfaceBorder,
     },
     countryItem: {
       flexDirection: 'row',
@@ -749,19 +737,16 @@ const createStyles = (colors: ThemeColors) =>
       borderBottomColor: colors.surfaceBorder,
     },
     countryItemSelected: {
-      backgroundColor: colors.primary + '15',
+      backgroundColor: colors.primary + '12',
     },
-    countryItemFlag: {
-      fontSize: 24,
-      marginRight: spacing.md,
-    },
+    countryItemFlag: { fontSize: 22, marginRight: spacing.md },
     countryItemName: {
       flex: 1,
       fontSize: fontSize.md,
       color: colors.text,
     },
     countryItemDial: {
-      fontSize: fontSize.md,
+      fontSize: fontSize.sm,
       color: colors.textSecondary,
       fontWeight: fontWeight.semibold,
     },
@@ -770,35 +755,37 @@ const createStyles = (colors: ThemeColors) =>
       flexDirection: 'row',
       justifyContent: 'center',
       marginBottom: spacing.lg,
+      gap: 8,
     },
     otpInput: {
-      width: 48,
-      height: 56,
+      width: 46,
+      height: 54,
       borderRadius: borderRadius.md,
       borderWidth: 2,
-      borderColor: colors.glassBorder,
-      backgroundColor: colors.glass,
+      borderColor: colors.surfaceBorder,
+      backgroundColor: colors.surface,
       textAlign: 'center',
       fontSize: fontSize.xl,
       fontWeight: fontWeight.bold,
       color: colors.text,
-      marginHorizontal: 4,
     },
     otpInputFilled: {
       borderColor: colors.primary,
+      backgroundColor: colors.primary + '10',
     },
     otpInputError: {
       borderColor: colors.danger,
-      backgroundColor: colors.danger + '11',
+      backgroundColor: colors.danger + '0d',
     },
     otpInputBlocked: {
       borderColor: colors.warning,
-      backgroundColor: colors.warning + '11',
-      opacity: 0.6,
+      opacity: 0.55,
     },
     errorBanner: {
-      backgroundColor: colors.danger + '22',
+      backgroundColor: colors.danger + '18',
       borderRadius: borderRadius.md,
+      borderWidth: 1,
+      borderColor: colors.danger + '40',
       paddingHorizontal: spacing.md,
       paddingVertical: spacing.sm,
       marginBottom: spacing.md,
@@ -818,10 +805,13 @@ const createStyles = (colors: ThemeColors) =>
       marginBottom: spacing.lg,
       width: '100%',
       alignItems: 'center',
+      backgroundColor: colors.accent + '14',
+      borderWidth: 1,
+      borderColor: colors.accent + '30',
     },
     devBannerText: {
       fontSize: fontSize.sm,
-      fontWeight: fontWeight.semibold,
+      color: colors.textSecondary,
     },
     resendRow: {
       marginTop: spacing.sm,
@@ -831,10 +821,12 @@ const createStyles = (colors: ThemeColors) =>
     resendCooldown: {
       fontSize: fontSize.xs,
       textAlign: 'center',
+      color: colors.textMuted,
     },
     resendLink: {
       fontSize: fontSize.sm,
       fontWeight: fontWeight.semibold,
+      color: colors.primary,
       textDecorationLine: 'underline',
     },
     linkButton: {
@@ -843,7 +835,7 @@ const createStyles = (colors: ThemeColors) =>
     },
     linkText: {
       fontSize: fontSize.sm,
-      color: colors.primary,
+      color: colors.textSecondary,
       textDecorationLine: 'underline',
     },
   });

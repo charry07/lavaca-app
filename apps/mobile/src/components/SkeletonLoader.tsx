@@ -4,7 +4,7 @@ import { useTheme } from '../theme';
 import { borderRadius, spacing } from '../constants/theme';
 
 interface SkeletonLoaderProps {
-  width: number | string;
+  width: number | `${number}%` | 'auto';
   height: number;
   borderRadiusValue?: number;
   style?: StyleProp<ViewStyle>;
