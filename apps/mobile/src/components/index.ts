@@ -9,3 +9,4 @@ export { ToastProvider, useToast } from './Toast';
 export { VacaLogo } from './VacaLogo';
 export { HeaderControls } from './HeaderControls';
 export { Avatar } from './Avatar';
+export { StatusPill } from './StatusPill';
