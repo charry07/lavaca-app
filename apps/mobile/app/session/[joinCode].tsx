@@ -19,7 +19,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { PaymentSession, Participant, User, formatCOP } from '@lavaca/shared';
 import { api } from '../../src/services/api';
 import { spacing, borderRadius, fontSize, fontWeight, type ThemeColors } from '../../src/constants/theme';
-import { SkeletonCard, ErrorState } from '../../src/components';
+import { SkeletonCard, ErrorState, Avatar, StatusPill, AnimatedCard, SplitBar } from '../../src/components';
 import { RouletteWheel } from '../../src/components/RouletteWheel';
 import { QRCode } from '../../src/components/QRCode';
 import { useI18n } from '../../src/i18n';
@@ -392,9 +392,10 @@ export default function SessionScreen() {
     }
   };
 
-  const renderParticipant = ({ item }: { item: Participant }) => {
+  const renderParticipant = ({ item, index }: { item: Participant; index: number }) => {
     const isPaid = item.status === 'confirmed';
     const isReported = item.status === 'reported';
+    const isRejected = item.status === 'rejected';
     const isMe = user?.id === item.userId;
     const isWinner = item.isRouletteWinner;
     const isCoward = item.isRouletteCoward;
@@ -403,10 +404,14 @@ export default function SessionScreen() {
     const statusLabel = isNoPay
       ? t('session.noPay')
       : isPaid
-        ? t('session.paid')
+        ? t('common.confirmed')
         : isReported
           ? t('session.pendingApproval')
-          : t('session.pending');
+          : isRejected
+            ? t('common.rejected')
+            : t('common.pending');
+
+    const statusPillVariant = isPaid ? 'success' : isReported ? 'warning' : isRejected ? 'error' : 'muted';
 
     // Left-border accent — the signature element (like flagging a bill)
     const accentBarColor = isPaid
@@ -416,40 +421,40 @@ export default function SessionScreen() {
         : colors.surfaceBorder;
 
     return (
-      <View style={[s.participantCard, { borderLeftColor: accentBarColor }]}>
-        <View style={s.participantInfo}>
-          <Text style={s.participantName}>
-            {item.displayName}
-            {isWinner ? ' 🎰' : ''}
-            {isCoward ? ' 🐔' : ''}
-          </Text>
-          <Text style={[
-            s.participantStatus,
-            isPaid && { color: colors.statusOpen },
-            isReported && { color: colors.statusPending },
-          ]}>
-            {statusLabel}
-          </Text>
+      <AnimatedCard
+        index={index}
+        style={{ ...s.participantCard, borderLeftColor: accentBarColor }}
+      >
+        <View style={s.participantRow}>
+          <Avatar displayName={item.displayName} size={36} />
+          <View style={s.participantInfo}>
+            <Text style={s.participantName}>
+              {item.displayName}
+              {isWinner ? ' 🎰' : ''}
+              {isCoward ? ' 🐔' : ''}
+            </Text>
+            <StatusPill variant={statusPillVariant} label={statusLabel} />
+          </View>
+          <View style={s.participantRight}>
+            <Text style={[s.participantAmount, isPaid && { color: colors.statusOpen }]}>
+              {formatCOP(item.amount)}
+            </Text>
+            {!isPaid && !isReported && isMe && item.amount > 0 && (
+              <TouchableOpacity style={s.payButton} onPress={() => handleReportPaid(item.userId)}>
+                <Text style={s.payButtonText}>{t('session.reportPaidButton')}</Text>
+              </TouchableOpacity>
+            )}
+            {isReported && isAdmin && (
+              <TouchableOpacity style={s.approveButton} onPress={() => handleApprovePaid(item.userId)}>
+                <Text style={s.approveButtonText}>{t('session.approvePaidButton')}</Text>
+              </TouchableOpacity>
+            )}
+            {isReported && !isAdmin && isMe && (
+              <Text style={s.waitingApprovalText}>{t('session.waitingApproval')}</Text>
+            )}
+          </View>
         </View>
-        <View style={s.participantRight}>
-          <Text style={[s.participantAmount, isPaid && { color: colors.statusOpen }]}>
-            {formatCOP(item.amount)}
-          </Text>
-          {!isPaid && !isReported && isMe && item.amount > 0 && (
-            <TouchableOpacity style={s.payButton} onPress={() => handleReportPaid(item.userId)}>
-              <Text style={s.payButtonText}>{t('session.reportPaidButton')}</Text>
-            </TouchableOpacity>
-          )}
-          {isReported && isAdmin && (
-            <TouchableOpacity style={s.approveButton} onPress={() => handleApprovePaid(item.userId)}>
-              <Text style={s.approveButtonText}>{t('session.approvePaidButton')}</Text>
-            </TouchableOpacity>
-          )}
-          {isReported && !isAdmin && isMe && (
-            <Text style={s.waitingApprovalText}>{t('session.waitingApproval')}</Text>
-          )}
-        </View>
-      </View>
+      </AnimatedCard>
     );
   };
 
@@ -491,6 +496,11 @@ export default function SessionScreen() {
             <Text style={s.statValue}>{getModeLabel()}</Text>
             <Text style={s.statLabel}>{t('session.mode')}</Text>
           </View>
+        </View>
+
+        {/* Payment progress summary */}
+        <View style={s.splitBarContainer}>
+          <SplitBar paid={displayPaidCount} total={displayTotalCount} amount={session.totalAmount} currency={session.currency} />
         </View>
 
         {/* Animated progress bar */}
@@ -543,7 +553,7 @@ export default function SessionScreen() {
       <FlatList
         data={session.participants}
         keyExtractor={(item) => item.userId}
-        renderItem={renderParticipant}
+        renderItem={({ item, index }) => renderParticipant({ item, index })}
         contentContainerStyle={s.list}
         ListEmptyComponent={
           <View style={s.emptyState}>
@@ -921,31 +931,29 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     paddingHorizontal: spacing.md,
     paddingBottom: spacing.lg,
   },
-  // Participant card — warm surface with colored left-border (signature)
+  splitBarContainer: {
+    marginTop: spacing.md,
+  },
+  // Participant card — AnimatedCard with colored left-border (signature)
   participantCard: {
     padding: spacing.md,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
     marginBottom: spacing.xs + 2,
     borderRadius: borderRadius.md,
-    backgroundColor: colors.surface2,
-    borderWidth: 1,
-    borderColor: colors.surfaceBorder,
     borderLeftWidth: 3,
+  },
+  participantRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
   },
   participantInfo: {
     flex: 1,
+    gap: spacing.xs,
   },
   participantName: {
     fontSize: fontSize.md,
     fontWeight: fontWeight.semibold,
     color: colors.text,
-  },
-  participantStatus: {
-    fontSize: fontSize.xs,
-    color: colors.textMuted,
-    marginTop: 2,
   },
   participantRight: {
     alignItems: 'flex-end',

@@ -2,6 +2,7 @@ import { Tabs } from 'expo-router';
 import { Platform, StyleSheet, Text, View } from 'react-native';
 import { useTheme } from '../../src/theme';
 import { useI18n } from '../../src/i18n';
+import { WebSidebar } from '../../src/components';
 
 interface TabIconProps {
   icon: string;
@@ -71,7 +72,9 @@ export default function TabLayout() {
   const { colors } = useTheme();
   const { t } = useI18n();
 
-  return (
+  const isWeb = Platform.OS === 'web';
+
+  const tabContent = (
     <Tabs
       screenOptions={{
         headerStyle: { backgroundColor: colors.surface },
@@ -79,7 +82,7 @@ export default function TabLayout() {
         headerTitleStyle: { fontWeight: '700', color: colors.text },
         headerShadowVisible: false,
         tabBarShowLabel: false,
-        tabBarStyle: {
+        tabBarStyle: isWeb ? { display: 'none' } : {
           backgroundColor: colors.surface,
           borderTopWidth: 1,
           borderTopColor: colors.surfaceBorder,
@@ -159,4 +162,17 @@ export default function TabLayout() {
       />
     </Tabs>
   );
+
+  if (isWeb) {
+    return (
+      <View style={{ flex: 1, flexDirection: 'row' }}>
+        <WebSidebar />
+        <View style={{ flex: 1 }}>
+          {tabContent}
+        </View>
+      </View>
+    );
+  }
+
+  return tabContent;
 }

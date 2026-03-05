@@ -6,12 +6,11 @@ import {
   TouchableOpacity,
   StyleSheet,
   ScrollView,
-  Image,
   ActivityIndicator,
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { useToast } from '../../src/components/Toast';
-import { GlassCard } from '../../src/components';
+import { GlassCard, Avatar } from '../../src/components';
 import { spacing, borderRadius, fontSize, fontWeight, type ThemeColors } from '../../src/constants/theme';
 import { useI18n } from '../../src/i18n';
 import { useTheme } from '../../src/theme';
@@ -161,17 +160,9 @@ export default function ProfileTab() {
       contentContainerStyle={s.scrollContent}
       keyboardShouldPersistTaps="handled"
     >
-      {/* Avatar with primary ring */}
+      {/* Avatar with accent ring */}
       <TouchableOpacity style={s.avatarContainer} onPress={handlePickImage} activeOpacity={0.7}>
-        <View style={s.avatarRing}>
-          {user.avatarUrl ? (
-            <Image source={{ uri: user.avatarUrl }} style={s.avatarImage} />
-          ) : (
-            <View style={s.avatar}>
-              <Text style={s.avatarText}>{user.displayName.charAt(0).toUpperCase()}</Text>
-            </View>
-          )}
-        </View>
+        <Avatar displayName={user.displayName} avatarUrl={user.avatarUrl} size={80} showRing />
         <View style={s.cameraIcon}>
           {uploadingAvatar
             ? <ActivityIndicator size="small" color={colors.primary} />
@@ -189,9 +180,20 @@ export default function ProfileTab() {
         <View style={s.divider} />
         <View style={{ paddingHorizontal: spacing.lg, paddingVertical: spacing.md }}>
           <Text style={s.label}>{t('profile.memberSince')}</Text>
-          <Text style={s.value}>{new Date(user.createdAt).toLocaleDateString()}</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
+            <Text style={s.value}>{new Date(user.createdAt).toLocaleDateString()}</Text>
+          </View>
         </View>
       </GlassCard>
+
+      {/* Premium banner */}
+      <View style={s.premiumBanner}>
+        <Text style={s.premiumBannerText}>✨ {t('premium.title')}</Text>
+        <Text style={s.premiumBannerSub}>{t('premium.subtitle')}</Text>
+        <TouchableOpacity style={s.premiumCta} activeOpacity={0.8}>
+          <Text style={s.premiumCtaText}>{t('premium.cta')}</Text>
+        </TouchableOpacity>
+      </View>
 
       {/* Logout */}
       <TouchableOpacity
@@ -251,34 +253,6 @@ const createStyles = (colors: ThemeColors) =>
       alignItems: 'center',
       marginVertical: spacing.xl,
       position: 'relative',
-    },
-    avatarRing: {
-      borderRadius: 56,
-      borderWidth: 2,
-      borderColor: colors.accent,         // dorado ring
-      padding: 3,
-      shadowColor: colors.accent,
-      shadowOpacity: 0.3,
-      shadowRadius: 10,
-      shadowOffset: { width: 0, height: 0 },
-    },
-    avatar: {
-      width: 100,
-      height: 100,
-      borderRadius: 50,
-      backgroundColor: colors.primary,
-      justifyContent: 'center',
-      alignItems: 'center',
-    },
-    avatarImage: {
-      width: 100,
-      height: 100,
-      borderRadius: 50,
-    },
-    avatarText: {
-      fontSize: 42,
-      fontWeight: fontWeight.bold,
-      color: colors.background,
     },
     cameraIcon: {
       position: 'absolute',
@@ -351,8 +325,38 @@ const createStyles = (colors: ThemeColors) =>
       borderColor: colors.surfaceBorder,
     },
     cancelBtnText: { color: colors.textMuted, fontSize: fontSize.md, fontWeight: fontWeight.bold },
-    logoutButton: {
+    premiumBanner: {
       marginTop: spacing.xl,
+      padding: spacing.lg,
+      borderRadius: borderRadius.lg,
+      borderWidth: 1,
+      borderColor: colors.accent + '50',
+      backgroundColor: colors.accent + '10',
+      gap: spacing.sm,
+    },
+    premiumBannerText: {
+      fontSize: fontSize.md,
+      fontWeight: fontWeight.bold,
+      color: colors.accent,
+    },
+    premiumBannerSub: {
+      fontSize: fontSize.sm,
+      color: colors.textSecondary,
+    },
+    premiumCta: {
+      alignSelf: 'flex-start',
+      backgroundColor: colors.accent,
+      paddingVertical: spacing.xs + 2,
+      paddingHorizontal: spacing.md,
+      borderRadius: borderRadius.md,
+    },
+    premiumCtaText: {
+      fontSize: fontSize.sm,
+      fontWeight: fontWeight.bold,
+      color: colors.background,
+    },
+    logoutButton: {
+      marginTop: spacing.md,
       paddingVertical: spacing.md,
       borderRadius: borderRadius.md,
       borderWidth: 1.5,

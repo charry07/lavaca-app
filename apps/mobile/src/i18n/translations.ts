@@ -147,6 +147,24 @@ const es = {
   'common.now': 'ahora',
   'common.person': 'persona',
   'common.people': 'personas',
+  'common.paid': 'Pagó',
+  'common.pending': 'Pendiente',
+  'common.confirmed': 'Confirmado',
+  'common.rejected': 'Rechazado',
+  'common.open': 'Abierta',
+  'common.closed': 'Cerrada',
+
+  // Nav (sidebar/web)
+  'nav.home': 'Inicio',
+  'nav.feed': 'Feed',
+  'nav.groups': 'Grupos',
+  'nav.history': 'Historial',
+  'nav.profile': 'Perfil',
+
+  // Premium
+  'premium.title': 'La Vaca Pro',
+  'premium.subtitle': 'Desbloquea todo el potencial',
+  'premium.cta': 'Ver planes',
 
   // Tabs
   'tabs.home': 'Inicio',
@@ -397,6 +415,24 @@ const en: TranslationKeys = {
   'common.now': 'now',
   'common.person': 'person',
   'common.people': 'people',
+  'common.paid': 'Paid',
+  'common.pending': 'Pending',
+  'common.confirmed': 'Confirmed',
+  'common.rejected': 'Rejected',
+  'common.open': 'Open',
+  'common.closed': 'Closed',
+
+  // Nav (sidebar/web)
+  'nav.home': 'Home',
+  'nav.feed': 'Feed',
+  'nav.groups': 'Groups',
+  'nav.history': 'History',
+  'nav.profile': 'Profile',
+
+  // Premium
+  'premium.title': 'La Vaca Pro',
+  'premium.subtitle': 'Unlock the full potential',
+  'premium.cta': 'View plans',
 
   // Tabs
   'tabs.home': 'Home',
@@ -647,6 +683,24 @@ const pt: TranslationKeys = {
   'common.now': 'agora',
   'common.person': 'pessoa',
   'common.people': 'pessoas',
+  'common.paid': 'Pagou',
+  'common.pending': 'Pendente',
+  'common.confirmed': 'Confirmado',
+  'common.rejected': 'Rejeitado',
+  'common.open': 'Aberta',
+  'common.closed': 'Fechada',
+
+  // Nav (sidebar/web)
+  'nav.home': 'Início',
+  'nav.feed': 'Feed',
+  'nav.groups': 'Grupos',
+  'nav.history': 'Histórico',
+  'nav.profile': 'Perfil',
+
+  // Premium
+  'premium.title': 'La Vaca Pro',
+  'premium.subtitle': 'Desbloqueie todo o potencial',
+  'premium.cta': 'Ver planos',
 
   // Tabs
   'tabs.home': 'Início',

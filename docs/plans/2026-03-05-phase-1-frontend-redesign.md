@@ -22,8 +22,16 @@
 - Se agregaron y sincronizaron los planes de fases en `docs/plans/`.
 - Se definio regla obligatoria de no acumular basura tecnica en el plan maestro.
 - Esta fase aun no tiene implementacion de UI iniciada.
+- Se actualizo trazabilidad global tras migrar auth a Supabase en Fase 2.
+- Se registro migracion realtime de Fase 2 para mantener dependencias entre fases al dia.
+- Se sincronizo avance de Fase 2 en `api.ts` (sesiones/grupos/feed) para mantener secuencia tecnica actualizada.
+- Se sincronizo limpieza de Fase 2: remocion de Socket.IO fallback y `baseUrl.ts`.
+- Se sincronizo desacople de Fase 2: scripts API root removidos y `apps/api` fuera del workspace activo.
+- Se sincronizo cierre estructural de Fase 2: eliminacion de `apps/api/` y workflow legacy de deploy API.
+- Se sincronizo limpieza de documentacion/instrucciones tras eliminacion final de backend legacy.
+- Se sincronizo correccion final de arquitectura/estructura en README para coherencia de fases.
 
-Last sync: 2026-03-05
+Last sync: 2026-03-05 (update 8)
 
 ---
 
@@ -788,11 +796,43 @@ git commit -m "feat(frontend): phase 1 complete — redesign + web layout + new 
 
 ## Phase 1 Definition of Done
 
-- [ ] `react-native-reanimated` installed and configured
-- [ ] `Avatar`, `StatusPill`, `AnimatedCard`, `SplitBar`, `WebSidebar` components created
-- [ ] All screens use new components
-- [ ] Web sidebar navigation works
-- [ ] Profile date alignment fixed
-- [ ] Premium banner placeholder on Profile
-- [ ] `pnpm --filter @lavaca/mobile typecheck` → 0 errors
-- [ ] All new strings in es + en + pt
+- [x] `react-native-reanimated` installed and configured
+- [x] `Avatar`, `StatusPill`, `AnimatedCard`, `SplitBar`, `WebSidebar` components created
+- [x] All screens use new components
+- [x] Web sidebar navigation works
+- [x] Profile date alignment fixed
+- [x] Premium banner placeholder on Profile
+- [x] `pnpm --filter @lavaca/mobile typecheck` → 0 errors
+- [x] All new strings in es + en + pt
+
+## Changelog
+
+### 2026-03-05 — Tasks 7–13 (AI implementation)
+
+**Task 7 — i18n keys added:**
+- Added `nav.home/feed/groups/history/profile`, `premium.title/subtitle/cta`, `common.paid/pending/confirmed/rejected/open/closed` to all three locales (es, en, pt) in `apps/mobile/src/i18n/translations.ts`.
+
+**Task 8 — Home screen redesigned:**
+- `apps/mobile/app/(tabs)/index.tsx`: session cards now use `AnimatedCard` (staggered entrance), `Avatar` for admin initials, `StatusPill` for session status, `SplitBar` at bottom of each card showing payment progress.
+- Left accent border signature element preserved.
+
+**Task 9 — Session Detail redesigned:**
+- `apps/mobile/app/session/[joinCode].tsx`: participant rows now use `Avatar` (36px), `StatusPill` with correct variant per status, `AnimatedCard` with staggered animation. `SplitBar` added to the session header showing overall payment progress.
+- All existing functionality (roulette, admin approval, share modal, add participant) preserved.
+
+**Task 10 — Profile redesigned:**
+- `apps/mobile/app/(tabs)/profile.tsx`: replaced custom avatar stack with `Avatar displayName size=80 showRing`. Fixed date alignment with `flexDirection: row, alignItems: center`. Added premium banner with accent styling (non-functional placeholder for Phase 4).
+- Removed unused `Image` import and old avatar styles.
+
+**Task 11 — History redesigned:**
+- `apps/mobile/app/(tabs)/history.tsx`: each card wrapped in `AnimatedCard`, `Avatar` for session admin, `StatusPill` for session status and payment status (replaces old inline badge). Left accent border preserved.
+
+**Task 12 — WebSidebar + responsive tab layout:**
+- Created `apps/mobile/src/components/WebSidebar.tsx`: platform-aware sidebar showing on web only, with nav items, active indicator (accent dot), and logo.
+- Exported from `apps/mobile/src/components/index.ts`.
+- `apps/mobile/app/(tabs)/_layout.tsx`: on web, wraps Tabs in a row with WebSidebar on left and hides the tab bar. On native, unchanged behavior.
+
+**Task 13 — Final verification:**
+- `pnpm --filter @lavaca/mobile typecheck` → 0 errors.
+- No hardcoded hex colors introduced in modified files.
+- All unused imports removed.

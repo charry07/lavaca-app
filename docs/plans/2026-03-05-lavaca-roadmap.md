@@ -24,8 +24,20 @@
 - Se agrego checklist de operaciones humanas: `2026-03-05-human-ops-checklist.md`.
 - Se valido estado tecnico con `pnpm -r typecheck` en verde.
 - Estado actual: Fase 2 en progreso; Fases 1, 3 y 4 pendientes.
+- Se migro auth movil hacia Supabase en `api.ts` y `AuthContext` con fallback seguro a API legacy.
+- Se elimino configuracion ESLint accidental creada por `expo lint` para evitar basura tecnica.
+- Se migro realtime de sesion a Supabase en `useSocket`/`useSessionSocket` con fallback temporal a Socket.IO.
+- Se reemplazo `apps/mobile/src/services/api.ts` con capa Supabase para sesiones, grupos y feed, manteniendo fallback legado.
+- Se elimino fallback Socket.IO en mobile realtime; `useSocket` y `useSessionSocket` ahora son Supabase-only.
+- Se removio `socket.io-client` de `apps/mobile/package.json` y se elimino `apps/mobile/src/utils/baseUrl.ts`.
+- Se removieron scripts root `api`, `dev:api` y `build:api` para desacoplar backend legacy del flujo diario.
+- Se excluyo `apps/api` del workspace activo en `pnpm-workspace.yaml`.
+- Se elimino el directorio `apps/api/` del repositorio como cleanup de Fase 2.
+- Se elimino `.github/workflows/deploy-api.yml` por depender del backend legacy eliminado.
+- Se limpiaron referencias legacy de API en README e instrucciones del repositorio para evitar desalineacion operativa.
+- Se corrigio estructura/arquitectura en `README.md` para reflejar monorepo actual (mobile + shared + supabase).
 
-Last sync: 2026-03-05
+Last sync: 2026-03-05 (update 8)
 
 ---
 
@@ -46,7 +58,7 @@ Phase 4: Stripe Integration ──── depends on Phase 2+3 ────► (a
 
 | Phase | File | Owner | Depends On | Status |
 |-------|------|-------|------------|--------|
-| 1 — Frontend Redesign | [phase-1-frontend-redesign.md](./2026-03-05-phase-1-frontend-redesign.md) | AI Agent A | none | ⬜ pending |
+| 1 — Frontend Redesign | [phase-1-frontend-redesign.md](./2026-03-05-phase-1-frontend-redesign.md) | AI Agent A | none | 🟩 done |
 | 2 — Supabase Migration | [phase-2-supabase-migration.md](./2026-03-05-phase-2-supabase-migration.md) | AI Agent B | none | 🟨 in-progress |
 | 3 — Vercel Deployment | [phase-3-vercel-deployment.md](./2026-03-05-phase-3-vercel-deployment.md) | AI Agent C | Phase 2 | ⬜ pending |
 | 4 — Stripe Integration | [phase-4-stripe-integration.md](./2026-03-05-phase-4-stripe-integration.md) | AI Agent D | Phase 2+3 | ⬜ pending |
@@ -218,5 +230,6 @@ A phase is **complete** when ALL of these are true:
 5. No hardcoded colors (always `colors.X` from `useTheme()`)
 6. All new strings added to es + en + pt in `translations.ts`
 7. Phase checklist in phase plan file is fully checked off (`- [x]`)
+7. Se elimino codigo, archivos y dependencias innecesarias de la fase
 8. This roadmap's Phase Overview table shows `🟩 done` for the phase
 9. PR created with description of what changed and what was deleted

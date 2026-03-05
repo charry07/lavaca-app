@@ -13,7 +13,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import { PaymentSession } from '@lavaca/shared';
 import { spacing, borderRadius, fontSize, fontWeight, type ThemeColors } from '../../src/constants/theme';
 import { formatCOP } from '@lavaca/shared';
-import { SkeletonCard, ErrorState } from '../../src/components';
+import { SkeletonCard, ErrorState, Avatar, StatusPill, AnimatedCard, SplitBar } from '../../src/components';
 import { useI18n } from '../../src/i18n';
 import { useTheme } from '../../src/theme';
 import { VacaLogo } from '../../src/components/VacaLogo';
@@ -55,35 +55,37 @@ export default function HomeTab() {
     }, [loadSessions])
   );
 
-  const renderSessionCard = ({ item }: { item: PaymentSession }) => {
+  const renderSessionCard = ({ item, index }: { item: PaymentSession; index: number }) => {
     const participantCount = item.participants.length;
     const isOpen = item.status === 'open';
     const isClosed = item.status === 'closed';
     const hasPendingApproval = item.participants.some((p) => p.status === 'reported');
 
-    const statusColor = isOpen ? colors.statusOpen : isClosed ? colors.statusClosed : colors.statusCancelled;
-    const statusBg = isOpen ? colors.statusOpenBg : isClosed ? colors.statusClosedBg : colors.statusCancelledBg;
-    const statusLabel = isOpen ? t('home.open') : isClosed ? t('home.closed') : t('home.cancelled');
+    const statusPillVariant = isOpen ? 'success' : isClosed ? 'muted' : 'error';
+    const statusLabel = isOpen ? t('common.open') : isClosed ? t('common.closed') : t('home.cancelled');
 
     // Signature: colored left-border bar — like flagging a bill
     const accentBar = isOpen ? colors.statusOpen : isClosed ? colors.statusClosed : colors.statusCancelled;
 
+    const confirmedCount = item.participants.filter((p) => p.status === 'confirmed').length;
+    const adminName = item.participants.find((p) => p.userId === item.adminId)?.displayName || item.description || '?';
+
     return (
       <TouchableOpacity onPress={() => router.push(`/session/${item.joinCode}`)} activeOpacity={0.75}>
-        <View style={[s.sessionCard, { borderLeftColor: accentBar }]}>
+        <AnimatedCard
+          index={index}
+          style={{ ...s.sessionCard, borderLeftColor: accentBar }}
+        >
           <View style={s.sessionCardHeader}>
+            <View style={s.sessionAvatar}><Avatar displayName={adminName} size={36} /></View>
             <Text style={s.sessionCardTitle} numberOfLines={1}>
               {item.description || t('history.untitled')}
             </Text>
             <View style={s.badgeRow}>
               {hasPendingApproval && (
-                <View style={[s.badge, { backgroundColor: colors.statusPendingBg }]}>
-                  <Text style={[s.badgeText, { color: colors.statusPending }]}>⏳</Text>
-                </View>
+                <StatusPill variant="warning" label="⏳" />
               )}
-              <View style={[s.badge, { backgroundColor: statusBg }]}>
-                <Text style={[s.badgeText, { color: statusColor }]}>{statusLabel}</Text>
-              </View>
+              <StatusPill variant={statusPillVariant} label={statusLabel} />
             </View>
           </View>
           <View style={s.sessionCardBody}>
@@ -92,7 +94,10 @@ export default function HomeTab() {
               {participantCount} {participantCount === 1 ? t('common.person') : t('common.people')} · {item.joinCode}
             </Text>
           </View>
-        </View>
+          <View style={s.sessionCardFooter}>
+            <SplitBar paid={confirmedCount} total={participantCount} amount={item.totalAmount} currency={item.currency} />
+          </View>
+        </AnimatedCard>
       </TouchableOpacity>
     );
   };
@@ -117,7 +122,7 @@ export default function HomeTab() {
       contentContainerStyle={s.container}
       data={filteredSessions}
       keyExtractor={(item) => item.id}
-      renderItem={renderSessionCard}
+      renderItem={({ item, index }) => renderSessionCard({ item, index })}
       refreshControl={
         <RefreshControl
           refreshing={refreshing}
@@ -321,18 +326,18 @@ const createStyles = (colors: ThemeColors) =>
       color: colors.primary,
     },
     // Session card — warm surface with colored left-border accent bar (signature)
+    // AnimatedCard provides background; we override padding, borderRadius, and left border
     sessionCard: {
-      backgroundColor: colors.surface2,
       borderRadius: borderRadius.md,
       padding: spacing.md,
       marginBottom: spacing.sm,
-      borderWidth: 1,
-      borderColor: colors.surfaceBorder,
       borderLeftWidth: 3,
+    },
+    sessionAvatar: {
+      marginRight: spacing.sm,
     },
     sessionCardHeader: {
       flexDirection: 'row',
-      justifyContent: 'space-between',
       alignItems: 'center',
       marginBottom: spacing.xs,
     },
@@ -340,28 +345,21 @@ const createStyles = (colors: ThemeColors) =>
       flexDirection: 'row',
       alignItems: 'center',
       gap: spacing.xs,
+      marginLeft: spacing.xs,
     },
     sessionCardTitle: {
       fontSize: fontSize.md,
       fontWeight: fontWeight.semibold,
       color: colors.text,
       flex: 1,
-      marginRight: spacing.sm,
-    },
-    badge: {
-      paddingHorizontal: spacing.sm,
-      paddingVertical: 3,
-      borderRadius: borderRadius.sm,
-    },
-    badgeText: {
-      fontSize: fontSize.xs,
-      fontWeight: fontWeight.bold,
+      marginRight: spacing.xs,
     },
     sessionCardBody: {
       flexDirection: 'row',
       justifyContent: 'space-between',
       alignItems: 'baseline',
       marginTop: spacing.xs,
+      marginBottom: spacing.sm,
     },
     sessionAmount: {
       fontSize: fontSize.lg,
@@ -372,6 +370,9 @@ const createStyles = (colors: ThemeColors) =>
     sessionMeta: {
       fontSize: fontSize.xs,
       color: colors.textMuted,
+    },
+    sessionCardFooter: {
+      marginTop: spacing.xs,
     },
     emptyContainer: {
       alignItems: 'center',
