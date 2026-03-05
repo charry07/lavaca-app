@@ -132,3 +132,15 @@ export const fontWeight = {
   bold:     '700' as const,
   black:    '900' as const,
 };
+
+export const shadow = {
+  sm: { shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.08, shadowRadius: 4, elevation: 2 },
+  md: { shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.12, shadowRadius: 12, elevation: 5 },
+  lg: { shadowColor: '#000', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.18, shadowRadius: 24, elevation: 10 },
+} as const;
+
+export const duration = {
+  fast: 150,
+  normal: 250,
+  slow: 400,
+} as const;
