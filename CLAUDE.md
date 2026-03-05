@@ -156,3 +156,32 @@ Palette: warm espresso & dorado — inspired by a Colombian café interior at ni
 - Rate limiter: `send-otp` 5/10min, `resend-otp` 5/10min + 60s cooldown, `verify-otp` 10/10min
 - Avatar validation: max 5.5M chars, must start with `data:image/` or `http`
 - `documentId` (cédula) is validated unique and ≤ 20 chars at registration
+
+---
+
+## Roadmap & Implementation Plans
+
+**All planned work lives in `docs/plans/`.** Before starting any task, read these files:
+
+| File | Purpose |
+|------|---------|
+| [`docs/plans/2026-03-05-lavaca-roadmap.md`](docs/plans/2026-03-05-lavaca-roadmap.md) | Master plan — phase overview, conflict rules, cleanup rules, definition of done |
+| [`docs/plans/2026-03-05-phase-1-frontend-redesign.md`](docs/plans/2026-03-05-phase-1-frontend-redesign.md) | Frontend redesign — new components, animations, web layout |
+| [`docs/plans/2026-03-05-phase-2-supabase-migration.md`](docs/plans/2026-03-05-phase-2-supabase-migration.md) | Supabase migration — replaces Express + SQLite + Socket.IO |
+| [`docs/plans/2026-03-05-phase-3-vercel-deployment.md`](docs/plans/2026-03-05-phase-3-vercel-deployment.md) | Vercel deployment — CI/CD, serverless functions, Azure path |
+| [`docs/plans/2026-03-05-phase-4-stripe-integration.md`](docs/plans/2026-03-05-phase-4-stripe-integration.md) | Stripe payments — checkout, webhooks, feature flags |
+| [`docs/plans/2026-03-05-human-ops-checklist.md`](docs/plans/2026-03-05-human-ops-checklist.md) | Manual tasks the human must do (Supabase, Vercel, Stripe setup) |
+
+### Rules every AI agent must follow
+
+1. **Read the roadmap first** — understand which phase you are on and the conflict rules before touching any file.
+2. **Mark tasks done** — update `- [ ]` → `- [x]` in the phase file as you complete each task.
+3. **Update the roadmap status** — change `⬜ pending` → `🟨 in-progress` → `🟩 done` in the Phase Overview table.
+4. **Delete what you replace** — no dead code, no unused deps, no legacy files. The cleanup checklist in the roadmap is mandatory.
+5. **Log changes** — append a `## Changelog` section to the phase file noting what you did.
+
+### Current status (as of 2026-03-05)
+- Phase 1: ⬜ pending
+- Phase 2: 🟨 in-progress (schema + workspace scaffold done)
+- Phase 3: ⬜ pending (depends on Phase 2)
+- Phase 4: ⬜ pending (depends on Phase 2+3)
