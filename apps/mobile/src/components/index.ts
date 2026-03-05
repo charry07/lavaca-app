@@ -8,3 +8,4 @@ export { QRCode } from './QRCode';
 export { ToastProvider, useToast } from './Toast';
 export { VacaLogo } from './VacaLogo';
 export { HeaderControls } from './HeaderControls';
+export { Avatar } from './Avatar';
