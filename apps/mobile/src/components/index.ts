@@ -10,3 +10,4 @@ export { VacaLogo } from './VacaLogo';
 export { HeaderControls } from './HeaderControls';
 export { Avatar } from './Avatar';
 export { StatusPill } from './StatusPill';
+export { AnimatedCard } from './AnimatedCard';
