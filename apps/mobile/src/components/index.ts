@@ -11,3 +11,4 @@ export { HeaderControls } from './HeaderControls';
 export { Avatar } from './Avatar';
 export { StatusPill } from './StatusPill';
 export { AnimatedCard } from './AnimatedCard';
+export { SplitBar } from './SplitBar';
