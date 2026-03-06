@@ -5,19 +5,17 @@
   "description": "La Vaca 🐄 - Simple y sencillo de dividir y pagar cuentas",
   "scripts": {
     "mobile": "pnpm --filter @lavaca/mobile start",
-    "api": "pnpm --filter @lavaca/api dev",
     "shared": "pnpm --filter @lavaca/shared typecheck",
     "dev:mobile": "pnpm --filter @lavaca/mobile start",
-    "dev:api": "pnpm --filter @lavaca/api dev",
-    "build:api": "pnpm --filter @lavaca/api build",
     "lint": "pnpm -r lint",
     "typecheck": "pnpm -r typecheck",
-    "clean": "pnpm -r clean"
+    "clean": "pnpm -r clean",
+    "build:web": "pnpm --filter @lavaca/mobile exec expo export --platform web",
+    "build:vercel": "pnpm install && pnpm build:web",
+    "vercel-build": "pnpm build:vercel"
   },
   "pnpm": {
-    "onlyBuiltDependencies": [
-      "better-sqlite3"
-    ]
+    "onlyBuiltDependencies": []
   },
   "engines": {
     "node": ">=20.0.0",

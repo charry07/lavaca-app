@@ -9,19 +9,19 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
-import { useToast } from '../../src/components/Toast';
-import { GlassCard, Avatar } from '../../src/components';
+import { GlassCard, Avatar, useToast } from '../../src/components';
 import { spacing, borderRadius, fontSize, fontWeight, type ThemeColors } from '../../src/constants/theme';
 import { useI18n } from '../../src/i18n';
 import { useTheme } from '../../src/theme';
 import { useAuth } from '../../src/auth';
 
+import { getErrorMessage } from '../../src/utils/errorMessage';
 export default function ProfileTab() {
-  const { t } = useI18n();
+  const { translate } = useI18n();
   const { colors } = useTheme();
   const { user, logout, updateProfile, deleteAccount } = useAuth();
   const { showError, showSuccess } = useToast();
-  const s = createStyles(colors);
+  const styles = createStyles(colors);
 
   const [editingField, setEditingField] = useState<string | null>(null);
   const [editValue, setEditValue] = useState('');
@@ -42,9 +42,9 @@ export default function ProfileTab() {
     try {
       await updateProfile({ [editingField]: editValue.trim() });
       setEditingField(null);
-      showSuccess(t('profile.savedSuccess'));
-    } catch (err: any) {
-      showError(err.message || t('profile.saveError'));
+      showSuccess(translate('profile.savedSuccess'));
+    } catch (err: unknown) {
+      showError(getErrorMessage(err, translate('profile.saveError')));
     } finally {
       setSaving(false);
     }
@@ -58,7 +58,7 @@ export default function ProfileTab() {
   const handlePickImage = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== 'granted') {
-      showError(t('profile.permissionNeeded'));
+      showError(translate('profile.permissionNeeded'));
       return;
     }
 
@@ -73,21 +73,21 @@ export default function ProfileTab() {
     if (!result.canceled && result.assets[0]) {
       const asset = result.assets[0];
       if (!asset.base64) {
-        showError(t('profile.avatarError'));
+        showError(translate('profile.avatarError'));
         return;
       }
       const sizeKb = Math.round((asset.base64.length * 3) / 4 / 1024);
       if (sizeKb > 3500) {
-        showError(t('profile.avatarTooLarge', { size: String(sizeKb) }));
+        showError(translate('profile.avatarTooLarge', { size: String(sizeKb) }));
         return;
       }
       setUploadingAvatar(true);
       try {
         const avatarUrl = `data:image/jpeg;base64,${asset.base64}`;
         await updateProfile({ avatarUrl });
-        showSuccess(t('profile.avatarSuccess'));
-      } catch (err: any) {
-        showError(err.message || t('profile.saveError'));
+        showSuccess(translate('profile.avatarSuccess'));
+      } catch (err: unknown) {
+        showError(getErrorMessage(err, translate('profile.saveError')));
       } finally {
         setUploadingAvatar(false);
       }
@@ -99,7 +99,7 @@ export default function ProfileTab() {
     try {
       await deleteAccount();
     } catch {
-      showError(t('profile.deleteError'));
+      showError(translate('profile.deleteError'));
       setDeletingAccount(false);
       setConfirmDelete(false);
     }
@@ -119,23 +119,23 @@ export default function ProfileTab() {
   const renderField = (label: string, field: string, value: string, editable = true) => (
     <View key={field}>
       <View style={{ paddingHorizontal: spacing.lg, paddingVertical: spacing.md }}>
-        <Text style={s.label}>{label}</Text>
+        <Text style={styles.label}>{label}</Text>
         {editingField === field ? (
-          <View style={s.editRow}>
+          <View style={styles.editRow}>
             <TextInput
-              style={s.editInput}
+              style={styles.editInput}
               value={editValue}
               onChangeText={setEditValue}
               autoFocus
               autoCapitalize={field === 'username' ? 'none' : 'words'}
             />
-            <TouchableOpacity style={s.saveBtn} onPress={saveEdit} disabled={saving}>
+            <TouchableOpacity style={styles.saveBtn} onPress={saveEdit} disabled={saving}>
               {saving
                 ? <ActivityIndicator size="small" color={colors.background} />
-                : <Text style={s.saveBtnText}>✓</Text>}
+                : <Text style={styles.saveBtnText}>✓</Text>}
             </TouchableOpacity>
-            <TouchableOpacity style={s.cancelBtn} onPress={cancelEdit}>
-              <Text style={s.cancelBtnText}>✕</Text>
+            <TouchableOpacity style={styles.cancelBtn} onPress={cancelEdit}>
+              <Text style={styles.cancelBtnText}>✕</Text>
             </TouchableOpacity>
           </View>
         ) : (
@@ -144,101 +144,101 @@ export default function ProfileTab() {
             onPress={() => editable && startEdit(field, value)}
             disabled={!editable}
           >
-            <Text style={s.value}>
+            <Text style={styles.value}>
               {value || '—'} {editable ? ' ✏️' : ''}
             </Text>
           </TouchableOpacity>
         )}
       </View>
-      <View style={s.divider} />
+      <View style={styles.divider} />
     </View>
   );
 
   return (
     <ScrollView
-      style={s.container}
-      contentContainerStyle={s.scrollContent}
+      style={styles.container}
+      contentContainerStyle={styles.scrollContent}
       keyboardShouldPersistTaps="handled"
     >
       {/* Avatar with accent ring */}
-      <TouchableOpacity style={s.avatarContainer} onPress={handlePickImage} activeOpacity={0.7}>
+      <TouchableOpacity style={styles.avatarContainer} onPress={handlePickImage} activeOpacity={0.7}>
         <Avatar displayName={user.displayName} avatarUrl={user.avatarUrl} size={80} showRing />
-        <View style={s.cameraIcon}>
+        <View style={styles.cameraIcon}>
           {uploadingAvatar
             ? <ActivityIndicator size="small" color={colors.primary} />
-            : <Text style={s.cameraText}>📷</Text>}
+            : <Text style={styles.cameraText}>📷</Text>}
         </View>
       </TouchableOpacity>
 
       {/* User info card */}
-      <GlassCard style={s.card}>
-        {renderField(t('profile.name'), 'displayName', user.displayName)}
-        {renderField(t('profile.username'), 'username', user.username || '', true)}
-        {renderField(t('profile.phone'), 'phone', user.phone, false)}
-        {renderField(t('profile.document'), 'documentId', user.documentId || '', true)}
+      <GlassCard style={styles.card}>
+        {renderField(translate('profile.name'), 'displayName', user.displayName)}
+        {renderField(translate('profile.username'), 'username', user.username || '', true)}
+        {renderField(translate('profile.phone'), 'phone', user.phone, false)}
+        {renderField(translate('profile.document'), 'documentId', user.documentId || '', true)}
 
-        <View style={s.divider} />
+        <View style={styles.divider} />
         <View style={{ paddingHorizontal: spacing.lg, paddingVertical: spacing.md }}>
-          <Text style={s.label}>{t('profile.memberSince')}</Text>
+          <Text style={styles.label}>{translate('profile.memberSince')}</Text>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
-            <Text style={s.value}>{new Date(user.createdAt).toLocaleDateString()}</Text>
+            <Text style={styles.value}>{new Date(user.createdAt).toLocaleDateString()}</Text>
           </View>
         </View>
       </GlassCard>
 
       {/* Premium banner */}
-      <View style={s.premiumBanner}>
-        <Text style={s.premiumBannerText}>✨ {t('premium.title')}</Text>
-        <Text style={s.premiumBannerSub}>{t('premium.subtitle')}</Text>
-        <TouchableOpacity style={s.premiumCta} activeOpacity={0.8}>
-          <Text style={s.premiumCtaText}>{t('premium.cta')}</Text>
+      <View style={styles.premiumBanner}>
+        <Text style={styles.premiumBannerText}>✨ {translate('premium.title')}</Text>
+        <Text style={styles.premiumBannerSub}>{translate('premium.subtitle')}</Text>
+        <TouchableOpacity style={styles.premiumCta} activeOpacity={0.8}>
+          <Text style={styles.premiumCtaText}>{translate('premium.cta')}</Text>
         </TouchableOpacity>
       </View>
 
       {/* Logout */}
       <TouchableOpacity
-        style={[s.logoutButton, loggingOut && { opacity: 0.5 }]}
+        style={[styles.logoutButton, loggingOut && { opacity: 0.5 }]}
         onPress={handleLogout}
         activeOpacity={0.7}
         disabled={loggingOut}
       >
         {loggingOut
           ? <ActivityIndicator color={colors.danger} />
-          : <Text style={s.logoutButtonText}>{t('profile.logout')}</Text>}
+          : <Text style={styles.logoutButtonText}>{translate('profile.logout')}</Text>}
       </TouchableOpacity>
 
       {/* Delete account */}
       {confirmDelete ? (
-        <GlassCard style={s.deleteConfirmBox}>
-          <Text style={s.deleteConfirmTitle}>{t('profile.deleteTitle')} ⚠️</Text>
-          <Text style={s.deleteConfirmMessage}>{t('profile.deleteMessage')}</Text>
-          <View style={s.deleteConfirmRow}>
+        <GlassCard style={styles.deleteConfirmBox}>
+          <Text style={styles.deleteConfirmTitle}>{translate('profile.deleteTitle')} ⚠️</Text>
+          <Text style={styles.deleteConfirmMessage}>{translate('profile.deleteMessage')}</Text>
+          <View style={styles.deleteConfirmRow}>
             <TouchableOpacity
-              style={s.deleteCancelBtn}
+              style={styles.deleteCancelBtn}
               onPress={() => setConfirmDelete(false)}
               disabled={deletingAccount}
             >
-              <Text style={s.deleteCancelBtnText}>{t('profile.deleteCancel')}</Text>
+              <Text style={styles.deleteCancelBtnText}>{translate('profile.deleteCancel')}</Text>
             </TouchableOpacity>
             <TouchableOpacity
-              style={[s.deleteConfirmBtn, deletingAccount && { opacity: 0.5 }]}
+              style={[styles.deleteConfirmBtn, deletingAccount && { opacity: 0.5 }]}
               onPress={handleDeleteAccount}
               disabled={deletingAccount}
             >
               {deletingAccount
                 ? <ActivityIndicator color="#fff" size="small" />
-                : <Text style={s.deleteConfirmBtnText}>{t('profile.deleteConfirm')}</Text>}
+                : <Text style={styles.deleteConfirmBtnText}>{translate('profile.deleteConfirm')}</Text>}
             </TouchableOpacity>
           </View>
         </GlassCard>
       ) : (
         <TouchableOpacity
-          style={[s.deleteButton, loggingOut && { opacity: 0.4 }]}
+          style={[styles.deleteButton, loggingOut && { opacity: 0.4 }]}
           onPress={() => setConfirmDelete(true)}
           activeOpacity={0.7}
           disabled={loggingOut}
         >
-          <Text style={s.deleteButtonText}>{t('profile.deleteAccount')}</Text>
+          <Text style={styles.deleteButtonText}>{translate('profile.deleteAccount')}</Text>
         </TouchableOpacity>
       )}
     </ScrollView>

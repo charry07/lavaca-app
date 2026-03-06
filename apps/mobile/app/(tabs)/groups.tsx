@@ -14,13 +14,13 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { spacing, borderRadius, fontSize, fontWeight, type ThemeColors } from '../../src/constants/theme';
-import { GlassCard, SkeletonCard, EmptyState } from '../../src/components';
+import { GlassCard, SkeletonCard, EmptyState, useToast } from '../../src/components';
 import { useI18n } from '../../src/i18n';
 import { useTheme } from '../../src/theme';
 import { useAuth } from '../../src/auth';
 import { api } from '../../src/services/api';
-import { useToast } from '../../src/components/Toast';
 
+import { getErrorMessage } from '../../src/utils/errorMessage';
 interface GroupWithMembers {
   id: string;
   name: string;
@@ -40,12 +40,12 @@ function nameToAccent(name: string): string {
 }
 
 export default function GroupsTab() {
-  const { t } = useI18n();
+  const { translate } = useI18n();
   const { colors } = useTheme();
   const { user } = useAuth();
   const router = useRouter();
   const { showError } = useToast();
-  const s = createStyles(colors);
+  const styles = createStyles(colors);
 
   const [groups, setGroups] = useState<GroupWithMembers[]>([]);
   const [loading, setLoading] = useState(true);
@@ -63,12 +63,12 @@ export default function GroupsTab() {
       const data = await api.getUserGroups(user.id);
       setGroups(data);
     } catch {
-      showError(t('common.error'));
+      showError(translate('common.error'));
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [user]);
+  }, [showError, translate, user]);
 
   useEffect(() => {
     fetchGroups();
@@ -76,7 +76,7 @@ export default function GroupsTab() {
 
   const handleCreate = async () => {
     if (!newGroupName.trim()) {
-      Alert.alert(t('common.error'), t('groups.noName'));
+      Alert.alert(translate('common.error'), translate('groups.noName'));
       return;
     }
     if (!user) return;
@@ -92,8 +92,8 @@ export default function GroupsTab() {
       setNewGroupName('');
       setNewGroupIcon('👥');
       fetchGroups();
-    } catch (err: any) {
-      showError(err.message || t('create.errorCreating'));
+    } catch (err: unknown) {
+      showError(getErrorMessage(err, translate('create.errorCreating')));
     } finally {
       setCreating(false);
     }
@@ -101,19 +101,19 @@ export default function GroupsTab() {
 
   const handleDeleteGroup = (groupId: string, groupName: string) => {
     Alert.alert(
-      t('groups.deleteTitle'),
-      t('groups.deleteMessage', { name: groupName }),
+      translate('groups.deleteTitle'),
+      translate('groups.deleteMessage', { name: groupName }),
       [
-        { text: t('profile.cancel'), style: 'cancel' },
+        { text: translate('profile.cancel'), style: 'cancel' },
         {
-          text: t('groups.deleteConfirm'),
+          text: translate('groups.deleteConfirm'),
           style: 'destructive',
           onPress: async () => {
             try {
               await api.deleteGroup(groupId);
               fetchGroups();
-            } catch (err: any) {
-              showError(err.message || t('common.error'));
+            } catch (err: unknown) {
+              showError(getErrorMessage(err, translate('common.error')));
             }
           },
         },
@@ -128,25 +128,25 @@ export default function GroupsTab() {
         onPress={() => router.push(`/group/${item.id}` as any)}
         activeOpacity={0.7}
       >
-        <GlassCard style={s.groupCard}>
+        <GlassCard style={styles.groupCard}>
           {/* Left accent strip */}
-          <View style={[s.accentStrip, { backgroundColor: accent }]} />
-          <Text style={s.groupIcon}>{item.icon || '👥'}</Text>
-          <View style={s.groupInfo}>
-            <Text style={s.groupName}>{item.name}</Text>
-            <Text style={s.groupMembers}>
-              {item.members.length} {t('groups.members')}
+          <View style={[styles.accentStrip, { backgroundColor: accent }]} />
+          <Text style={styles.groupIcon}>{item.icon || '👥'}</Text>
+          <View style={styles.groupInfo}>
+            <Text style={styles.groupName}>{item.name}</Text>
+            <Text style={styles.groupMembers}>
+              {item.members.length} {translate('groups.members')}
             </Text>
-            <Text style={s.groupMemberNames} numberOfLines={1}>
+            <Text style={styles.groupMemberNames} numberOfLines={1}>
               {item.members.map((m) => m.displayName).join(', ')}
             </Text>
           </View>
           <TouchableOpacity
-            style={s.deleteBtn}
+            style={styles.deleteBtn}
             onPress={() => handleDeleteGroup(item.id, item.name)}
             hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
           >
-            <Text style={s.deleteBtnText}>🗑️</Text>
+            <Text style={styles.deleteBtnText}>🗑️</Text>
           </TouchableOpacity>
         </GlassCard>
       </TouchableOpacity>
@@ -155,7 +155,7 @@ export default function GroupsTab() {
 
   if (loading) {
     return (
-      <View style={s.container}>
+      <View style={styles.container}>
         <View style={{ padding: spacing.md, gap: spacing.md }}>
           {[0, 1, 2, 3].map((i) => <SkeletonCard key={i} />)}
         </View>
@@ -164,14 +164,14 @@ export default function GroupsTab() {
   }
 
   return (
-    <View style={s.container}>
+    <View style={styles.container}>
       {groups.length === 0 ? (
-        <View style={s.emptyWrapper}>
+        <View style={styles.emptyWrapper}>
           <EmptyState
             emoji="👥"
-            title={t('groups.empty')}
-            hint={t('groups.emptyHint')}
-            action={{ label: t('groups.createButton'), onPress: () => setShowCreate(true) }}
+            title={translate('groups.empty')}
+            hint={translate('groups.emptyHint')}
+            action={{ label: translate('groups.createButton'), onPress: () => setShowCreate(true) }}
           />
         </View>
       ) : (
@@ -179,7 +179,7 @@ export default function GroupsTab() {
           data={groups}
           keyExtractor={(item) => item.id}
           renderItem={renderGroup}
-          contentContainerStyle={s.list}
+          contentContainerStyle={styles.list}
           refreshControl={
             <RefreshControl
               refreshing={refreshing}
@@ -191,49 +191,49 @@ export default function GroupsTab() {
       )}
 
       {/* Gradient FAB */}
-      <TouchableOpacity style={s.fab} onPress={() => setShowCreate(true)} activeOpacity={0.85}>
+      <TouchableOpacity style={styles.fab} onPress={() => setShowCreate(true)} activeOpacity={0.85}>
         <LinearGradient
           colors={[colors.primary, colors.accent || colors.primary]}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
-          style={s.fabGradient}
+          style={styles.fabGradient}
         >
-          <Text style={s.fabText}>+</Text>
+          <Text style={styles.fabText}>+</Text>
         </LinearGradient>
       </TouchableOpacity>
 
       {/* Create Group Modal */}
       <Modal visible={showCreate} transparent animationType="slide">
-        <View style={[s.modalOverlay, { backgroundColor: colors.overlay }]}>
-          <GlassCard style={s.modalContent}>
-            <Text style={s.modalTitle}>{t('groups.createTitle')}</Text>
+        <View style={[styles.modalOverlay, { backgroundColor: colors.overlay }]}>
+          <GlassCard style={styles.modalContent}>
+            <Text style={styles.modalTitle}>{translate('groups.createTitle')}</Text>
 
-            <Text style={s.fieldLabel}>{t('groups.nameLabel')}</Text>
+            <Text style={styles.fieldLabel}>{translate('groups.nameLabel')}</Text>
             <TextInput
-              style={s.input}
-              placeholder={t('groups.namePlaceholder')}
+              style={styles.input}
+              placeholder={translate('groups.namePlaceholder')}
               placeholderTextColor={colors.textMuted}
               value={newGroupName}
               onChangeText={setNewGroupName}
               autoFocus
             />
 
-            <Text style={s.fieldLabel}>{t('groups.iconLabel')}</Text>
-            <View style={s.iconPicker}>
+            <Text style={styles.fieldLabel}>{translate('groups.iconLabel')}</Text>
+            <View style={styles.iconPicker}>
               {ICONS.map((icon) => (
                 <TouchableOpacity
                   key={icon}
-                  style={[s.iconOption, newGroupIcon === icon && s.iconSelected]}
+                  style={[styles.iconOption, newGroupIcon === icon && styles.iconSelected]}
                   onPress={() => setNewGroupIcon(icon)}
                 >
-                  <Text style={s.iconText}>{icon}</Text>
+                  <Text style={styles.iconText}>{icon}</Text>
                 </TouchableOpacity>
               ))}
             </View>
 
-            <View style={s.modalButtons}>
-              <TouchableOpacity style={s.cancelButton} onPress={() => setShowCreate(false)}>
-                <Text style={s.cancelButtonText}>{t('profile.cancel')}</Text>
+            <View style={styles.modalButtons}>
+              <TouchableOpacity style={styles.cancelButton} onPress={() => setShowCreate(false)}>
+                <Text style={styles.cancelButtonText}>{translate('profile.cancel')}</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={{ flex: 1, borderRadius: borderRadius.md, overflow: 'hidden', opacity: creating ? 0.6 : 1 }}
@@ -244,12 +244,12 @@ export default function GroupsTab() {
                   colors={[colors.primary, colors.accent || colors.primary]}
                   start={{ x: 0, y: 0 }}
                   end={{ x: 1, y: 0 }}
-                  style={s.createButton}
+                  style={styles.createButton}
                 >
                   {creating ? (
                     <ActivityIndicator color="#fff" size="small" />
                   ) : (
-                    <Text style={s.createButtonText}>{t('groups.createButton')}</Text>
+                    <Text style={styles.createButtonText}>{translate('groups.createButton')}</Text>
                   )}
                 </LinearGradient>
               </TouchableOpacity>

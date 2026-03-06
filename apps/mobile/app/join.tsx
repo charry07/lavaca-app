@@ -23,12 +23,13 @@ import { useTheme } from '../src/theme';
 import { useAuth } from '../src/auth';
 import { requestCameraPermission } from '../src/utils/cameraPermission';
 
+import { getErrorMessage } from '../src/utils/errorMessage';
 export default function JoinScreen() {
   const router = useRouter();
-  const { t } = useI18n();
+  const { translate } = useI18n();
   const { colors } = useTheme();
   const { user } = useAuth();
-  const s = createStyles(colors);
+  const styles = createStyles(colors);
 
   const [code, setCode] = useState('');
   const [name, setName] = useState(user?.displayName || '');
@@ -39,11 +40,11 @@ export default function JoinScreen() {
   const handleJoin = async () => {
     const joinCode = code.toUpperCase().trim();
     if (!joinCode) {
-      Alert.alert(t('common.error'), t('join.noCode'));
+      Alert.alert(translate('common.error'), translate('join.noCode'));
       return;
     }
     if (!name.trim()) {
-      Alert.alert(t('common.error'), t('join.noName'));
+      Alert.alert(translate('common.error'), translate('join.noName'));
       return;
     }
 
@@ -55,8 +56,8 @@ export default function JoinScreen() {
         displayName: name.trim(),
       });
       router.replace(`/session/${joinCode}`);
-    } catch (err: any) {
-      Alert.alert(t('common.error'), err.message || t('join.errorJoining'));
+    } catch (err: unknown) {
+      Alert.alert(translate('common.error'), getErrorMessage(err, translate('join.errorJoining')));
     } finally {
       setLoading(false);
     }
@@ -65,7 +66,7 @@ export default function JoinScreen() {
   const handleOpenScanner = async () => {
     const granted = await requestCameraPermission();
     if (!granted) {
-      Alert.alert(t('common.error'), t('join.permissionDenied'));
+      Alert.alert(translate('common.error'), translate('join.permissionDenied'));
       return;
     }
     setScanned(false);
@@ -97,30 +98,30 @@ export default function JoinScreen() {
     >
       <LinearGradient
         colors={['#0f0f23', '#1a1a2e', '#16213e']}
-        style={s.background}
+        style={styles.background}
       >
-        <View style={s.content}>
-          <Text style={s.emoji}>🔗</Text>
-          <Text style={s.title}>{t('join.title')}</Text>
-          <Text style={s.subtitle}>{t('join.subtitle')}</Text>
+        <View style={styles.content}>
+          <Text style={styles.emoji}>🔗</Text>
+          <Text style={styles.title}>{translate('join.title')}</Text>
+          <Text style={styles.subtitle}>{translate('join.subtitle')}</Text>
 
           {/* QR Scan button */}
-          <TouchableOpacity style={s.scanButton} onPress={handleOpenScanner} activeOpacity={0.8}>
-            <GlassCard style={s.scanButtonInner}>
-              <Text style={s.scanIcon}>📷</Text>
-              <Text style={s.scanButtonText}>{t('join.scanQR')}</Text>
+          <TouchableOpacity style={styles.scanButton} onPress={handleOpenScanner} activeOpacity={0.8}>
+            <GlassCard style={styles.scanButtonInner}>
+              <Text style={styles.scanIcon}>📷</Text>
+              <Text style={styles.scanButtonText}>{translate('join.scanQR')}</Text>
             </GlassCard>
           </TouchableOpacity>
 
-          <View style={s.dividerRow}>
-            <View style={s.dividerLine} />
-            <Text style={s.dividerText}>o</Text>
-            <View style={s.dividerLine} />
+          <View style={styles.dividerRow}>
+            <View style={styles.dividerLine} />
+            <Text style={styles.dividerText}>o</Text>
+            <View style={styles.dividerLine} />
           </View>
 
-          <GlassCard style={s.formCard}>
+          <GlassCard style={styles.formCard}>
             <TextInput
-              style={s.codeInput}
+              style={styles.codeInput}
               placeholder="VACA-XXXX"
               placeholderTextColor={colors.textMuted}
               value={code}
@@ -131,8 +132,8 @@ export default function JoinScreen() {
             />
 
             <TextInput
-              style={s.nameInput}
-              placeholder={t('join.yourName')}
+              style={styles.nameInput}
+              placeholder={translate('join.yourName')}
               placeholderTextColor={colors.textMuted}
               value={name}
               onChangeText={setName}
@@ -147,12 +148,12 @@ export default function JoinScreen() {
                 colors={[colors.primary, colors.accent || colors.primary]}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 0 }}
-                style={s.joinButton}
+                style={styles.joinButton}
               >
                 {loading ? (
                   <ActivityIndicator color="#fff" />
                 ) : (
-                  <Text style={s.joinButtonText}>{t('join.joinButton')}</Text>
+                  <Text style={styles.joinButtonText}>{translate('join.joinButton')}</Text>
                 )}
               </LinearGradient>
             </TouchableOpacity>
@@ -167,7 +168,7 @@ export default function JoinScreen() {
         onRequestClose={() => setShowScanner(false)}
         statusBarTranslucent
       >
-        <View style={s.scannerContainer}>
+        <View style={styles.scannerContainer}>
           <StatusBar barStyle="light-content" />
           <CameraView
             style={StyleSheet.absoluteFill}
@@ -177,25 +178,25 @@ export default function JoinScreen() {
           />
 
           {/* Dark overlay outside the scan frame */}
-          <View style={s.scanOverlayTop} />
-          <View style={s.scanOverlayRow}>
-            <View style={s.scanOverlaySide} />
+          <View style={styles.scanOverlayTop} />
+          <View style={styles.scanOverlayRow}>
+            <View style={styles.scanOverlaySide} />
             {/* Corner brackets */}
-            <View style={s.scanFrame}>
-              <View style={[s.corner, s.cornerTL]} />
-              <View style={[s.corner, s.cornerTR]} />
-              <View style={[s.corner, s.cornerBL]} />
-              <View style={[s.corner, s.cornerBR]} />
+            <View style={styles.scanFrame}>
+              <View style={[styles.corner, styles.cornerTL]} />
+              <View style={[styles.corner, styles.cornerTR]} />
+              <View style={[styles.corner, styles.cornerBL]} />
+              <View style={[styles.corner, styles.cornerBR]} />
             </View>
-            <View style={s.scanOverlaySide} />
+            <View style={styles.scanOverlaySide} />
           </View>
-          <View style={s.scanOverlayBottom}>
-            <Text style={s.scanHintText}>{t('join.scanHint')}</Text>
+          <View style={styles.scanOverlayBottom}>
+            <Text style={styles.scanHintText}>{translate('join.scanHint')}</Text>
             <TouchableOpacity
-              style={s.cancelScanButton}
+              style={styles.cancelScanButton}
               onPress={() => setShowScanner(false)}
             >
-              <Text style={s.cancelScanText}>{t('common.cancel') ?? 'Cancelar'}</Text>
+              <Text style={styles.cancelScanText}>{translate('common.cancel') ?? 'Cancelar'}</Text>
             </TouchableOpacity>
           </View>
         </View>

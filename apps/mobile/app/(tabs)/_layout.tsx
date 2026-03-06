@@ -1,8 +1,15 @@
 import { Tabs } from 'expo-router';
+import { useEffect } from 'react';
 import { Platform, StyleSheet, Text, View } from 'react-native';
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withSpring,
+  withTiming,
+  interpolate,
+} from 'react-native-reanimated';
 import { useTheme } from '../../src/theme';
 import { useI18n } from '../../src/i18n';
-import { WebSidebar } from '../../src/components';
 
 interface TabIconProps {
   icon: string;
@@ -14,14 +21,46 @@ interface TabIconProps {
 }
 
 function TabIcon({ icon, label, focused, activeColor, inactiveColor, accent }: TabIconProps) {
+  const scale = useSharedValue(1);
+  const pillWidth = useSharedValue(focused ? 1 : 0);
+  const dotOpacity = useSharedValue(focused ? 1 : 0);
+
+  useEffect(() => {
+    if (focused) {
+      // Bounce: shrink then spring back bigger
+      scale.value = withSpring(1, { damping: 4, stiffness: 300 }, () => {
+        scale.value = withSpring(1, { damping: 8, stiffness: 200 });
+      });
+      scale.value = 0.7;
+      pillWidth.value = withSpring(1, { damping: 12, stiffness: 180 });
+      dotOpacity.value = withTiming(1, { duration: 200 });
+    } else {
+      pillWidth.value = withTiming(0, { duration: 150 });
+      dotOpacity.value = withTiming(0, { duration: 100 });
+    }
+  }, [dotOpacity, focused, pillWidth, scale]);
+
+  const emojiStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: interpolate(scale.value, [0.7, 1], [0.7, 1]) }],
+    opacity: interpolate(pillWidth.value, [0, 1], [0.55, 1]),
+  }));
+
+  const pillStyle = useAnimatedStyle(() => ({
+    backgroundColor: activeColor + interpolate(pillWidth.value, [0, 1], [0, 32]).toFixed(0).padStart(2, '0'),
+    borderColor: activeColor + interpolate(pillWidth.value, [0, 1], [0, 64]).toFixed(0).padStart(2, '0'),
+    borderWidth: interpolate(pillWidth.value, [0, 1], [0, 1]),
+    width: interpolate(pillWidth.value, [0, 1], [32, 46]),
+  }));
+
+  const dotStyle = useAnimatedStyle(() => ({
+    opacity: dotOpacity.value,
+  }));
+
   return (
     <View style={styles.iconWrapper}>
-      <View style={[
-        styles.iconPill,
-        focused && { backgroundColor: activeColor + '20', borderColor: activeColor + '40', borderWidth: 1 },
-      ]}>
-        <Text style={[styles.emoji, { opacity: focused ? 1 : 0.55 }]}>{icon}</Text>
-      </View>
+      <Animated.View style={[styles.iconPill, pillStyle]}>
+        <Animated.Text style={[styles.emoji, emojiStyle]}>{icon}</Animated.Text>
+      </Animated.View>
       <Text
         style={[
           styles.iconLabel,
@@ -32,9 +71,7 @@ function TabIcon({ icon, label, focused, activeColor, inactiveColor, accent }: T
       >
         {label}
       </Text>
-      {focused && (
-        <View style={[styles.activeDot, { backgroundColor: accent }]} />
-      )}
+      <Animated.View style={[styles.activeDot, { backgroundColor: accent }, dotStyle]} />
     </View>
   );
 }
@@ -70,9 +107,7 @@ const styles = StyleSheet.create({
 
 export default function TabLayout() {
   const { colors } = useTheme();
-  const { t } = useI18n();
-
-  const isWeb = Platform.OS === 'web';
+  const { translate } = useI18n();
 
   const tabContent = (
     <Tabs
@@ -82,7 +117,7 @@ export default function TabLayout() {
         headerTitleStyle: { fontWeight: '700', color: colors.text },
         headerShadowVisible: false,
         tabBarShowLabel: false,
-        tabBarStyle: isWeb ? { display: 'none' } : {
+        tabBarStyle: {
           backgroundColor: colors.surface,
           borderTopWidth: 1,
           borderTopColor: colors.surfaceBorder,
@@ -102,11 +137,11 @@ export default function TabLayout() {
       <Tabs.Screen
         name="index"
         options={{
-          title: t('tabs.home'),
+          title: translate('tabs.home'),
           headerShown: false,
           tabBarIcon: ({ focused }) => (
             <TabIcon
-              icon="🏠" label={t('tabs.home')} focused={focused}
+              icon="🏠" label={translate('tabs.home')} focused={focused}
               activeColor={colors.primary} inactiveColor={colors.textMuted} accent={colors.accent}
             />
           ),
@@ -115,10 +150,10 @@ export default function TabLayout() {
       <Tabs.Screen
         name="groups"
         options={{
-          title: t('tabs.groups'),
+          title: translate('tabs.groups'),
           tabBarIcon: ({ focused }) => (
             <TabIcon
-              icon="👥" label={t('tabs.groups')} focused={focused}
+              icon="👥" label={translate('tabs.groups')} focused={focused}
               activeColor={colors.primary} inactiveColor={colors.textMuted} accent={colors.accent}
             />
           ),
@@ -127,10 +162,10 @@ export default function TabLayout() {
       <Tabs.Screen
         name="history"
         options={{
-          title: t('tabs.history'),
+          title: translate('tabs.history'),
           tabBarIcon: ({ focused }) => (
             <TabIcon
-              icon="📋" label={t('tabs.history')} focused={focused}
+              icon="📋" label={translate('tabs.history')} focused={focused}
               activeColor={colors.primary} inactiveColor={colors.textMuted} accent={colors.accent}
             />
           ),
@@ -139,10 +174,10 @@ export default function TabLayout() {
       <Tabs.Screen
         name="feed"
         options={{
-          title: t('tabs.feed'),
+          title: translate('tabs.feed'),
           tabBarIcon: ({ focused }) => (
             <TabIcon
-              icon="📰" label={t('tabs.feed')} focused={focused}
+              icon="📰" label={translate('tabs.feed')} focused={focused}
               activeColor={colors.primary} inactiveColor={colors.textMuted} accent={colors.accent}
             />
           ),
@@ -151,10 +186,10 @@ export default function TabLayout() {
       <Tabs.Screen
         name="profile"
         options={{
-          title: t('tabs.profile'),
+          title: translate('tabs.profile'),
           tabBarIcon: ({ focused }) => (
             <TabIcon
-              icon="👤" label={t('tabs.profile')} focused={focused}
+              icon="👤" label={translate('tabs.profile')} focused={focused}
               activeColor={colors.primary} inactiveColor={colors.textMuted} accent={colors.accent}
             />
           ),
@@ -162,17 +197,6 @@ export default function TabLayout() {
       />
     </Tabs>
   );
-
-  if (isWeb) {
-    return (
-      <View style={{ flex: 1, flexDirection: 'row' }}>
-        <WebSidebar />
-        <View style={{ flex: 1 }}>
-          {tabContent}
-        </View>
-      </View>
-    );
-  }
 
   return tabContent;
 }

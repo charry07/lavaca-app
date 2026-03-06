@@ -8,20 +8,14 @@ import {
   RefreshControl,
 } from 'react-native';
 import { useRouter } from 'expo-router';
-import { PaymentSession } from '@lavaca/shared';
-import { formatCOP } from '@lavaca/shared';
+import { PaymentSession , formatCOP } from '@lavaca/shared';
 import { spacing, borderRadius, fontSize, fontWeight, type ThemeColors } from '../../src/constants/theme';
 import { SkeletonCard, EmptyState, Avatar, StatusPill, AnimatedCard } from '../../src/components';
 import { useI18n } from '../../src/i18n';
 import { useTheme } from '../../src/theme';
 import { useAuth } from '../../src/auth';
 import { api } from '../../src/services/api';
-
-const STATUS_EMOJI: Record<string, string> = {
-  open: '🟢',
-  closed: '✅',
-  cancelled: '❌',
-};
+import { getSessionAccentColor, getSessionPillVariant } from '../../src/utils/sessionStatus';
 
 const MODE_EMOJI: Record<string, string> = {
   equal: '⚖️',
@@ -29,11 +23,6 @@ const MODE_EMOJI: Record<string, string> = {
   roulette: '🎰',
 };
 
-const STATUS_COLOR: Record<string, (c: ThemeColors) => string> = {
-  open: (c) => c.statusOpen,
-  closed: (c) => c.statusClosed,
-  cancelled: (c) => c.statusCancelled,
-};
 
 function formatAmount(amount: number, currency = 'COP'): string {
   if (currency === 'COP') return formatCOP(amount);
@@ -58,11 +47,11 @@ function timeAgo(date: Date | string, nowLabel = 'now'): string {
 }
 
 export default function HistoryTab() {
-  const { t } = useI18n();
+  const { translate } = useI18n();
   const { colors } = useTheme();
   const { user } = useAuth();
   const router = useRouter();
-  const s = createStyles(colors);
+  const styles = createStyles(colors);
 
   const [sessions, setSessions] = useState<PaymentSession[]>([]);
   const [loading, setLoading] = useState(true);
@@ -88,58 +77,57 @@ export default function HistoryTab() {
     const myAmount = myParticipation?.amount || 0;
     const isAdmin = item.adminId === user?.id;
     const isPaid = myParticipation?.status === 'confirmed';
-    const accentBar = STATUS_COLOR[item.status]?.(colors) ?? colors.statusOpen;
+    const accentBar = getSessionAccentColor(item.status, colors);
     const adminName = item.participants.find((p) => p.userId === item.adminId)?.displayName || item.description || '?';
-
-    const statusPillVariant = item.status === 'open' ? 'success' : item.status === 'closed' ? 'muted' : 'error';
-    const statusLabel = item.status === 'open' ? t('common.open') : item.status === 'closed' ? t('common.closed') : t('home.cancelled');
+    const statusPillVariant = getSessionPillVariant(item.status);
+    const statusLabel = item.status === 'open' ? translate('common.open') : item.status === 'closed' ? translate('common.closed') : translate('home.cancelled');
 
     return (
       <TouchableOpacity onPress={() => router.push(`/session/${item.joinCode}` as any)} activeOpacity={0.75}>
-        <AnimatedCard index={index} style={{ ...s.card, borderLeftColor: accentBar }}>
-          <View style={s.cardHeader}>
+        <AnimatedCard index={index} style={{ ...styles.card, borderLeftColor: accentBar }}>
+          <View style={styles.cardHeader}>
             <Avatar displayName={adminName} size={36} />
-            <View style={s.cardHeaderInfo}>
-              <Text style={s.cardTitle} numberOfLines={1}>
-                {item.description || t('history.untitled')}
+            <View style={styles.cardHeaderInfo}>
+              <Text style={styles.cardTitle} numberOfLines={1}>
+                {item.description || translate('history.untitled')}
               </Text>
-              <Text style={s.cardTime}>{timeAgo(item.createdAt, t('common.now'))}</Text>
+              <Text style={styles.cardTime}>{timeAgo(item.createdAt, translate('common.now'))}</Text>
             </View>
-            <View style={s.cardHeaderRight}>
-              <Text style={s.modeEmoji}>{MODE_EMOJI[item.splitMode] || '⚖️'}</Text>
+            <View style={styles.cardHeaderRight}>
+              <Text style={styles.modeEmoji}>{MODE_EMOJI[item.splitMode] || '⚖️'}</Text>
               <StatusPill variant={statusPillVariant} label={statusLabel} />
             </View>
           </View>
 
           {/* Stats row */}
-          <View style={s.cardBody}>
-            <View style={s.stat}>
-              <Text style={s.statLabel}>{t('session.total')}</Text>
-              <Text style={s.statValue}>{formatAmount(item.totalAmount, item.currency)}</Text>
+          <View style={styles.cardBody}>
+            <View style={styles.stat}>
+              <Text style={styles.statLabel}>{translate('session.total')}</Text>
+              <Text style={styles.statValue}>{formatAmount(item.totalAmount, item.currency)}</Text>
             </View>
-            <View style={s.statDivider} />
-            <View style={s.stat}>
-              <Text style={s.statLabel}>{t('history.myPart')}</Text>
-              <Text style={[s.statValue, { color: colors.accent }]}>
+            <View style={styles.statDivider} />
+            <View style={styles.stat}>
+              <Text style={styles.statLabel}>{translate('history.myPart')}</Text>
+              <Text style={[styles.statValue, { color: colors.accent }]}>
                 {formatAmount(myAmount, item.currency)}
               </Text>
             </View>
-            <View style={s.statDivider} />
-            <View style={s.stat}>
-              <Text style={s.statLabel}>{t('session.people')}</Text>
-              <Text style={s.statValue}>{item.participants.length}</Text>
+            <View style={styles.statDivider} />
+            <View style={styles.stat}>
+              <Text style={styles.statLabel}>{translate('session.people')}</Text>
+              <Text style={styles.statValue}>{item.participants.length}</Text>
             </View>
           </View>
 
           {/* Footer */}
-          <View style={s.cardFooter}>
-            <Text style={s.roleTag}>
-              {isAdmin ? '👑 ' + t('history.organizer') : '👤 ' + t('history.participant')}
+          <View style={styles.cardFooter}>
+            <Text style={styles.roleTag}>
+              {isAdmin ? '👑 ' + translate('history.organizer') : '👤 ' + translate('history.participant')}
             </Text>
             {myParticipation && (
               <StatusPill
                 variant={isPaid ? 'success' : 'warning'}
-                label={isPaid ? t('common.paid') : t('common.pending')}
+                label={isPaid ? translate('common.paid') : translate('common.pending')}
               />
             )}
           </View>
@@ -150,7 +138,7 @@ export default function HistoryTab() {
 
   if (loading) {
     return (
-      <View style={s.container}>
+      <View style={styles.container}>
         <View style={{ padding: spacing.md, gap: spacing.sm }}>
           {[0, 1, 2, 3].map((i) => <SkeletonCard key={i} />)}
         </View>
@@ -159,17 +147,17 @@ export default function HistoryTab() {
   }
 
   return (
-    <View style={s.container}>
+    <View style={styles.container}>
       {sessions.length === 0 ? (
-        <View style={s.emptyWrapper}>
-          <EmptyState emoji="📋" title={t('history.empty')} hint={t('history.emptyHint')} />
+        <View style={styles.emptyWrapper}>
+          <EmptyState emoji="📋" title={translate('history.empty')} hint={translate('history.emptyHint')} />
         </View>
       ) : (
         <FlatList
           data={sessions}
           keyExtractor={(item) => item.id}
           renderItem={({ item, index }) => renderSession({ item, index })}
-          contentContainerStyle={s.list}
+          contentContainerStyle={styles.list}
           refreshControl={
             <RefreshControl
               refreshing={refreshing}

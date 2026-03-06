@@ -28,7 +28,7 @@
 | 🎰 **Ruleta** | Un participante aleatorio paga el total (¡o escapa!) |
 | 📲 **QR + Código de unión** | Comparte la sesión al instante sin fricciones |
 | 📷 **Escáner QR** | Escanea el QR con la cámara para unirte instantáneamente |
-| ⚡ **Tiempo real** | Actualizaciones en vivo vía WebSockets (Socket.IO) — sin polling |
+| ⚡ **Tiempo real** | Actualizaciones en vivo vía Supabase Realtime (`postgres_changes`) — sin polling |
 | 👥 **Participantes frecuentes** | Los 7 más recientes aparecen al instante al crear una mesa; rellena con sugeridos si no hay suficientes |
 | 👥 **Grupos** | Crea grupos de amigos para sesiones recurrentes |
 | 📰 **Feed de actividad** | Eventos sociales: pagadores rápidos, ganadores de ruleta, etc. |
@@ -63,24 +63,23 @@
 │                        LAVACA MONOREPO                          │
 │                      (pnpm workspaces)                          │
 │                                                                 │
-│  ┌──────────────────────┐      ┌──────────────────────────┐    │
-│  │   📱 @lavaca/mobile   │      │     🖥️  @lavaca/api       │    │
-│  │  React Native + Expo │      │  Express + Socket.IO     │    │
-│  │                      │◄────►│                          │    │
-│  │  • Expo Router       │ REST │  • /api/sessions         │    │
-│  │  • AuthContext       │  +   │  • /api/users            │    │
-│  │  • i18n (ES/EN/PT)   │  WS  │  • /api/feed             │    │
-│  │  • ThemeContext      │      │  • /api/groups           │    │
-│  │  • QR & Ruleta       │      │  • SQLite (better-sqlite3│    │
-│  └──────────────────────┘      └──────────────────────────┘    │
-│              │                              │                   │
-│              └──────────┬───────────────────┘                   │
-│                         ▼                                       │
-│              ┌──────────────────────┐                           │
-│              │   📦 @lavaca/shared   │                           │
-│              │  Tipos + Utilidades  │                           │
-│              │  (TypeScript puro)   │                           │
-│              └──────────────────────┘                           │
+│   ┌──────────────────────┐   ┌──────────────────────────────┐   │
+│   │   📱 @lavaca/mobile   │   │       ☁️ Supabase            │   │
+│   │  React Native + Expo │   │  Auth + Postgres + Realtime │   │
+│   │                      │◄─►│                              │   │
+│   │  • Expo Router       │   │  • users / sessions         │   │
+│   │  • AuthContext       │   │  • participants / groups    │   │
+│   │  • i18n (ES/EN/PT)   │   │  • feed_events              │   │
+│   │  • ThemeContext      │   │  • RLS + migrations         │   │
+│   │  • QR & Ruleta       │   │                              │   │
+│   └──────────────────────┘   └──────────────────────────────┘   │
+│                 │                        │                       │
+│                 └──────────┬─────────────┘                       │
+│                            ▼                                     │
+│      ┌──────────────────────┐   ┌──────────────────────┐         │
+│      │   📦 @lavaca/shared   │   │  📦 @lavaca/supabase │         │
+│      │  Tipos + Utilidades  │   │  cliente compartido  │         │
+│      └──────────────────────┘   └──────────────────────┘         │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
@@ -110,25 +109,12 @@ lavaca-app/
 │   │       ├── auth/           # AuthContext + flujo OTP
 │   │       ├── components/     # GlassCard, SkeletonCard, EmptyState, ErrorState…
 │   │       ├── constants/      # theme.ts — tokens de diseño
-│   │       ├── hooks/          # useSocket, useSessionSocket (Socket.IO)
+│   │       ├── hooks/          # useSocket, useSessionSocket (Supabase Realtime)
 │   │       ├── i18n/           # Traducciones ES/EN/PT
 │   │       ├── services/       # Cliente HTTP (api.ts)
-│   │       ├── utils/          # baseUrl.ts, cameraPermission.ts
 │   │       └── theme/          # ThemeContext claro/oscuro
-│   │
-│   └── api/                    # 🖥️ Backend Express
-│       └── src/
-│           ├── index.ts        # Entry point + helmet + CORS + Socket.IO
-│           ├── db.ts           # Configuración SQLite (WAL mode)
-│           ├── middleware/
-│           │   └── rateLimiter.ts   # Rate limiter en memoria
-│           └── routes/
-│               ├── sessions.ts # CRUD sesiones + pagos + ruleta
-│               ├── users.ts    # Auth OTP, registro, perfil, frecuentes, aleatorios
-│               ├── groups.ts   # Grupos de amigos
-│               └── feed.ts     # Eventos del feed
-│
 └── packages/
+  ├── supabase/               # 📦 Cliente Supabase compartido
     └── shared/                 # 📦 Tipos y utilidades compartidas
         └── src/
             ├── types.ts        # Interfaces (Session, User, Participant, Debt…)
@@ -161,10 +147,7 @@ pnpm install
 ### Desarrollo
 
 ```bash
-# Terminal 1 — API backend (puerto 3001)
-pnpm dev:api
-
-# Terminal 2 — App móvil (Expo)
+# Terminal 1 — App móvil (Expo)
 pnpm dev:mobile
 
 # Para web (útil en desarrollo rápido)
@@ -173,12 +156,9 @@ cd apps/mobile && npx expo start --web
 
 > Escanea el QR con **Expo Go** en tu teléfono o presiona `w` para web, `i` para iOS, `a` para Android.
 
-### Verificar la API
+### Backend actual
 
-```bash
-curl http://localhost:3001/health
-# → { "status": "ok", "name": "La Vaca API", "version": "0.1.0" }
-```
+La app está migrando a Supabase (Auth, Postgres y Realtime). El backend Express local fue retirado del flujo principal.
 
 ---
 
@@ -275,13 +255,12 @@ interface Participant {
 |---|---|
 | **App móvil** | React Native · Expo SDK 54 · Expo Router |
 | **Lenguaje** | TypeScript 5 |
-| **Backend** | Node.js · Express · Socket.IO |
-| **Seguridad** | Helmet · CORS env-aware · Rate limiter en memoria |
-| **Base de datos** | SQLite (`better-sqlite3`, WAL mode) |
+| **Backend** | Supabase (Auth · Postgres · Realtime) |
+| **Seguridad** | Supabase Auth + RLS + políticas de entorno |
+| **Base de datos** | PostgreSQL (Supabase) |
 | **Monorepo** | pnpm workspaces |
 | **UI** | `expo-blur` · `expo-linear-gradient` · diseño espresso & dorado |
 | **Cámara / QR Scan** | `expo-camera` (`CameraView`) |
-| **WebSocket cliente** | `socket.io-client` |
 | **QR generación** | `react-native-qrcode-svg` |
 
 ---
@@ -316,8 +295,6 @@ interface Participant {
 
 ```bash
 pnpm dev:mobile       # Iniciar app Expo
-pnpm dev:api          # Iniciar API con hot-reload
-pnpm build:api        # Build de producción de la API
 pnpm typecheck        # Verificación de tipos TypeScript (todos los workspaces)
 pnpm lint             # Lint en todos los workspaces
 pnpm clean            # Limpiar builds

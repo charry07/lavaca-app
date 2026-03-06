@@ -15,6 +15,30 @@
 Status: pending
 Owner: AI Agent D
 
+## Plan Hygiene (Anti-Basura)
+
+- No crear tablas/eventos Stripe que no se consuman en la app o webhook.
+- Reusar funciones compartidas en vez de duplicar logica entre edge/webhook.
+- Registrar cada cambio de esta fase en este archivo y en el roadmap.
+
+## Shared Change Log (2026-03-05)
+
+- Plan sincronizado con reglas de limpieza y trazabilidad en `docs/plans/`.
+- Checklist humano agregado para llaves, webhook y configuraciones de Stripe.
+- Pendiente iniciar implementacion tecnica de Fase 4.
+- Se registro avance de Fase 2 para que dependencias de Fase 4 no queden desactualizadas.
+- Se registro progreso realtime de Fase 2 para mantener secuencia tecnica completa.
+- Se sincronizo avance de Fase 2 en `api.ts` (sesiones/grupos/feed) para dependencias de pagos futuras.
+- Se sincronizo limpieza de Fase 2 (realtime Supabase-only, sin Socket.IO fallback).
+- Se sincronizo desacople de Fase 2 (scripts API root removidos y `apps/api` fuera de workspace activo).
+- Se sincronizo eliminacion de `apps/api/` y workflow legacy, dejando base limpia para integraciones siguientes.
+- Se sincronizo limpieza de documentacion/instrucciones para evitar referencias legacy en fases siguientes.
+- Se sincronizo correccion final de README para mantener base documental estable antes de pagos.
+- Se sincronizo hardening final de Fase 2 (`api.ts` Supabase-only) y estado tecnico actual (`typecheck` verde, `lint` estable con warnings).
+- Se sincronizo cierre de lint a 0 warnings en mobile y revalidacion global de typecheck.
+
+Last sync: 2026-03-05 (update 10)
+
 ---
 
 ## PREREQUISITE — Manual steps (human required)

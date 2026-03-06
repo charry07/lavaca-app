@@ -57,7 +57,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setAuthStep('done');
         }
       } catch {
-        // ignore parse errors
+        // ignore parse/storage errors
       } finally {
         setIsLoading(false);
       }
@@ -105,6 +105,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [pendingPhone]);
 
   const logout = useCallback(async () => {
+    await api.logout();
     setUser(null);
     setAuthStep('phone');
     setPendingPhone(null);

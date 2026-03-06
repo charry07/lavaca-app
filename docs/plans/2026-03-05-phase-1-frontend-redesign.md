@@ -30,8 +30,10 @@
 - Se sincronizo cierre estructural de Fase 2: eliminacion de `apps/api/` y workflow legacy de deploy API.
 - Se sincronizo limpieza de documentacion/instrucciones tras eliminacion final de backend legacy.
 - Se sincronizo correccion final de arquitectura/estructura en README para coherencia de fases.
+- Se sincronizo hardening final de Fase 2 (`api.ts` Supabase-only) y validaciones globales (`typecheck` verde, `lint` estable con warnings).
+- Se sincronizo cierre de lint a 0 warnings en mobile y revalidacion global de typecheck.
 
-Last sync: 2026-03-05 (update 8)
+Last sync: 2026-03-05 (update 10)
 
 ---
 

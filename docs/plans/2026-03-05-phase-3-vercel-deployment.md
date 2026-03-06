@@ -12,8 +12,36 @@
 
 **Depends on:** Phase 2 complete (Supabase client must work before deploying).
 
-Status: pending
+Status: in-progress
 Owner: AI Agent C
+
+## Plan Hygiene (Anti-Basura)
+
+- No crear funciones serverless de prueba sin uso final en el pipeline.
+- Cualquier script de build temporal debe eliminarse o consolidarse en `package.json` root.
+- Cada avance de despliegue debe registrarse aqui y en el roadmap.
+
+## Shared Change Log (2026-03-05)
+
+- Se sincronizo este plan con el roadmap maestro y reglas de limpieza.
+- Se documento checklist humano central para operaciones de dashboard/secretos.
+- Pendiente iniciar implementacion tecnica de Fase 3.
+- Se registro avance de Fase 2 (auth Supabase) para mantener dependencia actualizada.
+- Se registro avance de Fase 2 en realtime (Supabase channel + fallback) para dependencias de despliegue.
+- Se sincronizo avance de Fase 2 en `api.ts` para sesiones/grupos/feed previo a despliegue web/serverless.
+- Se sincronizo limpieza de Fase 2 en tiempo real (Supabase-only, sin Socket.IO fallback).
+- Se sincronizo desacople de Fase 2 (scripts API root removidos y `apps/api` fuera de workspace activo).
+- Se sincronizo eliminacion de `apps/api/` y de workflow legacy para limpiar base previa a despliegue nuevo.
+- Se sincronizo limpieza de README/instrucciones para mantener deploy docs sin referencias legacy.
+- Se sincronizo correccion final del bloque de arquitectura en README para coherencia pre-deploy.
+- Se sincronizo hardening final de Fase 2 (`api.ts` Supabase-only) y estado tecnico actual (`typecheck` verde, `lint` estable con warnings).
+- Se sincronizo cierre de lint a 0 warnings en mobile y revalidacion global de typecheck.
+- Se alineo estado con roadmap maestro: Fase 3 marcada como `in-progress` a nivel de plan, aun pendiente de ejecucion tecnica completa.
+- Se creo `docs/azure-migration.md` con ruta de migracion Vercel -> Azure Static Web Apps + Azure Functions.
+- Se documentaron secretos concretos de CI/CD en `2026-03-05-human-ops-checklist.md` (`VERCEL_TOKEN`, `VERCEL_ORG_ID`, `VERCEL_PROJECT_ID`, `EXPO_PUBLIC_SUPABASE_*`).
+- Se verifico `pnpm build:web` en local: export estatico exitoso con 17 rutas en `apps/mobile/dist/`.
+
+Last sync: 2026-03-06 (update 12)
 
 ---
 
@@ -419,12 +447,27 @@ git commit -m "feat(deploy): phase 3 complete — Vercel deployment configured"
 
 ## Phase 3 Checklist
 
-- [ ] Expo static web export configured (`output: "static"`)
-- [ ] `vercel.json` with rewrites, security headers, functions config
-- [ ] Build scripts in root `package.json`
-- [ ] Stripe webhook serverless function placeholder
-- [ ] GitHub Actions: typecheck + lint + build on PR, deploy on main
-- [ ] GitHub secrets documented (human sets them)
-- [ ] Azure migration guide written
-- [ ] `pnpm build:web` succeeds locally
-- [ ] Preview deploy on Vercel loads correctly
+- [x] Expo static web export configured (`output: "static"`)
+- [x] `vercel.json` with rewrites, security headers, functions config
+- [x] Build scripts in root `package.json`
+- [x] Stripe webhook serverless function placeholder
+- [x] GitHub Actions: typecheck + lint + build on PR, deploy on main
+- [x] GitHub secrets documented (human sets them — see human-ops-checklist.md)
+- [x] Azure migration guide written
+- [x] `pnpm build:web` succeeds locally (17 routes exported)
+- [ ] Preview deploy on Vercel loads correctly (requires human Vercel setup)
+
+## Changelog (2026-03-06)
+
+- Added `"output": "static"` to `apps/mobile/app.json` web section
+- Added `build:web`, `build:vercel`, `vercel-build` scripts to root `package.json`
+- Created `vercel.json` with SPA rewrites, 4 security headers, static cache headers, functions config
+- Created `apps/vercel-functions/api/stripe-webhook.ts` placeholder (Phase 4 will implement)
+- Created `apps/vercel-functions/package.json` with stripe + @vercel/node deps
+- Added `apps/vercel-functions` to `pnpm-workspace.yaml`
+- Created `.github/workflows/ci.yml` with typecheck + lint + build on PR, deploy on main merge
+- Added `.vercel/` to root `.gitignore`
+- Verified: `pnpm typecheck` → 0 errors, `pnpm build:web` → 17 routes exported to `dist/`
+- Added `docs/azure-migration.md` with concrete Azure migration steps and rollback notes
+- Expanded human checklist with explicit Phase 3 CI/CD secret names
+- Pending: human must create Vercel project, set 5 GitHub secrets, and trigger first deploy

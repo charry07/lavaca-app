@@ -20,15 +20,16 @@ import { spacing, borderRadius, fontSize, fontWeight, type ThemeColors } from '.
 import { useI18n } from '../src/i18n';
 import { useTheme } from '../src/theme';
 import { useAuth } from '../src/auth';
-import { useToast } from '../src/components/Toast';
+import { useToast } from '../src/components';
 
+import { getErrorMessage } from '../src/utils/errorMessage';
 export default function CreateScreen() {
   const router = useRouter();
-  const { t } = useI18n();
+  const { translate } = useI18n();
   const { colors } = useTheme();
   const { user } = useAuth();
   const { showError } = useToast();
-  const s = createStyles(colors);
+  const styles = createStyles(colors);
 
   const [amount, setAmount] = useState('');
   const [description, setDescription] = useState('');
@@ -51,15 +52,15 @@ export default function CreateScreen() {
   ];
 
   const SPLIT_MODES: { key: SplitMode; label: string; emoji: string; desc: string }[] = [
-    { key: 'equal', label: t('create.equalParts'), emoji: '⚖️', desc: 'Todos pagan igual' },
-    { key: 'percentage', label: t('create.percentage'), emoji: '📊', desc: 'Por porcentaje' },
-    { key: 'roulette', label: t('create.roulette'), emoji: '🎰', desc: 'A la suerte' },
+    { key: 'equal', label: translate('create.equalParts'), emoji: '⚖️', desc: 'Todos pagan igual' },
+    { key: 'percentage', label: translate('create.percentage'), emoji: '📊', desc: 'Por porcentaje' },
+    { key: 'roulette', label: translate('create.roulette'), emoji: '🎰', desc: 'A la suerte' },
   ];
 
   const handleCreate = async () => {
     const numAmount = Number(amount.replace(/[^0-9]/g, ''));
     if (!numAmount || numAmount <= 0) {
-      showError(t('create.invalidAmount'));
+      showError(translate('create.invalidAmount'));
       return;
     }
 
@@ -85,8 +86,8 @@ export default function CreateScreen() {
       }
 
       router.push(`/session/${session.joinCode}`);
-    } catch (err: any) {
-      showError(err.message || t('create.errorCreating'));
+    } catch (err: unknown) {
+      showError(getErrorMessage(err, translate('create.errorCreating')));
     } finally {
       setLoading(false);
     }
@@ -170,18 +171,18 @@ export default function CreateScreen() {
 
   return (
     <KeyboardAvoidingView
-      style={s.container}
+      style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
-      <ScrollView contentContainerStyle={s.scroll} keyboardShouldPersistTaps="handled">
+      <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
 
         {/* Amount input — hero field */}
-        <View style={s.amountSection}>
-          <Text style={s.sectionLabel}>{t('create.totalAmount')}</Text>
-          <View style={s.amountInputWrap}>
-            <Text style={s.amountCurrencySymbol}>$</Text>
+        <View style={styles.amountSection}>
+          <Text style={styles.sectionLabel}>{translate('create.totalAmount')}</Text>
+          <View style={styles.amountInputWrap}>
+            <Text style={styles.amountCurrencySymbol}>$</Text>
             <TextInput
-              style={s.amountInput}
+              style={styles.amountInput}
               placeholder="0"
               placeholderTextColor={colors.textMuted}
               keyboardType="numeric"
@@ -193,25 +194,25 @@ export default function CreateScreen() {
         </View>
 
         {/* Description */}
-        <Text style={s.sectionLabel}>{t('create.description')}</Text>
+        <Text style={styles.sectionLabel}>{translate('create.description')}</Text>
         <TextInput
-          style={s.input}
-          placeholder={t('create.descriptionPlaceholder')}
+          style={styles.input}
+          placeholder={translate('create.descriptionPlaceholder')}
           placeholderTextColor={colors.textMuted}
           value={description}
           onChangeText={setDescription}
         />
 
         {/* Currency selector */}
-        <Text style={s.sectionLabel}>{t('create.currency')}</Text>
-        <View style={s.pillRow}>
+        <Text style={styles.sectionLabel}>{translate('create.currency')}</Text>
+        <View style={styles.pillRow}>
           {CURRENCIES.map((c) => (
             <TouchableOpacity
               key={c.key}
-              style={[s.currencyPill, currency === c.key && s.currencyPillActive]}
+              style={[styles.currencyPill, currency === c.key && styles.currencyPillActive]}
               onPress={() => setCurrency(c.key)}
             >
-              <Text style={[s.currencyPillText, currency === c.key && s.currencyPillTextActive]}>
+              <Text style={[styles.currencyPillText, currency === c.key && styles.currencyPillTextActive]}>
                 {c.symbol}
               </Text>
             </TouchableOpacity>
@@ -219,19 +220,19 @@ export default function CreateScreen() {
         </View>
 
         {/* Split mode selector */}
-        <Text style={s.sectionLabel}>{t('create.howToSplit')}</Text>
-        <View style={s.modeRow}>
+        <Text style={styles.sectionLabel}>{translate('create.howToSplit')}</Text>
+        <View style={styles.modeRow}>
           {SPLIT_MODES.map((mode) => (
             <TouchableOpacity
               key={mode.key}
-              style={[s.modeCard, splitMode === mode.key && s.modeCardActive]}
+              style={[styles.modeCard, splitMode === mode.key && styles.modeCardActive]}
               onPress={() => setSplitMode(mode.key)}
             >
               {splitMode === mode.key && (
-                <View style={s.modeActiveBar} />
+                <View style={styles.modeActiveBar} />
               )}
-              <Text style={s.modeEmoji}>{mode.emoji}</Text>
-              <Text style={[s.modeLabel, splitMode === mode.key && s.modeLabelActive]}>
+              <Text style={styles.modeEmoji}>{mode.emoji}</Text>
+              <Text style={[styles.modeLabel, splitMode === mode.key && styles.modeLabelActive]}>
                 {mode.label}
               </Text>
             </TouchableOpacity>
@@ -239,19 +240,19 @@ export default function CreateScreen() {
         </View>
 
         {/* Add participants */}
-        <TouchableOpacity style={s.addParticipantButton} onPress={openAddParticipantModal}>
-          <Text style={s.addParticipantIcon}>+</Text>
-          <Text style={s.addParticipantText}>{t('session.addParticipants')}</Text>
+        <TouchableOpacity style={styles.addParticipantButton} onPress={openAddParticipantModal}>
+          <Text style={styles.addParticipantIcon}>+</Text>
+          <Text style={styles.addParticipantText}>{translate('session.addParticipants')}</Text>
           {selectedParticipants.length > 0 && (
-            <View style={s.selectedBadge}>
-              <Text style={s.selectedBadgeText}>{selectedParticipants.length}</Text>
+            <View style={styles.selectedBadge}>
+              <Text style={styles.selectedBadgeText}>{selectedParticipants.length}</Text>
             </View>
           )}
         </TouchableOpacity>
 
         {/* Create button */}
         <TouchableOpacity
-          style={[s.createButtonWrap, loading && { opacity: 0.55 }]}
+          style={[styles.createButtonWrap, loading && { opacity: 0.55 }]}
           onPress={handleCreate}
           disabled={loading}
         >
@@ -259,12 +260,12 @@ export default function CreateScreen() {
             colors={[colors.primary, colors.primaryDark]}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 0 }}
-            style={s.createButton}
+            style={styles.createButton}
           >
             {loading ? (
               <ActivityIndicator color={colors.background} />
             ) : (
-              <Text style={s.createButtonText}>{t('create.createButton')}</Text>
+              <Text style={styles.createButtonText}>{translate('create.createButton')}</Text>
             )}
           </LinearGradient>
         </TouchableOpacity>
@@ -278,19 +279,19 @@ export default function CreateScreen() {
         transparent
         onRequestClose={() => setShowAddParticipantModal(false)}
       >
-        <View style={s.modalOverlay}>
-          <View style={[s.modalContent, { backgroundColor: colors.surface }]}>
-            <View style={s.modalHandle} />
-            <View style={s.searchModalHeader}>
-              <Text style={s.modalTitle}>{t('session.addParticipants')}</Text>
-              <TouchableOpacity onPress={() => setShowAddParticipantModal(false)} style={s.modalCloseBtn}>
-                <Text style={s.modalCloseBtnText}>✕</Text>
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, { backgroundColor: colors.surface }]}>
+            <View style={styles.modalHandle} />
+            <View style={styles.searchModalHeader}>
+              <Text style={styles.modalTitle}>{translate('session.addParticipants')}</Text>
+              <TouchableOpacity onPress={() => setShowAddParticipantModal(false)} style={styles.modalCloseBtn}>
+                <Text style={styles.modalCloseBtnText}>✕</Text>
               </TouchableOpacity>
             </View>
 
             <TextInput
-              style={s.searchInput}
-              placeholder={t('session.searchPeoplePlaceholder')}
+              style={styles.searchInput}
+              placeholder={translate('session.searchPeoplePlaceholder')}
               placeholderTextColor={colors.textMuted}
               value={participantSearchQuery}
               onChangeText={setParticipantSearchQuery}
@@ -304,22 +305,22 @@ export default function CreateScreen() {
               <ScrollView
                 horizontal
                 showsHorizontalScrollIndicator={false}
-                style={s.chipsScroll}
-                contentContainerStyle={s.chipsContainer}
+                style={styles.chipsScroll}
+                contentContainerStyle={styles.chipsContainer}
                 keyboardShouldPersistTaps="handled"
               >
                 {selectedParticipants.map((p) => (
                   <TouchableOpacity
                     key={p.id}
-                    style={s.chip}
+                    style={styles.chip}
                     onPress={() => toggleParticipant(p)}
                     activeOpacity={0.7}
                   >
-                    <View style={s.chipAvatar}>
-                      <Text style={s.chipAvatarText}>{p.displayName.charAt(0).toUpperCase()}</Text>
+                    <View style={styles.chipAvatar}>
+                      <Text style={styles.chipAvatarText}>{p.displayName.charAt(0).toUpperCase()}</Text>
                     </View>
-                    <Text style={s.chipName} numberOfLines={1}>{p.displayName.split(' ')[0]}</Text>
-                    <Text style={s.chipRemove}>×</Text>
+                    <Text style={styles.chipName} numberOfLines={1}>{p.displayName.split(' ')[0]}</Text>
+                    <Text style={styles.chipRemove}>×</Text>
                   </TouchableOpacity>
                 ))}
               </ScrollView>
@@ -329,41 +330,41 @@ export default function CreateScreen() {
               <ActivityIndicator size="small" color={colors.primary} style={{ marginVertical: spacing.md }} />
             )}
             {!loadingFrequent && !searchingUsers && isSearching && displayedParticipants.length === 0 && (
-              <Text style={s.searchHintText}>{t('session.noUserResults')}</Text>
+              <Text style={styles.searchHintText}>{translate('session.noUserResults')}</Text>
             )}
 
             {!loadingFrequent && !isSearching && (
               <FlatList
                 data={[
                   ...(frequentParticipants.length > 0
-                    ? [{ type: 'label', id: '__recent__', label: t('create.frequentPeopleHint') }, ...frequentParticipants.map((u) => ({ type: 'user', ...u }))]
+                    ? [{ type: 'label', id: '__recent__', label: translate('create.frequentPeopleHint') }, ...frequentParticipants.map((u) => ({ type: 'user', ...u }))]
                     : []),
                   ...(suggestedParticipants.length > 0
-                    ? [{ type: 'label', id: '__suggested__', label: t('create.suggestedPeople') }, ...suggestedParticipants.map((u) => ({ type: 'user', ...u }))]
+                    ? [{ type: 'label', id: '__suggested__', label: translate('create.suggestedPeople') }, ...suggestedParticipants.map((u) => ({ type: 'user', ...u }))]
                     : []),
                 ] as any[]}
                 keyExtractor={(item) => item.id}
                 keyboardShouldPersistTaps="handled"
                 renderItem={({ item }) => {
                   if (item.type === 'label') {
-                    return <Text style={s.searchSectionLabel}>{item.label}</Text>;
+                    return <Text style={styles.searchSectionLabel}>{item.label}</Text>;
                   }
                   const isSelected = selectedIds.has(item.id);
                   return (
                     <TouchableOpacity
-                      style={[s.userRow, isSelected && s.userRowSelected]}
+                      style={[styles.userRow, isSelected && styles.userRowSelected]}
                       onPress={() => toggleParticipant(item as User)}
                       activeOpacity={0.7}
                     >
-                      <View style={[s.avatar, isSelected && { backgroundColor: colors.primary }]}>
-                        <Text style={s.avatarText}>{item.displayName.charAt(0).toUpperCase()}</Text>
+                      <View style={[styles.avatar, isSelected && { backgroundColor: colors.primary }]}>
+                        <Text style={styles.avatarText}>{item.displayName.charAt(0).toUpperCase()}</Text>
                       </View>
-                      <View style={s.userInfo}>
-                        <Text style={s.userName}>{item.displayName}</Text>
-                        <Text style={s.userMeta}>@{item.username}</Text>
+                      <View style={styles.userInfo}>
+                        <Text style={styles.userName}>{item.displayName}</Text>
+                        <Text style={styles.userMeta}>@{item.username}</Text>
                       </View>
-                      <View style={[s.checkCircle, isSelected && s.checkCircleActive]}>
-                        {isSelected && <Text style={s.checkMark}>✓</Text>}
+                      <View style={[styles.checkCircle, isSelected && styles.checkCircleActive]}>
+                        {isSelected && <Text style={styles.checkMark}>✓</Text>}
                       </View>
                     </TouchableOpacity>
                   );
@@ -380,19 +381,19 @@ export default function CreateScreen() {
                   const isSelected = selectedIds.has(foundUser.id);
                   return (
                     <TouchableOpacity
-                      style={[s.userRow, isSelected && s.userRowSelected]}
+                      style={[styles.userRow, isSelected && styles.userRowSelected]}
                       onPress={() => toggleParticipant(foundUser)}
                       activeOpacity={0.7}
                     >
-                      <View style={[s.avatar, isSelected && { backgroundColor: colors.primary }]}>
-                        <Text style={s.avatarText}>{foundUser.displayName.charAt(0).toUpperCase()}</Text>
+                      <View style={[styles.avatar, isSelected && { backgroundColor: colors.primary }]}>
+                        <Text style={styles.avatarText}>{foundUser.displayName.charAt(0).toUpperCase()}</Text>
                       </View>
-                      <View style={s.userInfo}>
-                        <Text style={s.userName}>{foundUser.displayName}</Text>
-                        <Text style={s.userMeta}>@{foundUser.username}</Text>
+                      <View style={styles.userInfo}>
+                        <Text style={styles.userName}>{foundUser.displayName}</Text>
+                        <Text style={styles.userMeta}>@{foundUser.username}</Text>
                       </View>
-                      <View style={[s.checkCircle, isSelected && s.checkCircleActive]}>
-                        {isSelected && <Text style={s.checkMark}>✓</Text>}
+                      <View style={[styles.checkCircle, isSelected && styles.checkCircleActive]}>
+                        {isSelected && <Text style={styles.checkMark}>✓</Text>}
                       </View>
                     </TouchableOpacity>
                   );

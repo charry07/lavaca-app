@@ -2,6 +2,10 @@ import { Stack, useRouter, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
 import { ActivityIndicator, LogBox, View } from 'react-native';
+import { I18nProvider, useI18n } from '../src/i18n';
+import { ThemeProvider, useTheme } from '../src/theme';
+import { AuthProvider, useAuth } from '../src/auth';
+import { HeaderControls, ToastProvider, AppErrorBoundary } from '../src/components';
 
 // Suppress known library warnings from react-native-screens / react-navigation
 // that pass pointerEvents as a prop instead of in style (fixed in future versions)
@@ -9,12 +13,6 @@ LogBox.ignoreLogs([
   'props.pointerEvents is deprecated',
   'pointerEvents is deprecated',
 ]);
-import { I18nProvider, useI18n } from '../src/i18n';
-import { ThemeProvider, useTheme } from '../src/theme';
-import { AuthProvider, useAuth } from '../src/auth';
-import { HeaderControls } from '../src/components/HeaderControls';
-import { ToastProvider } from '../src/components/Toast';
-import { AppErrorBoundary } from '../src/components/AppErrorBoundary';
 
 function AuthGuard({ children }: { children: React.ReactNode }) {
   const { user, isLoading } = useAuth();
@@ -32,7 +30,7 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
     } else if (user && inAuthGroup) {
       router.replace('/(tabs)');
     }
-  }, [user, isLoading, segments]);
+  }, [user, isLoading, router, segments]);
 
   if (isLoading) {
     return (
@@ -46,7 +44,7 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
 }
 
 function RootLayoutInner() {
-  const { t } = useI18n();
+  const { translate } = useI18n();
   const { colors, isDark } = useTheme();
 
   return (
@@ -73,7 +71,7 @@ function RootLayoutInner() {
           <Stack.Screen
             name="create"
             options={{
-              title: t('nav.createTable'),
+              title: translate('nav.createTable'),
               presentation: 'modal',
               headerRight: () => <HeaderControls />,
             }}
@@ -81,7 +79,7 @@ function RootLayoutInner() {
           <Stack.Screen
             name="join"
             options={{
-              title: t('nav.joinTable'),
+              title: translate('nav.joinTable'),
               presentation: 'modal',
               headerRight: () => <HeaderControls />,
             }}
@@ -89,14 +87,14 @@ function RootLayoutInner() {
           <Stack.Screen
             name="session/[joinCode]"
             options={{
-              title: t('nav.theTable'),
+              title: translate('nav.theTable'),
               headerRight: () => <HeaderControls />,
             }}
           />
           <Stack.Screen
             name="group/[id]"
             options={{
-              title: t('tabs.groups'),
+              title: translate('tabs.groups'),
               headerBackVisible: true,
               headerRight: () => <HeaderControls />,
             }}

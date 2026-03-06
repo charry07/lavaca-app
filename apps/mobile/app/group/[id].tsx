@@ -21,6 +21,7 @@ import { useTheme } from '../../src/theme';
 import { useAuth } from '../../src/auth';
 import { api } from '../../src/services/api';
 
+import { getErrorMessage } from '../../src/utils/errorMessage';
 interface GroupMember {
   id: string;
   displayName: string;
@@ -41,12 +42,12 @@ interface GroupDetail {
 
 export default function GroupDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { t } = useI18n();
+  const { translate } = useI18n();
   const { colors } = useTheme();
   const { user } = useAuth();
   const router = useRouter();
   const navigation = useNavigation();
-  const s = createStyles(colors);
+  const styles = createStyles(colors);
 
   const [group, setGroup] = useState<GroupDetail | null>(null);
   const [loading, setLoading] = useState(true);
@@ -68,14 +69,14 @@ export default function GroupDetailScreen() {
             if (router.canGoBack()) { router.back(); return; }
             router.replace('/(tabs)/groups');
           }}
-          style={s.headerBackButton}
+          style={styles.headerBackButton}
           hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
         >
-          <Text style={s.headerBackText}>←</Text>
+          <Text style={styles.headerBackText}>←</Text>
         </TouchableOpacity>
       ),
     });
-  }, [navigation, router, s.headerBackButton, s.headerBackText]);
+  }, [navigation, router, styles.headerBackButton, styles.headerBackText]);
 
   const fetchGroup = useCallback(async () => {
     if (!id) return;
@@ -83,13 +84,13 @@ export default function GroupDetailScreen() {
       const data = await api.getGroup(id);
       setGroup(data as GroupDetail);
       setFetchError(null);
-    } catch (err: any) {
-      setFetchError(err.message || t('common.error'));
+    } catch (err: unknown) {
+      setFetchError(getErrorMessage(err, translate('common.error')));
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [id]);
+  }, [id, translate]);
 
   useEffect(() => {
     fetchGroup();
@@ -98,19 +99,19 @@ export default function GroupDetailScreen() {
   const handleRemoveMember = (member: GroupMember) => {
     if (!group) return;
     Alert.alert(
-      t('groups.removeMember'),
-      t('groups.removeMessage', { name: member.displayName }),
+      translate('groups.removeMember'),
+      translate('groups.removeMessage', { name: member.displayName }),
       [
-        { text: t('profile.cancel'), style: 'cancel' },
+        { text: translate('profile.cancel'), style: 'cancel' },
         {
-          text: t('groups.removeConfirm'),
+          text: translate('groups.removeConfirm'),
           style: 'destructive',
           onPress: async () => {
             try {
               await api.removeGroupMember(group.id, member.id);
               fetchGroup();
-            } catch (err: any) {
-              Alert.alert(t('common.error'), err.message);
+            } catch (err: unknown) {
+              Alert.alert(translate('common.error'), getErrorMessage(err));
             }
           },
         },
@@ -144,9 +145,9 @@ export default function GroupDetailScreen() {
       await api.addGroupMembers(group.id, [userToAdd.id]);
       await fetchGroup();
       setSearchResults((prev) => prev.filter((u) => u.id !== userToAdd.id));
-      Alert.alert('✅', t('groups.memberAdded', { name: userToAdd.displayName }));
-    } catch (err: any) {
-      Alert.alert(t('common.error'), err.message);
+      Alert.alert('✅', translate('groups.memberAdded', { name: userToAdd.displayName }));
+    } catch (err: unknown) {
+      Alert.alert(translate('common.error'), getErrorMessage(err));
     } finally {
       setAddingId(null);
     }
@@ -165,25 +166,25 @@ export default function GroupDetailScreen() {
     const isMe = item.id === user?.id;
 
     return (
-      <GlassCard style={s.memberCard}>
-        <View style={s.avatar}>
-          <Text style={s.avatarText}>{item.displayName.charAt(0).toUpperCase()}</Text>
+      <GlassCard style={styles.memberCard}>
+        <View style={styles.avatar}>
+          <Text style={styles.avatarText}>{item.displayName.charAt(0).toUpperCase()}</Text>
         </View>
-        <View style={s.memberInfo}>
-          <Text style={s.memberName}>
+        <View style={styles.memberInfo}>
+          <Text style={styles.memberName}>
             {item.displayName}
             {isMe ? ' (yo)' : ''}
           </Text>
-          <Text style={s.memberUsername}>@{item.username}</Text>
+          <Text style={styles.memberUsername}>@{item.username}</Text>
         </View>
         {isCreator && (
-          <View style={s.adminBadge}>
-            <Text style={s.adminText}>{t('groups.admin')}</Text>
+          <View style={styles.adminBadge}>
+            <Text style={styles.adminText}>{translate('groups.admin')}</Text>
           </View>
         )}
         {isAdmin && !isCreator && (
-          <TouchableOpacity style={s.removeButton} onPress={() => handleRemoveMember(item)}>
-            <Text style={s.removeText}>✕</Text>
+          <TouchableOpacity style={styles.removeButton} onPress={() => handleRemoveMember(item)}>
+            <Text style={styles.removeText}>✕</Text>
           </TouchableOpacity>
         )}
       </GlassCard>
@@ -192,7 +193,7 @@ export default function GroupDetailScreen() {
 
   if (loading) {
     return (
-      <View style={s.container}>
+      <View style={styles.container}>
         <View style={{ padding: spacing.md, gap: spacing.md }}>
           {[0, 1, 2, 3].map((i) => <SkeletonCard key={i} />)}
         </View>
@@ -202,29 +203,29 @@ export default function GroupDetailScreen() {
 
   if (fetchError || !group) {
     return (
-      <View style={[s.container, s.centered]}>
-        <ErrorState message={fetchError || t('groups.groupNotFound')} onRetry={fetchGroup} />
+      <View style={[styles.container, styles.centered]}>
+        <ErrorState message={fetchError || translate('groups.groupNotFound')} onRetry={fetchGroup} />
       </View>
     );
   }
 
   return (
-    <View style={s.container}>
+    <View style={styles.container}>
       {/* Header */}
-      <GlassCard style={s.header}>
+      <GlassCard style={styles.header}>
         <LinearGradient
           colors={[colors.primary + '33', 'transparent']}
           start={{ x: 0.5, y: 0 }}
           end={{ x: 0.5, y: 1 }}
           style={StyleSheet.absoluteFill}
         />
-        <Text style={s.headerIcon}>{group.icon || '👥'}</Text>
-        <Text style={s.headerName}>{group.name}</Text>
-        <Text style={s.headerCount}>{group.members.length} {t('groups.members')}</Text>
+        <Text style={styles.headerIcon}>{group.icon || '👥'}</Text>
+        <Text style={styles.headerName}>{group.name}</Text>
+        <Text style={styles.headerCount}>{group.members.length} {translate('groups.members')}</Text>
       </GlassCard>
 
       {/* Actions */}
-      <View style={s.actionsRow}>
+      <View style={styles.actionsRow}>
         <TouchableOpacity
           style={{ flex: 1, borderRadius: borderRadius.md, overflow: 'hidden' }}
           onPress={() => router.push('/create')}
@@ -233,31 +234,31 @@ export default function GroupDetailScreen() {
             colors={[colors.primary, colors.accent || colors.primary]}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 0 }}
-            style={s.createSessionBtn}
+            style={styles.createSessionBtn}
           >
-            <Text style={s.createSessionText}>{t('groups.createSession')} 🐄</Text>
+            <Text style={styles.createSessionText}>{translate('groups.createSession')} 🐄</Text>
           </LinearGradient>
         </TouchableOpacity>
 
-        <TouchableOpacity style={s.addMemberBtn} onPress={openAddModal}>
-          <Text style={s.addMemberBtnText}>➕ {t('groups.addMembers')}</Text>
+        <TouchableOpacity style={styles.addMemberBtn} onPress={openAddModal}>
+          <Text style={styles.addMemberBtnText}>➕ {translate('groups.addMembers')}</Text>
         </TouchableOpacity>
       </View>
 
       {/* Add Member Modal */}
       <Modal visible={showAddModal} animationType="slide" transparent>
-        <View style={[s.modalOverlay, { backgroundColor: colors.overlay }]}>
-          <GlassCard style={s.modalContent}>
-            <View style={s.modalHeader}>
-              <Text style={s.modalTitle}>{t('groups.addMembers')}</Text>
+        <View style={[styles.modalOverlay, { backgroundColor: colors.overlay }]}>
+          <GlassCard style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>{translate('groups.addMembers')}</Text>
               <TouchableOpacity onPress={() => setShowAddModal(false)}>
-                <Text style={s.modalClose}>✕</Text>
+                <Text style={styles.modalClose}>✕</Text>
               </TouchableOpacity>
             </View>
 
             <TextInput
-              style={s.searchInput}
-              placeholder={t('groups.searchPlaceholder')}
+              style={styles.searchInput}
+              placeholder={translate('groups.searchPlaceholder')}
               placeholderTextColor={colors.textMuted}
               value={searchQuery}
               onChangeText={setSearchQuery}
@@ -270,10 +271,10 @@ export default function GroupDetailScreen() {
               <ActivityIndicator size="small" color={colors.primary} style={{ marginVertical: spacing.md }} />
             )}
             {!searching && searchQuery.length < 2 && (
-              <Text style={s.searchHint}>{t('groups.searchHint')}</Text>
+              <Text style={styles.searchHint}>{translate('groups.searchHint')}</Text>
             )}
             {!searching && searchQuery.length >= 2 && searchResults.length === 0 && (
-              <Text style={s.searchHint}>{t('groups.noResults')}</Text>
+              <Text style={styles.searchHint}>{translate('groups.noResults')}</Text>
             )}
 
             <FlatList
@@ -284,28 +285,28 @@ export default function GroupDetailScreen() {
                 const isMember = group?.memberIds.includes(searchUser.id);
                 const isAdding = addingId === searchUser.id;
                 return (
-                  <View style={s.searchResultCard}>
-                    <View style={s.avatar}>
-                      <Text style={s.avatarText}>{searchUser.displayName.charAt(0).toUpperCase()}</Text>
+                  <View style={styles.searchResultCard}>
+                    <View style={styles.avatar}>
+                      <Text style={styles.avatarText}>{searchUser.displayName.charAt(0).toUpperCase()}</Text>
                     </View>
-                    <View style={s.memberInfo}>
-                      <Text style={s.memberName}>{searchUser.displayName}</Text>
-                      <Text style={s.memberUsername}>@{searchUser.username}</Text>
+                    <View style={styles.memberInfo}>
+                      <Text style={styles.memberName}>{searchUser.displayName}</Text>
+                      <Text style={styles.memberUsername}>@{searchUser.username}</Text>
                     </View>
                     {isMember ? (
-                      <View style={s.alreadyBadge}>
-                        <Text style={s.alreadyText}>{t('groups.alreadyMember')}</Text>
+                      <View style={styles.alreadyBadge}>
+                        <Text style={styles.alreadyText}>{translate('groups.alreadyMember')}</Text>
                       </View>
                     ) : (
                       <TouchableOpacity
-                        style={s.addBtn}
+                        style={styles.addBtn}
                         onPress={() => handleAddMember(searchUser)}
                         disabled={isAdding}
                       >
                         {isAdding ? (
                           <ActivityIndicator size="small" color="#fff" />
                         ) : (
-                          <Text style={s.addBtnText}>{t('groups.addButton')}</Text>
+                          <Text style={styles.addBtnText}>{translate('groups.addButton')}</Text>
                         )}
                       </TouchableOpacity>
                     )}
@@ -321,7 +322,7 @@ export default function GroupDetailScreen() {
         data={group.members}
         keyExtractor={(item) => item.id}
         renderItem={renderMember}
-        contentContainerStyle={s.list}
+        contentContainerStyle={styles.list}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
@@ -330,7 +331,7 @@ export default function GroupDetailScreen() {
           />
         }
         ListEmptyComponent={
-          <Text style={s.emptyText}>{t('groups.noMembers')}</Text>
+          <Text style={styles.emptyText}>{translate('groups.noMembers')}</Text>
         }
       />
     </View>

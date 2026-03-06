@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-**La Vaca** is a bill-splitting mobile app (Colombia-focused). Users create "mesas" (payment sessions), invite friends via QR/code, and split bills equally, by percentage, or via roulette. The stack is a pnpm monorepo with three workspaces.
+**La Vaca** is a bill-splitting mobile app (Colombia-focused). Users create "mesas" (payment sessions), invite friends via QR/code, and split bills equally, by percentage, or via roulette. The stack is a pnpm monorepo focused on mobile + shared packages with Supabase backend services.
 
 ## Commands
 
@@ -15,14 +15,8 @@ pnpm install
 # Start the mobile app (Expo)
 pnpm dev:mobile          # or: pnpm --filter @lavaca/mobile start
 
-# Start the API backend with hot-reload (port 3001)
-pnpm dev:api             # or: pnpm --filter @lavaca/api dev
-
 # Web mode (fast for development/testing)
 cd apps/mobile && npx expo start --web
-
-# Build API for production
-pnpm build:api
 
 # Type-check all workspaces
 pnpm typecheck
@@ -34,34 +28,23 @@ pnpm lint
 pnpm clean
 ```
 
-There are no tests configured. API runs on `http://localhost:3001`; verify with `curl http://localhost:3001/health`.
+There are no tests configured.
 
 ## Architecture
 
 ```
 lavaca-app/               ← pnpm monorepo root
 ├── apps/
-│   ├── api/              ← @lavaca/api  (Express + Socket.IO + SQLite)
 │   └── mobile/           ← @lavaca/mobile (React Native + Expo SDK 54)
 └── packages/
+    ├── supabase/         ← @lavaca/supabase (shared Supabase client)
     └── shared/           ← @lavaca/shared (TypeScript types + utils, no runtime deps)
 ```
 
-### `@lavaca/api` — Backend
+### Backend Status
 
-- Entry: [apps/api/src/index.ts](apps/api/src/index.ts) — Express + Socket.IO + helmet + CORS env-aware.
-- DB: [apps/api/src/db.ts](apps/api/src/db.ts) — `better-sqlite3` WAL mode; DB at `apps/api/data/lavaca.db`.
-- Routes: `apps/api/src/routes/` — `sessions.ts`, `users.ts`, `groups.ts`, `feed.ts`.
-- Real-time: Routes emit Socket.IO events to rooms keyed by `joinCode`. Client: `join-session`, `leave-session`; server: `session-update`.
-- Auth: OTP-based (phone). `dev_code` only returned when `NODE_ENV !== 'production'`. Dev bypass code `123456`.
-- Security: `helmet`, CORS restricted by `ALLOWED_ORIGINS` env in production, body limit 256 KB globally (PUT `/api/users/:id` overrides to 5 MB for avatar).
-- Run: `tsx watch` dev; `tsc` + `node dist/index.js` production.
-
-**Key API endpoints (users):**
-- `GET /api/users/random?limit=N&exclude=id1,id2` — random users for participant suggestions
-- `GET /api/users/:id/frequent?limit=7` — users most frequently sharing mesas with `:id`
-- `GET /api/users/search?q=` — search by name/username/phone/document (min 2 chars)
-- `PUT /api/users/:id` — update profile; validates avatarUrl format + size (≤ 5.5M chars base64)
+- Legacy `apps/api` was removed during Phase 2 migration cleanup.
+- Mobile now uses Supabase Auth/Realtime/Postgres through `packages/supabase` and `apps/mobile/src/services/api.ts`.
 
 ### `@lavaca/mobile` — React Native App
 
@@ -93,7 +76,7 @@ lavaca-app/               ← pnpm monorepo root
 
 **API client:**
 - Single client in [apps/mobile/src/services/api.ts](apps/mobile/src/services/api.ts) — exports `api` object.
-- Auto-detects host from Expo Go's `debuggerHost`; falls back to `10.0.2.2` for Android emulator.
+- Uses Supabase as the only backend path; requires `EXPO_PUBLIC_SUPABASE_URL` and `EXPO_PUBLIC_SUPABASE_ANON_KEY`.
 
 ### `@lavaca/shared` — Shared Types
 
@@ -140,12 +123,11 @@ Palette: warm espresso & dorado — inspired by a Colombian café interior at ni
 
 ## Hooks
 
-- `useSocket()` — singleton Socket.IO connection (`transports: ['websocket']`)
-- `useSessionSocket(joinCode, onUpdate)` — joins room, fires callback on `session-update`
+- `useSocket()` — singleton Supabase Realtime transport
+- `useSessionSocket(joinCode, onUpdate)` — subscribes to `postgres_changes` for sessions/participants
 
 ## Utilities
 
-- `src/utils/baseUrl.ts` — `getBaseUrl()` used by `api.ts` and socket hooks
 - `src/utils/cameraPermission.ts` — `requestCameraPermission()` for `expo-camera`
 
 ## Security Notes

@@ -6,13 +6,14 @@ import {
   StyleSheet,
   RefreshControl,
 } from 'react-native';
-import { spacing, borderRadius, fontSize, fontWeight, type ThemeColors } from '../../src/constants/theme';
+import { spacing, borderRadius, fontSize, type ThemeColors } from '../../src/constants/theme';
 import { GlassCard, SkeletonCard, EmptyState, ErrorState } from '../../src/components';
 import { useI18n } from '../../src/i18n';
 import { useTheme } from '../../src/theme';
 import { api } from '../../src/services/api';
 import { FeedEvent } from '@lavaca/shared';
 
+import { getErrorMessage } from '../../src/utils/errorMessage';
 const EVENT_EMOJI: Record<FeedEvent['type'], string> = {
   roulette_win: '🎰',
   roulette_coward: '🐔',
@@ -39,9 +40,9 @@ function timeAgo(date: Date | string): string {
 }
 
 export default function FeedTab() {
-  const { t } = useI18n();
+  const { translate } = useI18n();
   const { colors } = useTheme();
-  const s = createStyles(colors);
+  const styles = createStyles(colors);
 
   const [events, setEvents] = useState<FeedEvent[]>([]);
   const [loading, setLoading] = useState(true);
@@ -53,19 +54,19 @@ export default function FeedTab() {
       const data = await api.getFeed();
       setEvents(data);
       setFetchError(null);
-    } catch (err: any) {
-      setFetchError(err.message || t('common.error'));
+    } catch (err: unknown) {
+      setFetchError(getErrorMessage(err, translate('common.error')));
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
-  }, []);
+  }, [translate]);
 
   useEffect(() => { loadFeed(); }, [loadFeed]);
 
   if (loading) {
     return (
-      <View style={s.container}>
+      <View style={styles.container}>
         <View style={{ padding: spacing.md, gap: spacing.sm }}>
           {[0, 1, 2, 3].map((i) => <SkeletonCard key={i} />)}
         </View>
@@ -75,18 +76,18 @@ export default function FeedTab() {
 
   if (fetchError) {
     return (
-      <View style={[s.container, s.center]}>
+      <View style={[styles.container, styles.center]}>
         <ErrorState message={fetchError} onRetry={loadFeed} />
       </View>
     );
   }
 
   return (
-    <View style={s.container}>
+    <View style={styles.container}>
       <FlatList
         data={events}
         keyExtractor={(item) => item.id}
-        contentContainerStyle={s.list}
+        contentContainerStyle={styles.list}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
@@ -95,20 +96,20 @@ export default function FeedTab() {
           />
         }
         ListEmptyComponent={
-          <View style={s.emptyWrapper}>
-            <EmptyState emoji="📰" title={t('feed.empty')} hint={t('feed.emptyHint')} />
+          <View style={styles.emptyWrapper}>
+            <EmptyState emoji="📰" title={translate('feed.empty')} hint={translate('feed.emptyHint')} />
           </View>
         }
         renderItem={({ item }) => (
-          <GlassCard style={s.card}>
+          <GlassCard style={styles.card}>
             {/* Left accent strip */}
-            <View style={[s.accentStrip, { backgroundColor: EVENT_ACCENT[item.type] || colors.primary }]} />
-            <View style={s.cardInner}>
-              <View style={s.cardHeader}>
-                <Text style={s.eventEmoji}>{EVENT_EMOJI[item.type] || '📝'}</Text>
-                <Text style={s.timeAgo}>{timeAgo(item.createdAt)}</Text>
+            <View style={[styles.accentStrip, { backgroundColor: EVENT_ACCENT[item.type] || colors.primary }]} />
+            <View style={styles.cardInner}>
+              <View style={styles.cardHeader}>
+                <Text style={styles.eventEmoji}>{EVENT_EMOJI[item.type] || '📝'}</Text>
+                <Text style={styles.timeAgo}>{timeAgo(item.createdAt)}</Text>
               </View>
-              <Text style={s.eventMessage}>{item.message}</Text>
+              <Text style={styles.eventMessage}>{item.message}</Text>
             </View>
           </GlassCard>
         )}

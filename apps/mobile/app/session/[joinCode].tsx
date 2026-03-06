@@ -19,23 +19,21 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { PaymentSession, Participant, User, formatCOP } from '@lavaca/shared';
 import { api } from '../../src/services/api';
 import { spacing, borderRadius, fontSize, fontWeight, type ThemeColors } from '../../src/constants/theme';
-import { SkeletonCard, ErrorState, Avatar, StatusPill, AnimatedCard, SplitBar } from '../../src/components';
-import { RouletteWheel } from '../../src/components/RouletteWheel';
-import { QRCode } from '../../src/components/QRCode';
+import { SkeletonCard, ErrorState, Avatar, StatusPill, AnimatedCard, SplitBar, RouletteWheel, QRCode, useToast } from '../../src/components';
 import { useI18n } from '../../src/i18n';
 import { useTheme } from '../../src/theme';
 import { useAuth } from '../../src/auth';
-import { useToast } from '../../src/components/Toast';
 import { useSessionSocket } from '../../src/hooks/useSessionSocket';
 
+import { getErrorMessage } from '../../src/utils/errorMessage';
 export default function SessionScreen() {
   const { joinCode } = useLocalSearchParams<{ joinCode: string }>();
   const router = useRouter();
-  const { t } = useI18n();
+  const { translate } = useI18n();
   const { colors } = useTheme();
   const { user } = useAuth();
   const { showSuccess, showError } = useToast();
-  const s = createStyles(colors);
+  const styles = createStyles(colors);
 
   const [session, setSession] = useState<PaymentSession | null>(null);
   const [loading, setLoading] = useState(true);
@@ -64,13 +62,13 @@ export default function SessionScreen() {
       const data = await api.getSession(joinCode);
       setSession(data);
       setFetchError(null);
-    } catch (err: any) {
-      setFetchError(err.message || t('common.error'));
+    } catch (err: unknown) {
+      setFetchError(getErrorMessage(err, translate('common.error')));
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [joinCode]);
+  }, [joinCode, translate]);
 
   useEffect(() => {
     fetchSession();
@@ -95,7 +93,7 @@ export default function SessionScreen() {
       useNativeDriver: false,
       friction: 8,
     }).start();
-  }, [session]);
+  }, [progressAnim, session]);
 
   useEffect(() => {
     if (!showAddParticipantModal) return;
@@ -141,8 +139,8 @@ export default function SessionScreen() {
       }
 
       setSession(updated);
-    } catch (err: any) {
-      Alert.alert('Error', err.message);
+    } catch (err: unknown) {
+      Alert.alert('Error', getErrorMessage(err));
     } finally {
       setSplitting(false);
     }
@@ -174,7 +172,7 @@ export default function SessionScreen() {
     const link = getShareLink();
     try {
       await Share.share({
-        message: t('session.shareMessage', { code: joinCode }),
+        message: translate('session.shareMessage', { code: joinCode }),
         url: link,
       });
     } catch {}
@@ -184,7 +182,7 @@ export default function SessionScreen() {
     const link = getShareLink();
     if (Platform.OS === 'web' && typeof navigator !== 'undefined' && navigator.clipboard) {
       await navigator.clipboard.writeText(link);
-      showSuccess(t('session.copied'));
+      showSuccess(translate('session.copied'));
     } else {
       await Share.share({ message: link });
     }
@@ -199,9 +197,9 @@ export default function SessionScreen() {
         paymentMethod: 'nequi',
       });
       setSession(updated);
-      showSuccess(t('session.reportedPaid'));
-    } catch (err: any) {
-      showError(err.message || t('common.error'));
+      showSuccess(translate('session.reportedPaid'));
+    } catch (err: unknown) {
+      showError(getErrorMessage(err, translate('common.error')));
     }
   };
 
@@ -214,9 +212,9 @@ export default function SessionScreen() {
         paymentMethod: 'nequi',
       });
       setSession(updated);
-      showSuccess(t('session.paymentApproved'));
-    } catch (err: any) {
-      showError(err.message || t('common.error'));
+      showSuccess(translate('session.paymentApproved'));
+    } catch (err: unknown) {
+      showError(getErrorMessage(err, translate('common.error')));
     }
   };
 
@@ -229,35 +227,35 @@ export default function SessionScreen() {
         await Share.share({ message: joinCode });
         return;
       }
-      showSuccess(t('session.codeCopied'));
+      showSuccess(translate('session.codeCopied'));
     } catch {}
   };
 
   const handleCloseSession = () => {
     if (!joinCode || !session) return;
     if (session.status !== 'open') {
-      showError(t('session.closeNotOpen'));
+      showError(translate('session.closeNotOpen'));
       return;
     }
 
     const owedPendingCount = session.participants.filter((p) => p.amount > 0 && p.status !== 'confirmed').length;
     const msg = owedPendingCount > 0
-      ? t('session.closeConfirmPending', { count: owedPendingCount })
-      : t('session.closeConfirmMsg');
+      ? translate('session.closeConfirmPending', { count: owedPendingCount })
+      : translate('session.closeConfirmMsg');
 
     const confirmClose = async () => {
       setClosing(true);
       try {
         const updated = await api.closeSession(joinCode);
         if (updated.status !== 'closed') {
-          showError(t('session.closeFailed'));
+          showError(translate('session.closeFailed'));
           return;
         }
         setSession(updated);
-        showSuccess(t('session.closedSuccess'));
+        showSuccess(translate('session.closedSuccess'));
         fetchSession();
-      } catch (err: any) {
-        showError(err.message || t('common.error'));
+      } catch (err: unknown) {
+        showError(getErrorMessage(err, translate('common.error')));
       } finally {
         setClosing(false);
       }
@@ -270,11 +268,11 @@ export default function SessionScreen() {
     }
 
     Alert.alert(
-      t('session.closeConfirmTitle'),
+      translate('session.closeConfirmTitle'),
       msg,
       [
-        { text: t('profile.cancel'), style: 'cancel' },
-        { text: t('session.closeConfirmBtn'), style: 'destructive', onPress: confirmClose },
+        { text: translate('profile.cancel'), style: 'cancel' },
+        { text: translate('session.closeConfirmBtn'), style: 'destructive', onPress: confirmClose },
       ]
     );
   };
@@ -282,19 +280,19 @@ export default function SessionScreen() {
   const handleDeleteSession = () => {
     if (!joinCode || !session) return;
     if (user?.id !== session.adminId) {
-      showError(t('session.deleteNotAdmin'));
+      showError(translate('session.deleteNotAdmin'));
       return;
     }
 
-    const msg = t('session.deleteConfirmMsg');
+    const msg = translate('session.deleteConfirmMsg');
     const confirmDelete = async () => {
       setDeleting(true);
       try {
         await api.deleteSession(joinCode, { adminId: session.adminId });
-        showSuccess(t('session.deleteSuccess'));
+        showSuccess(translate('session.deleteSuccess'));
         router.replace('/(tabs)');
-      } catch (err: any) {
-        showError(err.message || t('session.deleteError'));
+      } catch (err: unknown) {
+        showError(getErrorMessage(err, translate('session.deleteError')));
       } finally {
         setDeleting(false);
       }
@@ -307,11 +305,11 @@ export default function SessionScreen() {
     }
 
     Alert.alert(
-      t('session.deleteConfirmTitle'),
+      translate('session.deleteConfirmTitle'),
       msg,
       [
-        { text: t('profile.cancel'), style: 'cancel' },
-        { text: t('session.deleteConfirmBtn'), style: 'destructive', onPress: confirmDelete },
+        { text: translate('profile.cancel'), style: 'cancel' },
+        { text: translate('session.deleteConfirmBtn'), style: 'destructive', onPress: confirmDelete },
       ]
     );
   };
@@ -333,9 +331,9 @@ export default function SessionScreen() {
       });
       setSession(updated);
       setParticipantResults((prev) => prev.filter((u) => u.id !== userToAdd.id));
-      showSuccess(t('session.memberAdded', { name: userToAdd.displayName }));
-    } catch (err: any) {
-      showError(err.message || t('common.error'));
+      showSuccess(translate('session.memberAdded', { name: userToAdd.displayName }));
+    } catch (err: unknown) {
+      showError(getErrorMessage(err, translate('common.error')));
     } finally {
       setAddingParticipantId(null);
     }
@@ -344,8 +342,8 @@ export default function SessionScreen() {
   // ── Loading state ──────────────────────────────────────
   if (loading) {
     return (
-      <View style={s.container}>
-        <View style={s.skeletonContainer}>
+      <View style={styles.container}>
+        <View style={styles.skeletonContainer}>
           {[0, 1, 2, 3].map((i) => <SkeletonCard key={i} />)}
         </View>
       </View>
@@ -355,8 +353,8 @@ export default function SessionScreen() {
   // ── Error / not found ──────────────────────────────────
   if (fetchError || !session) {
     return (
-      <View style={[s.container, s.center]}>
-        <ErrorState message={fetchError || t('session.notFound')} onRetry={fetchSession} />
+      <View style={[styles.container, styles.center]}>
+        <ErrorState message={fetchError || translate('session.notFound')} onRetry={fetchSession} />
       </View>
     );
   }
@@ -374,15 +372,15 @@ export default function SessionScreen() {
 
   const getModeLabel = () => {
     switch (session.splitMode) {
-      case 'equal': return t('session.equalMode');
-      case 'percentage': return t('session.percentageMode');
-      case 'roulette': return t('session.rouletteMode');
+      case 'equal': return translate('session.equalMode');
+      case 'percentage': return translate('session.percentageMode');
+      case 'roulette': return translate('session.rouletteMode');
     }
   };
 
   const splitActionLabel = session.splitMode === 'roulette'
-    ? t('session.spinRouletteButton')
-    : t('session.splitButton');
+    ? translate('session.spinRouletteButton')
+    : translate('session.splitButton');
 
   const getStatusStyle = (status: string) => {
     switch (status) {
@@ -402,14 +400,14 @@ export default function SessionScreen() {
     const isNoPay = item.amount <= 0;
 
     const statusLabel = isNoPay
-      ? t('session.noPay')
+      ? translate('session.noPay')
       : isPaid
-        ? t('common.confirmed')
+        ? translate('common.confirmed')
         : isReported
-          ? t('session.pendingApproval')
+          ? translate('session.pendingApproval')
           : isRejected
-            ? t('common.rejected')
-            : t('common.pending');
+            ? translate('common.rejected')
+            : translate('common.pending');
 
     const statusPillVariant = isPaid ? 'success' : isReported ? 'warning' : isRejected ? 'error' : 'muted';
 
@@ -423,34 +421,34 @@ export default function SessionScreen() {
     return (
       <AnimatedCard
         index={index}
-        style={{ ...s.participantCard, borderLeftColor: accentBarColor }}
+        style={{ ...styles.participantCard, borderLeftColor: accentBarColor }}
       >
-        <View style={s.participantRow}>
+        <View style={styles.participantRow}>
           <Avatar displayName={item.displayName} size={36} />
-          <View style={s.participantInfo}>
-            <Text style={s.participantName}>
+          <View style={styles.participantInfo}>
+            <Text style={styles.participantName}>
               {item.displayName}
               {isWinner ? ' 🎰' : ''}
               {isCoward ? ' 🐔' : ''}
             </Text>
             <StatusPill variant={statusPillVariant} label={statusLabel} />
           </View>
-          <View style={s.participantRight}>
-            <Text style={[s.participantAmount, isPaid && { color: colors.statusOpen }]}>
+          <View style={styles.participantRight}>
+            <Text style={[styles.participantAmount, isPaid && { color: colors.statusOpen }]}>
               {formatCOP(item.amount)}
             </Text>
             {!isPaid && !isReported && isMe && item.amount > 0 && (
-              <TouchableOpacity style={s.payButton} onPress={() => handleReportPaid(item.userId)}>
-                <Text style={s.payButtonText}>{t('session.reportPaidButton')}</Text>
+              <TouchableOpacity style={styles.payButton} onPress={() => handleReportPaid(item.userId)}>
+                <Text style={styles.payButtonText}>{translate('session.reportPaidButton')}</Text>
               </TouchableOpacity>
             )}
             {isReported && isAdmin && (
-              <TouchableOpacity style={s.approveButton} onPress={() => handleApprovePaid(item.userId)}>
-                <Text style={s.approveButtonText}>{t('session.approvePaidButton')}</Text>
+              <TouchableOpacity style={styles.approveButton} onPress={() => handleApprovePaid(item.userId)}>
+                <Text style={styles.approveButtonText}>{translate('session.approvePaidButton')}</Text>
               </TouchableOpacity>
             )}
             {isReported && !isAdmin && isMe && (
-              <Text style={s.waitingApprovalText}>{t('session.waitingApproval')}</Text>
+              <Text style={styles.waitingApprovalText}>{translate('session.waitingApproval')}</Text>
             )}
           </View>
         </View>
@@ -461,55 +459,55 @@ export default function SessionScreen() {
   const statusStyle = getStatusStyle(session.status);
 
   return (
-    <View style={s.container}>
+    <View style={styles.container}>
       {/* Session Header */}
-      <View style={s.header}>
-        <View style={s.codeRow}>
-          <Text style={s.joinCodeLabel}>{t('session.code')}</Text>
+      <View style={styles.header}>
+        <View style={styles.codeRow}>
+          <Text style={styles.joinCodeLabel}>{translate('session.code')}</Text>
           <TouchableOpacity onPress={handleCopyCode} activeOpacity={0.6} style={{ flex: 1 }}>
-            <Text style={s.joinCode}>{session.joinCode} 📋</Text>
+            <Text style={styles.joinCode}>{session.joinCode} 📋</Text>
           </TouchableOpacity>
-          <TouchableOpacity onPress={() => setShowShareModal(true)} style={s.shareButton}>
-            <Text style={s.shareButtonText}>{t('session.share')}</Text>
+          <TouchableOpacity onPress={() => setShowShareModal(true)} style={styles.shareButton}>
+            <Text style={styles.shareButtonText}>{translate('session.share')}</Text>
           </TouchableOpacity>
-          <View style={[s.statusBadge, { backgroundColor: statusStyle.bg }]}>
-            <Text style={[s.statusBadgeText, { color: statusStyle.color }]}>
+          <View style={[styles.statusBadge, { backgroundColor: statusStyle.bg }]}>
+            <Text style={[styles.statusBadgeText, { color: statusStyle.color }]}>
               {session.status}
             </Text>
           </View>
         </View>
 
         {session.description && (
-          <Text style={s.description}>{session.description}</Text>
+          <Text style={styles.description}>{session.description}</Text>
         )}
 
-        <View style={s.statsRow}>
-          <View style={s.stat}>
-            <Text style={s.statValue}>{formatCOP(session.totalAmount)}</Text>
-            <Text style={s.statLabel}>{t('session.total')}</Text>
+        <View style={styles.statsRow}>
+          <View style={styles.stat}>
+            <Text style={styles.statValue}>{formatCOP(session.totalAmount)}</Text>
+            <Text style={styles.statLabel}>{translate('session.total')}</Text>
           </View>
-          <View style={s.stat}>
-            <Text style={s.statValue}>{totalCount}</Text>
-            <Text style={s.statLabel}>{t('session.people')}</Text>
+          <View style={styles.stat}>
+            <Text style={styles.statValue}>{totalCount}</Text>
+            <Text style={styles.statLabel}>{translate('session.people')}</Text>
           </View>
-          <View style={s.stat}>
-            <Text style={s.statValue}>{getModeLabel()}</Text>
-            <Text style={s.statLabel}>{t('session.mode')}</Text>
+          <View style={styles.stat}>
+            <Text style={styles.statValue}>{getModeLabel()}</Text>
+            <Text style={styles.statLabel}>{translate('session.mode')}</Text>
           </View>
         </View>
 
         {/* Payment progress summary */}
-        <View style={s.splitBarContainer}>
+        <View style={styles.splitBarContainer}>
           <SplitBar paid={displayPaidCount} total={displayTotalCount} amount={session.totalAmount} currency={session.currency} />
         </View>
 
         {/* Animated progress bar */}
         {allSplit && (
-          <View style={s.progressContainer}>
-            <View style={s.progressBar}>
+          <View style={styles.progressContainer}>
+            <View style={styles.progressBar}>
               <Animated.View
                 style={[
-                  s.progressFillWrapper,
+                  styles.progressFillWrapper,
                   {
                     width: progressAnim.interpolate({
                       inputRange: [0, 100],
@@ -526,25 +524,25 @@ export default function SessionScreen() {
                 />
               </Animated.View>
             </View>
-            <Text style={s.progressText}>
-              {t('session.paidCount', { paid: displayPaidCount, total: displayTotalCount })}
+            <Text style={styles.progressText}>
+              {translate('session.paidCount', { paid: displayPaidCount, total: displayTotalCount })}
             </Text>
           </View>
         )}
 
         {pendingApprovalsCount > 0 && (
-          <View style={[s.pendingApprovalBanner, { backgroundColor: colors.statusPendingBg, borderColor: colors.statusPending }]}>
-            <Text style={[s.pendingApprovalText, { color: colors.statusPending }]}>
+          <View style={[styles.pendingApprovalBanner, { backgroundColor: colors.statusPendingBg, borderColor: colors.statusPending }]}>
+            <Text style={[styles.pendingApprovalText, { color: colors.statusPending }]}>
               {isAdmin
-                ? t('session.pendingApprovalsAdmin', { count: pendingApprovalsCount })
-                : t('session.pendingApprovalsUser')}
+                ? translate('session.pendingApprovalsAdmin', { count: pendingApprovalsCount })
+                : translate('session.pendingApprovalsUser')}
             </Text>
           </View>
         )}
 
         {canAddParticipants && (
-          <TouchableOpacity style={s.addParticipantButton} onPress={openAddParticipantModal}>
-            <Text style={s.addParticipantButtonText}>➕ {t('session.addParticipants')}</Text>
+          <TouchableOpacity style={styles.addParticipantButton} onPress={openAddParticipantModal}>
+            <Text style={styles.addParticipantButtonText}>➕ {translate('session.addParticipants')}</Text>
           </TouchableOpacity>
         )}
       </View>
@@ -554,11 +552,11 @@ export default function SessionScreen() {
         data={session.participants}
         keyExtractor={(item) => item.userId}
         renderItem={({ item, index }) => renderParticipant({ item, index })}
-        contentContainerStyle={s.list}
+        contentContainerStyle={styles.list}
         ListEmptyComponent={
-          <View style={s.emptyState}>
-            <Text style={s.emptyEmoji}>👥</Text>
-            <Text style={s.emptyText}>{t('session.noParticipants')}</Text>
+          <View style={styles.emptyState}>
+            <Text style={styles.emptyEmoji}>👥</Text>
+            <Text style={styles.emptyText}>{translate('session.noParticipants')}</Text>
           </View>
         }
         refreshControl={
@@ -572,7 +570,7 @@ export default function SessionScreen() {
 
       {/* Bottom Actions */}
       {!allSplit && totalCount > 0 && (
-        <View style={s.bottomBar}>
+        <View style={styles.bottomBar}>
           <TouchableOpacity
             onPress={handleSplit}
             disabled={splitting}
@@ -582,12 +580,12 @@ export default function SessionScreen() {
               colors={[colors.primary, colors.accent || colors.primary]}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 0 }}
-              style={s.splitButton}
+              style={styles.splitButton}
             >
               {splitting ? (
                 <ActivityIndicator color="#fff" />
               ) : (
-                <Text style={s.splitButtonText}>{splitActionLabel}</Text>
+                <Text style={styles.splitButtonText}>{splitActionLabel}</Text>
               )}
             </LinearGradient>
           </TouchableOpacity>
@@ -595,31 +593,31 @@ export default function SessionScreen() {
       )}
 
       {(session.status === 'open' && allSplit && user?.id === session.adminId) || user?.id === session.adminId ? (
-        <View style={s.bottomBar}>
+        <View style={styles.bottomBar}>
           {session.status === 'open' && allSplit && user?.id === session.adminId && (
             <TouchableOpacity
-              style={[s.closeSessionButton, closing && s.splitButtonDisabled]}
+              style={[styles.closeSessionButton, closing && styles.splitButtonDisabled]}
               onPress={handleCloseSession}
               disabled={closing}
             >
               {closing ? (
                 <ActivityIndicator color={colors.danger} />
               ) : (
-                <Text style={s.closeSessionButtonText}>{t('session.closeSession')}</Text>
+                <Text style={styles.closeSessionButtonText}>{translate('session.closeSession')}</Text>
               )}
             </TouchableOpacity>
           )}
 
           {user?.id === session.adminId && (
             <TouchableOpacity
-              style={s.deleteSessionLink}
+              style={styles.deleteSessionLink}
               onPress={handleDeleteSession}
               disabled={deleting}
             >
               {deleting ? (
                 <ActivityIndicator color={colors.textMuted} />
               ) : (
-                <Text style={s.deleteSessionLinkText}>{t('session.deleteSession')}</Text>
+                <Text style={styles.deleteSessionLinkText}>{translate('session.deleteSession')}</Text>
               )}
             </TouchableOpacity>
           )}
@@ -631,9 +629,9 @@ export default function SessionScreen() {
           colors={[colors.primary, colors.accent || colors.primary]}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 0 }}
-          style={s.closedBanner}
+          style={styles.closedBanner}
         >
-          <Text style={s.closedText}>{t('session.allPaid')}</Text>
+          <Text style={styles.closedText}>{translate('session.allPaid')}</Text>
         </LinearGradient>
       )}
 
@@ -644,8 +642,8 @@ export default function SessionScreen() {
         transparent
         onRequestClose={handleCloseRouletteModal}
       >
-        <View style={[s.modalOverlay, { backgroundColor: colors.overlay }]}>
-          <View style={s.modalContent}>
+        <View style={[styles.modalOverlay, { backgroundColor: colors.overlay }]}>
+          <View style={styles.modalContent}>
             <RouletteWheel
               participants={session.participants}
               winnerIndex={rouletteWinner}
@@ -653,10 +651,10 @@ export default function SessionScreen() {
             />
             {canCloseRoulette && (
               <TouchableOpacity
-                style={s.closeRouletteButton}
+                style={styles.closeRouletteButton}
                 onPress={handleCloseRouletteModal}
               >
-                <Text style={s.closeRouletteButtonText}>{t('session.closeRoulette')}</Text>
+                <Text style={styles.closeRouletteButtonText}>{translate('session.closeRoulette')}</Text>
               </TouchableOpacity>
             )}
           </View>
@@ -670,19 +668,19 @@ export default function SessionScreen() {
         transparent
         onRequestClose={() => setShowAddParticipantModal(false)}
       >
-        <View style={[s.modalOverlay, { backgroundColor: colors.overlay }]}>
-          <View style={s.modalContent}>
-            <View style={s.searchModalInner}>
-              <View style={s.searchModalHeader}>
-                <Text style={s.shareModalTitle}>{t('session.addParticipants')}</Text>
+        <View style={[styles.modalOverlay, { backgroundColor: colors.overlay }]}>
+          <View style={styles.modalContent}>
+            <View style={styles.searchModalInner}>
+              <View style={styles.searchModalHeader}>
+                <Text style={styles.shareModalTitle}>{translate('session.addParticipants')}</Text>
                 <TouchableOpacity onPress={() => setShowAddParticipantModal(false)}>
-                  <Text style={s.searchModalClose}>✕</Text>
+                  <Text style={styles.searchModalClose}>✕</Text>
                 </TouchableOpacity>
               </View>
 
               <TextInput
-                style={s.searchInput}
-                placeholder={t('session.searchPeoplePlaceholder')}
+                style={styles.searchInput}
+                placeholder={translate('session.searchPeoplePlaceholder')}
                 placeholderTextColor={colors.textMuted}
                 value={participantSearchQuery}
                 onChangeText={setParticipantSearchQuery}
@@ -692,15 +690,15 @@ export default function SessionScreen() {
               />
 
               {searchingUsers && (
-                <ActivityIndicator size="small" color={colors.primary} style={s.searchLoading} />
+                <ActivityIndicator size="small" color={colors.primary} style={styles.searchLoading} />
               )}
 
               {!searchingUsers && participantSearchQuery.trim().length < 2 && (
-                <Text style={s.searchHintText}>{t('session.searchPeopleHint')}</Text>
+                <Text style={styles.searchHintText}>{translate('session.searchPeopleHint')}</Text>
               )}
 
               {!searchingUsers && participantSearchQuery.trim().length >= 2 && participantResults.length === 0 && (
-                <Text style={s.searchHintText}>{t('session.noUserResults')}</Text>
+                <Text style={styles.searchHintText}>{translate('session.noUserResults')}</Text>
               )}
 
               <FlatList
@@ -712,30 +710,30 @@ export default function SessionScreen() {
                   const isAdding = addingParticipantId === foundUser.id;
 
                   return (
-                    <View style={s.searchResultCard}>
-                      <View style={s.avatarBadge}>
-                        <Text style={s.avatarBadgeText}>
+                    <View style={styles.searchResultCard}>
+                      <View style={styles.avatarBadge}>
+                        <Text style={styles.avatarBadgeText}>
                           {foundUser.displayName.charAt(0).toUpperCase()}
                         </Text>
                       </View>
-                      <View style={s.searchUserInfo}>
-                        <Text style={s.searchUserName}>{foundUser.displayName}</Text>
-                        <Text style={s.searchUserMeta}>@{foundUser.username} · {foundUser.phone}</Text>
+                      <View style={styles.searchUserInfo}>
+                        <Text style={styles.searchUserName}>{foundUser.displayName}</Text>
+                        <Text style={styles.searchUserMeta}>@{foundUser.username} · {foundUser.phone}</Text>
                       </View>
                       {alreadyInTable ? (
-                        <View style={s.alreadyInTableBadge}>
-                          <Text style={s.alreadyInTableText}>{t('session.alreadyInTable')}</Text>
+                        <View style={styles.alreadyInTableBadge}>
+                          <Text style={styles.alreadyInTableText}>{translate('session.alreadyInTable')}</Text>
                         </View>
                       ) : (
                         <TouchableOpacity
-                          style={s.addUserButton}
+                          style={styles.addUserButton}
                           onPress={() => handleAddParticipant(foundUser)}
                           disabled={isAdding}
                         >
                           {isAdding ? (
                             <ActivityIndicator size="small" color="#fff" />
                           ) : (
-                            <Text style={s.addUserButtonText}>{t('groups.addButton')}</Text>
+                            <Text style={styles.addUserButtonText}>{translate('groups.addButton')}</Text>
                           )}
                         </TouchableOpacity>
                       )}
@@ -756,37 +754,37 @@ export default function SessionScreen() {
         onRequestClose={() => setShowShareModal(false)}
       >
         <TouchableOpacity
-          style={[s.modalOverlay, { backgroundColor: colors.overlay }]}
+          style={[styles.modalOverlay, { backgroundColor: colors.overlay }]}
           activeOpacity={1}
           onPress={() => setShowShareModal(false)}
         >
-          <View style={s.modalContent}>
-            <View style={s.shareModalInner}>
-              <Text style={s.shareModalTitle}>{t('session.shareTitle')}</Text>
+          <View style={styles.modalContent}>
+            <View style={styles.shareModalInner}>
+              <Text style={styles.shareModalTitle}>{translate('session.shareTitle')}</Text>
               <QRCode
                 value={getShareLink()}
                 size={180}
-                label={t('session.scanToJoin')}
+                label={translate('session.scanToJoin')}
               />
-              <View style={s.shareCodeBox}>
-                <Text style={s.shareCodeLabel}>{t('session.code')}</Text>
-                <Text style={s.shareCodeValue}>{session.joinCode}</Text>
+              <View style={styles.shareCodeBox}>
+                <Text style={styles.shareCodeLabel}>{translate('session.code')}</Text>
+                <Text style={styles.shareCodeValue}>{session.joinCode}</Text>
               </View>
-              <TouchableOpacity style={s.shareTextButton} onPress={handleTextShare}>
+              <TouchableOpacity style={styles.shareTextButton} onPress={handleTextShare}>
                 <LinearGradient
                   colors={[colors.primary, colors.accent || colors.primary]}
                   start={{ x: 0, y: 0 }}
                   end={{ x: 1, y: 0 }}
-                  style={s.shareTextButtonInner}
+                  style={styles.shareTextButtonInner}
                 >
-                  <Text style={s.shareTextButtonLabel}>{t('session.sendMessage')}</Text>
+                  <Text style={styles.shareTextButtonLabel}>{translate('session.sendMessage')}</Text>
                 </LinearGradient>
               </TouchableOpacity>
-              <TouchableOpacity style={s.shareLinkButton} onPress={handleCopyLink}>
-                <Text style={s.shareLinkButtonLabel}>{t('session.copyLink')}</Text>
+              <TouchableOpacity style={styles.shareLinkButton} onPress={handleCopyLink}>
+                <Text style={styles.shareLinkButtonLabel}>{translate('session.copyLink')}</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={s.closeModalButton} onPress={() => setShowShareModal(false)}>
-                <Text style={s.closeModalText}>{t('session.close')}</Text>
+              <TouchableOpacity style={styles.closeModalButton} onPress={() => setShowShareModal(false)}>
+                <Text style={styles.closeModalText}>{translate('session.close')}</Text>
               </TouchableOpacity>
             </View>
           </View>

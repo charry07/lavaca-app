@@ -36,21 +36,44 @@
 - Se elimino `.github/workflows/deploy-api.yml` por depender del backend legacy eliminado.
 - Se limpiaron referencias legacy de API en README e instrucciones del repositorio para evitar desalineacion operativa.
 - Se corrigio estructura/arquitectura en `README.md` para reflejar monorepo actual (mobile + shared + supabase).
+- Se removio fallback HTTP legacy en `apps/mobile/src/services/api.ts`; el cliente mobile ahora requiere Supabase de forma explicita.
+- Se cerro limpieza de lint en mobile hasta 0 warnings y se revalido `pnpm -r typecheck` en verde.
+- Se agrego Fase 0 para integrar GitHub Copilot AI en toda la app antes de las siguientes fases funcionales.
+- Se limpiaron referencias legacy de fallback/API local en README e instrucciones para mantener coherencia Supabase-only.
+- Se revalidaron `pnpm -r typecheck` y `pnpm lint` en verde luego del ajuste documental.
+- Se agrego `.env.example` en raiz para estandarizar bootstrap de entorno entre devs/CI.
+- Fase 2 continua `in-progress` por pendientes operativos de Supabase (link/config push/RPC/Edge Functions).
+- Se completo `supabase init` y ya existe `supabase/config.toml`.
+- Se agrego migracion de RPC `get_frequent_users`, quedando pendiente su despliegue por falta de `supabase link`.
+- Se revalidaron gates tecnicos (`pnpm -r typecheck`, `pnpm lint`) en verde.
+- Se verifico bloqueo operativo de credenciales: sin `.env.local`, sin `SUPABASE_ACCESS_TOKEN` y sin autenticacion CLI para listar proyectos.
+- Se confirmo `apps/mobile/.env.local` presente con vars publicas de Supabase, reduciendo el bloqueo al plano operativo.
+- El cierre de Fase 2 sigue bloqueado por falta de autenticacion CLI (`SUPABASE_ACCESS_TOKEN` o `supabase login`) y credencial de DB para `supabase link`/`db push`.
+- Se revalidaron otra vez `pnpm -r typecheck` y `pnpm lint` en verde tras cambios recientes.
+- Se reconfirmo bloqueo de cierre en Fase 2: sin `SUPABASE_ACCESS_TOKEN` ni `SUPABASE_DB_PASSWORD`, y `supabase projects list` falla por falta de login/token.
+- Se sincronizo estado documental de Fase 3 a `in-progress` para mantener consistencia con la tabla de fases del roadmap.
+- Se completo cierre operativo de Fase 2: `supabase link`, `supabase db push` y migraciones remotas sincronizadas (`202603050001`, `202603060001`).
+- Se separo configuracion de entorno: `apps/mobile/.env.local` para vars publicas y `.env.cli.local` en raiz para secretos de CLI.
+- Fase 2 queda marcada como `done`.
+- Se avanzo Fase 3 con entregables documentales y de build: guia `docs/azure-migration.md` + `pnpm build:web` validado (17 rutas exportadas).
+- Se documentaron secretos exactos de CI/CD para Fase 3 en checklist humano.
 
-Last sync: 2026-03-05 (update 8)
+Last sync: 2026-03-06 (update 19)
 
 ---
 
 ## Phase Dependency Map
 
 ```
+Phase 0: Copilot AI Integration ──────────────────────────► (recommended first)
 Phase 1: Frontend Redesign  ──────────────────────────────► (no deps, start anytime)
 Phase 2: Supabase Migration ──────────────────────────────► (no deps, start anytime)
 Phase 3: Vercel Deployment  ──── depends on Phase 2 ──────► (after Phase 2)
 Phase 4: Stripe Integration ──── depends on Phase 2+3 ────► (after Phase 2+3)
+Phase 5: Refactoring        ──── depends on Phase 1+2 ────► (after Phase 1+2)
 ```
 
-**Phase 1 and Phase 2 can run in parallel.** Phase 3 needs Phase 2 complete. Phase 4 needs Phase 2+3.
+**Phase 0 is the AI foundation and is recommended first.** Phase 1 and Phase 2 can run in parallel. Phase 3 needs Phase 2 complete. Phase 4 needs Phase 2+3. Phase 5 refactors mobile code — runs after Phase 1+2 so there's a stable base to clean up.
 
 ---
 
@@ -58,10 +81,12 @@ Phase 4: Stripe Integration ──── depends on Phase 2+3 ────► (a
 
 | Phase | File | Owner | Depends On | Status |
 |-------|------|-------|------------|--------|
+| 0 — Copilot AI Integration | [phase-0-copilot-ai-integration.md](./2026-03-06-phase-0-copilot-ai-integration.md) | AI Agent E | none | ⬜ pending |
 | 1 — Frontend Redesign | [phase-1-frontend-redesign.md](./2026-03-05-phase-1-frontend-redesign.md) | AI Agent A | none | 🟩 done |
-| 2 — Supabase Migration | [phase-2-supabase-migration.md](./2026-03-05-phase-2-supabase-migration.md) | AI Agent B | none | 🟨 in-progress |
-| 3 — Vercel Deployment | [phase-3-vercel-deployment.md](./2026-03-05-phase-3-vercel-deployment.md) | AI Agent C | Phase 2 | ⬜ pending |
+| 2 — Supabase Migration | [phase-2-supabase-migration.md](./2026-03-05-phase-2-supabase-migration.md) | AI Agent B | none | 🟩 done |
+| 3 — Vercel Deployment | [phase-3-vercel-deployment.md](./2026-03-05-phase-3-vercel-deployment.md) | AI Agent C | Phase 2 | 🟨 in-progress |
 | 4 — Stripe Integration | [phase-4-stripe-integration.md](./2026-03-05-phase-4-stripe-integration.md) | AI Agent D | Phase 2+3 | ⬜ pending |
+| 5 — Refactoring & Quality | [phase-5-refactoring.md](./2026-03-06-phase-5-refactoring.md) | AI Agent F | Phase 1+2 | ⬜ pending |
 
 Human-only operations checklist: [2026-03-05-human-ops-checklist.md](./2026-03-05-human-ops-checklist.md)
 

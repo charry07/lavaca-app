@@ -153,6 +153,7 @@ const es = {
   'common.rejected': 'Rechazado',
   'common.open': 'Abierta',
   'common.closed': 'Cerrada',
+  'common.optional': 'opcional',
 
   // Nav (sidebar/web)
   'nav.home': 'Inicio',
@@ -293,8 +294,8 @@ const en: TranslationKeys = {
   'home.quickExample': 'Quick example',
   'home.totalBill': 'Total bill:',
   'home.perPerson': 'Between {{count}} people: {{amount}} each',
-  'home.createTable': '🍽️  Create Table',
-  'home.joinTable': '🔗  Join Table',
+  'home.createTable': 'Create Table',
+  'home.joinTable': 'Join Table',
   'home.myTables': 'My Tables',
   'home.noTables': 'No active tables',
   'home.noTablesHint': 'Create a table or join one to get started',
@@ -421,6 +422,7 @@ const en: TranslationKeys = {
   'common.rejected': 'Rejected',
   'common.open': 'Open',
   'common.closed': 'Closed',
+  'common.optional': 'optional',
 
   // Nav (sidebar/web)
   'nav.home': 'Home',
@@ -477,7 +479,7 @@ const en: TranslationKeys = {
   'auth.namePlaceholder': 'Ex: John Smith',
   'auth.usernameLabel': 'Username',
   'auth.usernamePlaceholder': 'Ex: john.smith',
-  'auth.documentLabel': 'ID document (required)',
+  'auth.documentLabel': 'ID document',
   'auth.documentPlaceholder': 'Ex: 1234567890',
   'auth.registerButton': 'Create account 🐄',
   'auth.invalidUsername': 'Username must be at least 3 characters',
@@ -689,6 +691,7 @@ const pt: TranslationKeys = {
   'common.rejected': 'Rejeitado',
   'common.open': 'Aberta',
   'common.closed': 'Fechada',
+  'common.optional': 'opcional',
 
   // Nav (sidebar/web)
   'nav.home': 'Início',
@@ -745,7 +748,7 @@ const pt: TranslationKeys = {
   'auth.namePlaceholder': 'Ex: João Silva',
   'auth.usernameLabel': 'Nome de usuário',
   'auth.usernamePlaceholder': 'Ex: joao.silva',
-  'auth.documentLabel': 'Documento de identidade (obrigatório)',
+  'auth.documentLabel': 'Documento de identidade',
   'auth.documentPlaceholder': 'Ex: 1234567890',
   'auth.registerButton': 'Criar conta 🐄',
   'auth.invalidUsername': 'O usuário deve ter pelo menos 3 caracteres',

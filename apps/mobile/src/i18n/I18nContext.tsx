@@ -9,13 +9,13 @@ type TranslationKey = keyof typeof translations['es'];
 interface I18nContextValue {
   locale: Locale;
   setLocale: (locale: Locale) => void;
-  t: (key: TranslationKey, params?: Record<string, string | number>) => string;
+  translate: (key: TranslationKey, params?: Record<string, string | number>) => string;
 }
 
 const I18nContext = createContext<I18nContextValue>({
   locale: 'es',
   setLocale: () => {},
-  t: (key) => key,
+  translate: (key) => key,
 });
 
 export function I18nProvider({ children }: { children: ReactNode }) {
@@ -48,7 +48,7 @@ export function I18nProvider({ children }: { children: ReactNode }) {
   );
 
   return (
-    <I18nContext.Provider value={{ locale, setLocale, t }}>
+    <I18nContext.Provider value={{ locale, setLocale, translate: t }}>
       {children}
     </I18nContext.Provider>
   );

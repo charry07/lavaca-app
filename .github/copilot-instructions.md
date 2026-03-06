@@ -2,7 +2,7 @@
 
 ## Project Overview
 
-**La Vaca** is a bill-splitting mobile app focused on Colombia. Users create "mesas" (payment sessions), invite friends via QR code or join code, and split bills equally, by percentage, or via roulette. The stack is a **pnpm monorepo** with three workspaces.
+**La Vaca** is a bill-splitting mobile app focused on Colombia. Users create "mesas" (payment sessions), invite friends via QR code or join code, and split bills equally, by percentage, or via roulette. The stack is a **pnpm monorepo** focused on mobile + shared packages with Supabase backend services.
 
 ---
 
@@ -11,13 +11,13 @@
 ```
 lavaca-app/
 ├── apps/
-│   ├── api/        ← @lavaca/api  (Express + Socket.IO + SQLite / better-sqlite3)
 │   └── mobile/     ← @lavaca/mobile (React Native + Expo SDK 54 + Expo Router)
 └── packages/
+  ├── supabase/   ← @lavaca/supabase (Supabase client wrapper)
     └── shared/     ← @lavaca/shared (TypeScript types + utils — no runtime deps)
 ```
 
-Import shared types as `@lavaca/shared` in both `api` and `mobile`.
+Import shared types as `@lavaca/shared` in mobile code.
 
 ---
 
@@ -70,62 +70,22 @@ All exported from `src/components/index.ts`:
 
 ### Hooks
 
-- `useSocket()` — singleton `socket.io-client`. Uses `transports: ['websocket']` (required for RN).
-- `useSessionSocket(joinCode, onUpdate)` — joins a Socket.IO room; fires `onUpdate` on `session-update`.
+- `useSocket()` — singleton Supabase realtime transport.
+- `useSessionSocket(joinCode, onUpdate)` — subscribes to Supabase `postgres_changes` and refreshes session state.
 
 ### API Client
 
 - Single client: `apps/mobile/src/services/api.ts` — exports `api` object.
-- Base URL auto-detected from Expo Go's `debuggerHost`. Falls back to `10.0.2.2` for Android emulator.
+- Supabase is the only backend path; mobile requires `EXPO_PUBLIC_SUPABASE_URL` and `EXPO_PUBLIC_SUPABASE_ANON_KEY`.
 
 ---
 
-## API Backend (`@lavaca/api`)
+## Backend Status
 
-- Entry: `apps/api/src/index.ts` — Express + Socket.IO, mounts routers, exposes `io` via `app.set('io', io)`.
-- DB: `apps/api/src/db.ts` — `better-sqlite3` WAL mode. DB file: `apps/api/data/lavaca.db`. Schema created inline on startup.
-- Routes: `apps/api/src/routes/` — `sessions.ts`, `users.ts`, `groups.ts`, `feed.ts`.
+- Legacy local backend (`apps/api`) was removed during Phase 2 cleanup.
+- Active backend path is Supabase (Auth/Postgres/Realtime).
 
-### better-sqlite3 Usage
-
-```typescript
-// Correct — spread params:
-db.prepare(sql).all(...params);
-db.prepare(sql).get(...params);
-db.prepare(sql).run(...params);
-```
-
-### SQL Injection Prevention
-
-Always use parameterized queries. For dynamic IN clauses, build placeholders from array length:
-
-```typescript
-const placeholders = ids.map(() => '?').join(', ');
-const sql = `SELECT * FROM users WHERE id IN (${placeholders})`;
-db.prepare(sql).all(...ids);
-```
-
-Never interpolate user input directly into SQL strings.
-
-### Route Order
-
-Register specific routes BEFORE parameterized routes:
-
-```typescript
-router.get('/random', ...);     // ← before /:id
-router.get('/search', ...);     // ← before /:id
-router.get('/:id', ...);
-```
-
-### Real-time Events
-
-After every session mutation, emit via `emitSessionUpdate()`. Client events: `join-session`, `leave-session`. Server events: `session-updated`, `participant-joined`, `payment-confirmed`.
-
-### Rate Limiting
-
-`apps/api/src/middleware/rateLimiter.ts` — in-memory Map-based limiter applied to:
-- `POST /api/users/send-otp` — 5 requests / 10 min
-- `POST /api/users/verify-otp` — 10 requests / 10 min
+Supabase policies and schema live under `supabase/migrations/`.
 
 ---
 
@@ -159,12 +119,9 @@ After every session mutation, emit via `emitSessionUpdate()`. Client events: `jo
 ```bash
 pnpm install              # install all deps from root
 pnpm dev:mobile           # start Expo mobile app
-pnpm dev:api              # start API with hot-reload (port 3001)
 pnpm typecheck            # type-check all workspaces
 pnpm lint                 # lint all workspaces
 ```
-
-Health check: `curl http://localhost:3001/health`
 
 ---
 

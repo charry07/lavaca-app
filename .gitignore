@@ -28,6 +28,9 @@ ios/
 android/
 web-build/
 
+# Vercel
+.vercel/
+
 # Logs
 *.log
 npm-debug.log*

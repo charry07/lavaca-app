@@ -1,36 +1,31 @@
-import { useEffect, useRef } from 'react';
-import { io, Socket } from 'socket.io-client';
-import { getBaseUrl } from '../utils/baseUrl';
+import { useRef } from 'react';
+import { createSupabaseClient } from '@lavaca/supabase';
 
-// Singleton — one connection per app lifetime
-let _socket: Socket | null = null;
+type RealtimeTransport = { mode: 'supabase'; supabase: ReturnType<typeof createSupabaseClient> };
 
-function getSocket(): Socket {
-  if (!_socket) {
-    _socket = io(getBaseUrl(), {
-      // React Native requires websocket transport — polling does not work reliably
-      transports: ['websocket'],
-      autoConnect: true,
-      reconnection: true,
-      reconnectionDelay: 1000,
-      reconnectionAttempts: 5,
-    });
+// Singleton — one realtime transport per app lifetime
+let _transport: RealtimeTransport | null = null;
+
+function getTransport(): RealtimeTransport {
+  if (!_transport) {
+    const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL;
+    const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
+
+    if (!supabaseUrl || !supabaseAnonKey) {
+      throw new Error('Missing Supabase env vars for realtime transport');
+    }
+
+    _transport = {
+      mode: 'supabase',
+      supabase: createSupabaseClient(supabaseUrl, supabaseAnonKey),
+    };
   }
-  return _socket;
+
+  return _transport;
 }
 
-export function useSocket(): Socket {
-  const socketRef = useRef<Socket>(getSocket());
+export function useSocket(): RealtimeTransport {
+  const transportRef = useRef<RealtimeTransport>(getTransport());
 
-  useEffect(() => {
-    const socket = socketRef.current;
-    if (!socket.connected) {
-      socket.connect();
-    }
-    return () => {
-      // Do NOT disconnect on unmount — singleton stays alive for the app's lifetime
-    };
-  }, []);
-
-  return socketRef.current;
+  return transportRef.current;
 }

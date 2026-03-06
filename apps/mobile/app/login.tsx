@@ -18,9 +18,9 @@ import { spacing, borderRadius, fontSize, fontWeight, type ThemeColors } from '.
 import { useI18n } from '../src/i18n';
 import { useTheme } from '../src/theme';
 import { useAuth } from '../src/auth';
-import { VacaLogo } from '../src/components/VacaLogo';
-import { HeaderControls } from '../src/components/HeaderControls';
+import { VacaLogo, HeaderControls } from '../src/components';
 
+import { getErrorMessage } from '../src/utils/errorMessage';
 // ── Country data ────────────────────────────────────────
 interface Country {
   flag: string;
@@ -54,10 +54,10 @@ const COUNTRIES: Country[] = [
 
 // ── Phone Step ──────────────────────────────────────────
 function PhoneStep() {
-  const { t } = useI18n();
+  const { translate } = useI18n();
   const { colors } = useTheme();
   const { sendOTP } = useAuth();
-  const s = createStyles(colors);
+  const styles = createStyles(colors);
 
   const [phone, setPhone] = useState('');
   const [loading, setLoading] = useState(false);
@@ -75,7 +75,7 @@ function PhoneStep() {
   const handleSendOTP = async () => {
     const cleanPhone = phone.replace(/\s/g, '').replace(/^0+/, '').trim();
     if (!cleanPhone || cleanPhone.length < 7) {
-      Alert.alert(t('common.error'), t('auth.invalidPhone'));
+      Alert.alert(translate('common.error'), translate('auth.invalidPhone'));
       return;
     }
 
@@ -84,8 +84,8 @@ function PhoneStep() {
     setLoading(true);
     try {
       await sendOTP(fullPhone);
-    } catch (err: any) {
-      Alert.alert(t('common.error'), err.message || t('auth.errorSendingOTP'));
+    } catch (err: unknown) {
+      Alert.alert(translate('common.error'), getErrorMessage(err, translate('auth.errorSendingOTP')));
     } finally {
       setLoading(false);
     }
@@ -93,25 +93,25 @@ function PhoneStep() {
 
   return (
     <>
-      <Text style={s.title}>{t('auth.welcome')}</Text>
-      <Text style={s.subtitle}>{t('auth.phoneSubtitle')}</Text>
+      <Text style={styles.title}>{translate('auth.welcome')}</Text>
+      <Text style={styles.subtitle}>{translate('auth.phoneSubtitle')}</Text>
 
-      <Text style={s.fieldLabel}>{t('auth.phoneLabel')}</Text>
+      <Text style={styles.fieldLabel}>{translate('auth.phoneLabel')}</Text>
 
-      <View style={s.phoneRow}>
+      <View style={styles.phoneRow}>
         <TouchableOpacity
-          style={s.countryButton}
+          style={styles.countryButton}
           onPress={() => setShowPicker(true)}
           activeOpacity={0.7}
         >
-          <Text style={s.countryFlag}>{country.flag}</Text>
-          <Text style={s.countryDial}>{country.dial}</Text>
-          <Text style={s.countryArrow}>▾</Text>
+          <Text style={styles.countryFlag}>{country.flag}</Text>
+          <Text style={styles.countryDial}>{country.dial}</Text>
+          <Text style={styles.countryArrow}>▾</Text>
         </TouchableOpacity>
 
         <TextInput
-          style={s.phoneInput}
-          placeholder={t('auth.phonePlaceholder')}
+          style={styles.phoneInput}
+          placeholder={translate('auth.phonePlaceholder')}
           placeholderTextColor={colors.textMuted}
           keyboardType="phone-pad"
           value={phone}
@@ -121,7 +121,7 @@ function PhoneStep() {
       </View>
 
       <TouchableOpacity
-        style={[s.button, loading && s.buttonDisabled]}
+        style={[styles.button, loading && styles.buttonDisabled]}
         onPress={handleSendOTP}
         disabled={loading}
       >
@@ -129,33 +129,33 @@ function PhoneStep() {
           colors={[colors.primary, colors.primaryDark]}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 0 }}
-          style={s.buttonGradient}
+          style={styles.buttonGradient}
         >
           {loading ? (
             <ActivityIndicator color={colors.background} />
           ) : (
-            <Text style={s.buttonText}>{t('auth.sendCode')}</Text>
+            <Text style={styles.buttonText}>{translate('auth.sendCode')}</Text>
           )}
         </LinearGradient>
       </TouchableOpacity>
 
-      <Text style={s.hint}>{t('auth.hint')}</Text>
-      <Text style={s.hintDev}>{t('auth.hintDev')}</Text>
+      <Text style={styles.hint}>{translate('auth.hint')}</Text>
+      <Text style={styles.hintDev}>{translate('auth.hintDev')}</Text>
 
       {/* Country picker modal */}
       <Modal visible={showPicker} animationType="slide" transparent>
-        <View style={s.modalOverlay}>
-          <View style={[s.modalContainer, { backgroundColor: colors.surface }]}>
-            <View style={s.modalHeader}>
-              <Text style={s.modalTitle}>{t('auth.selectCountry')}</Text>
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContainer, { backgroundColor: colors.surface }]}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>{translate('auth.selectCountry')}</Text>
               <TouchableOpacity onPress={() => { setShowPicker(false); setSearch(''); }}>
-                <Text style={s.modalClose}>✕</Text>
+                <Text style={styles.modalClose}>✕</Text>
               </TouchableOpacity>
             </View>
 
             <TextInput
-              style={s.modalSearch}
-              placeholder={t('auth.searchCountry')}
+              style={styles.modalSearch}
+              placeholder={translate('auth.searchCountry')}
               placeholderTextColor={colors.textMuted}
               value={search}
               onChangeText={setSearch}
@@ -168,8 +168,8 @@ function PhoneStep() {
               renderItem={({ item }) => (
                 <TouchableOpacity
                   style={[
-                    s.countryItem,
-                    item.name === country.name && item.dial === country.dial && s.countryItemSelected,
+                    styles.countryItem,
+                    item.name === country.name && item.dial === country.dial && styles.countryItemSelected,
                   ]}
                   onPress={() => {
                     setCountry(item);
@@ -177,9 +177,9 @@ function PhoneStep() {
                     setSearch('');
                   }}
                 >
-                  <Text style={s.countryItemFlag}>{item.flag}</Text>
-                  <Text style={s.countryItemName}>{item.name}</Text>
-                  <Text style={s.countryItemDial}>{item.dial}</Text>
+                  <Text style={styles.countryItemFlag}>{item.flag}</Text>
+                  <Text style={styles.countryItemName}>{item.name}</Text>
+                  <Text style={styles.countryItemDial}>{item.dial}</Text>
                 </TouchableOpacity>
               )}
             />
@@ -192,10 +192,10 @@ function PhoneStep() {
 
 // ── OTP Step ────────────────────────────────────────────
 function OTPStep() {
-  const { t } = useI18n();
+  const { translate } = useI18n();
   const { colors } = useTheme();
   const { verifyOTP, resendOTP, pendingPhone, devCode, resetAuth } = useAuth();
-  const s = createStyles(colors);
+  const styles = createStyles(colors);
 
   const MAX_ATTEMPTS = 3;
   const BLOCK_SECONDS = 60;
@@ -265,8 +265,8 @@ function OTPStep() {
       setErrorMsg('');
       setAttempts(0);
       inputRefs.current[0]?.focus();
-    } catch (err: any) {
-      Alert.alert(t('common.error'), err.message || t('auth.errorSendingOTP'));
+    } catch (err: unknown) {
+      Alert.alert(translate('common.error'), getErrorMessage(err, translate('auth.errorSendingOTP')));
     } finally {
       setResending(false);
     }
@@ -299,7 +299,7 @@ function OTPStep() {
   const handleVerify = async (fullCode?: string) => {
     const verifyCode = fullCode || code.join('');
     if (verifyCode.length !== 6) {
-      setErrorMsg(t('auth.invalidOTP'));
+      setErrorMsg(translate('auth.invalidOTP'));
       return;
     }
 
@@ -307,18 +307,18 @@ function OTPStep() {
     setErrorMsg('');
     try {
       await verifyOTP(verifyCode);
-    } catch (err: any) {
+    } catch {
       const newAttempts = attempts + 1;
       setAttempts(newAttempts);
       setCode(['', '', '', '', '', '']);
       inputRefs.current[0]?.focus();
 
       if (newAttempts >= MAX_ATTEMPTS) {
-        setErrorMsg(t('auth.tooManyAttempts') + ' ' + t('auth.blockedFor', { s: String(BLOCK_SECONDS) }));
+        setErrorMsg(translate('auth.tooManyAttempts') + ' ' + translate('auth.blockedFor', { s: String(BLOCK_SECONDS) }));
         startBlockCountdown();
       } else {
         const left = MAX_ATTEMPTS - newAttempts;
-        setErrorMsg(t('auth.wrongCode') + '\n' + t('auth.attemptsLeft', { n: String(left) }));
+        setErrorMsg(translate('auth.wrongCode') + '\n' + translate('auth.attemptsLeft', { n: String(left) }));
       }
     } finally {
       setLoading(false);
@@ -329,27 +329,27 @@ function OTPStep() {
 
   return (
     <>
-      <Text style={s.title}>{t('auth.verifyTitle')}</Text>
-      <Text style={s.subtitle}>
-        {t('auth.verifySubtitle', { phone: pendingPhone || '' })}
+      <Text style={styles.title}>{translate('auth.verifyTitle')}</Text>
+      <Text style={styles.subtitle}>
+        {translate('auth.verifySubtitle', { phone: pendingPhone || '' })}
       </Text>
 
       {devCode && (
-        <View style={s.devBanner}>
-          <Text style={s.devBannerText}>🔧 Dev code: <Text style={{ color: colors.accent, fontWeight: fontWeight.bold }}>{devCode}</Text></Text>
+        <View style={styles.devBanner}>
+          <Text style={styles.devBannerText}>🔧 Dev code: <Text style={{ color: colors.accent, fontWeight: fontWeight.bold }}>{devCode}</Text></Text>
         </View>
       )}
 
-      <View style={s.otpContainer}>
+      <View style={styles.otpContainer}>
         {code.map((digit, index) => (
           <TextInput
             key={index}
             ref={(ref) => { inputRefs.current[index] = ref; }}
             style={[
-              s.otpInput,
-              digit ? s.otpInputFilled : null,
-              errorMsg ? s.otpInputError : null,
-              isBlocked ? s.otpInputBlocked : null,
+              styles.otpInput,
+              digit ? styles.otpInputFilled : null,
+              errorMsg ? styles.otpInputError : null,
+              isBlocked ? styles.otpInputBlocked : null,
             ]}
             keyboardType="number-pad"
             maxLength={index === 0 ? 6 : 1}
@@ -363,17 +363,17 @@ function OTPStep() {
       </View>
 
       {errorMsg ? (
-        <View style={[s.errorBanner, isBlocked && { borderColor: colors.warning }]}>
-          <Text style={[s.errorText, isBlocked && { color: colors.warning }]}>
+        <View style={[styles.errorBanner, isBlocked && { borderColor: colors.warning }]}>
+          <Text style={[styles.errorText, isBlocked && { color: colors.warning }]}>
             {isBlocked
-              ? t('auth.tooManyAttempts') + '\n' + t('auth.blockedFor', { s: String(blockedSecsLeft) })
+              ? translate('auth.tooManyAttempts') + '\n' + translate('auth.blockedFor', { s: String(blockedSecsLeft) })
               : errorMsg}
           </Text>
         </View>
       ) : null}
 
       <TouchableOpacity
-        style={[s.button, (loading || isBlocked) && s.buttonDisabled]}
+        style={[styles.button, (loading || isBlocked) && styles.buttonDisabled]}
         onPress={() => handleVerify()}
         disabled={loading || isBlocked}
       >
@@ -381,34 +381,34 @@ function OTPStep() {
           colors={[colors.primary, colors.primaryDark]}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 0 }}
-          style={s.buttonGradient}
+          style={styles.buttonGradient}
         >
           {loading ? (
             <ActivityIndicator color={colors.background} />
           ) : (
-            <Text style={s.buttonText}>{t('auth.verifyButton')}</Text>
+            <Text style={styles.buttonText}>{translate('auth.verifyButton')}</Text>
           )}
         </LinearGradient>
       </TouchableOpacity>
 
-      <View style={s.resendRow}>
+      <View style={styles.resendRow}>
         {resendCooldown > 0 ? (
-          <Text style={s.resendCooldown}>
-            {t('auth.resendIn', { s: String(resendCooldown) })}
+          <Text style={styles.resendCooldown}>
+            {translate('auth.resendIn', { s: String(resendCooldown) })}
           </Text>
         ) : (
           <TouchableOpacity onPress={handleResend} disabled={resending}>
             {resending ? (
               <ActivityIndicator size="small" color={colors.primary} />
             ) : (
-              <Text style={s.resendLink}>{t('auth.resendCode')}</Text>
+              <Text style={styles.resendLink}>{translate('auth.resendCode')}</Text>
             )}
           </TouchableOpacity>
         )}
       </View>
 
-      <TouchableOpacity onPress={resetAuth} style={s.linkButton} disabled={isBlocked}>
-        <Text style={[s.linkText, isBlocked && { color: colors.textMuted }]}>{t('auth.changePhone')}</Text>
+      <TouchableOpacity onPress={resetAuth} style={styles.linkButton} disabled={isBlocked}>
+        <Text style={[styles.linkText, isBlocked && { color: colors.textMuted }]}>{translate('auth.changePhone')}</Text>
       </TouchableOpacity>
     </>
   );
@@ -416,10 +416,10 @@ function OTPStep() {
 
 // ── Register Step ───────────────────────────────────────
 function RegisterStep() {
-  const { t } = useI18n();
+  const { translate } = useI18n();
   const { colors } = useTheme();
   const { register, pendingPhone, resetAuth } = useAuth();
-  const s = createStyles(colors);
+  const styles = createStyles(colors);
 
   const [name, setName] = useState('');
   const [username, setUsername] = useState('');
@@ -428,24 +428,20 @@ function RegisterStep() {
 
   const handleRegister = async () => {
     if (!name.trim()) {
-      Alert.alert(t('common.error'), t('auth.noName'));
+      Alert.alert(translate('common.error'), translate('auth.noName'));
       return;
     }
     const cleanUsername = username.trim().toLowerCase().replace(/[^a-z0-9._]/g, '');
     if (!cleanUsername || cleanUsername.length < 3) {
-      Alert.alert(t('common.error'), t('auth.invalidUsername'));
-      return;
-    }
-    if (!documentId.trim()) {
-      Alert.alert(t('common.error'), t('auth.noDocument'));
+      Alert.alert(translate('common.error'), translate('auth.invalidUsername'));
       return;
     }
 
     setLoading(true);
     try {
       await register(name.trim(), cleanUsername, documentId.trim());
-    } catch (err: any) {
-      Alert.alert(t('common.error'), err.message || t('auth.errorRegistering'));
+    } catch (err: unknown) {
+      Alert.alert(translate('common.error'), getErrorMessage(err, translate('auth.errorRegistering')));
     } finally {
       setLoading(false);
     }
@@ -453,25 +449,31 @@ function RegisterStep() {
 
   return (
     <>
-      <Text style={s.title}>{t('auth.registerTitle')}</Text>
-      <Text style={s.subtitle}>
-        {t('auth.registerSubtitle', { phone: pendingPhone || '' })}
+      <Text style={styles.title}>{translate('auth.registerTitle')}</Text>
+      <Text style={styles.subtitle}>
+        {translate('auth.registerSubtitle', { phone: pendingPhone || '' })}
       </Text>
 
-      <Text style={s.fieldLabel}>{t('auth.nameLabel')}</Text>
+      <View style={styles.labelRow}>
+        <Text style={styles.fieldLabel}>{translate('auth.nameLabel')}</Text>
+        <Text style={styles.required}>*</Text>
+      </View>
       <TextInput
-        style={s.input}
-        placeholder={t('auth.namePlaceholder')}
+        style={styles.input}
+        placeholder={translate('auth.namePlaceholder')}
         placeholderTextColor={colors.textMuted}
         value={name}
         onChangeText={setName}
         autoFocus
       />
 
-      <Text style={s.fieldLabel}>{t('auth.usernameLabel')}</Text>
+      <View style={styles.labelRow}>
+        <Text style={styles.fieldLabel}>{translate('auth.usernameLabel')}</Text>
+        <Text style={styles.required}>*</Text>
+      </View>
       <TextInput
-        style={s.input}
-        placeholder={t('auth.usernamePlaceholder')}
+        style={styles.input}
+        placeholder={translate('auth.usernamePlaceholder')}
         placeholderTextColor={colors.textMuted}
         value={username}
         onChangeText={(text) => setUsername(text.toLowerCase().replace(/\s/g, ''))}
@@ -479,10 +481,13 @@ function RegisterStep() {
         autoCorrect={false}
       />
 
-      <Text style={s.fieldLabel}>{t('auth.documentLabel')}</Text>
+      <View style={styles.labelRow}>
+        <Text style={styles.fieldLabel}>{translate('auth.documentLabel')}</Text>
+        <Text style={styles.optional}>{translate('common.optional')}</Text>
+      </View>
       <TextInput
-        style={s.input}
-        placeholder={t('auth.documentPlaceholder')}
+        style={styles.input}
+        placeholder={translate('auth.documentPlaceholder')}
         placeholderTextColor={colors.textMuted}
         keyboardType="numeric"
         value={documentId}
@@ -490,7 +495,7 @@ function RegisterStep() {
       />
 
       <TouchableOpacity
-        style={[s.button, loading && s.buttonDisabled]}
+        style={[styles.button, loading && styles.buttonDisabled]}
         onPress={handleRegister}
         disabled={loading}
       >
@@ -498,18 +503,18 @@ function RegisterStep() {
           colors={[colors.primary, colors.primaryDark]}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 0 }}
-          style={s.buttonGradient}
+          style={styles.buttonGradient}
         >
           {loading ? (
             <ActivityIndicator color={colors.background} />
           ) : (
-            <Text style={s.buttonText}>{t('auth.registerButton')}</Text>
+            <Text style={styles.buttonText}>{translate('auth.registerButton')}</Text>
           )}
         </LinearGradient>
       </TouchableOpacity>
 
-      <TouchableOpacity onPress={resetAuth} style={s.linkButton}>
-        <Text style={s.linkText}>{t('auth.changePhone')}</Text>
+      <TouchableOpacity onPress={resetAuth} style={styles.linkButton}>
+        <Text style={styles.linkText}>{translate('auth.changePhone')}</Text>
       </TouchableOpacity>
     </>
   );
@@ -519,7 +524,7 @@ function RegisterStep() {
 export default function LoginScreen() {
   const { colors, isDark } = useTheme();
   const { authStep } = useAuth();
-  const s = createStyles(colors);
+  const styles = createStyles(colors);
 
   // Warm espresso gradient — like the inside of a café at night
   const gradientColors: [string, string, string] = isDark
@@ -527,24 +532,24 @@ export default function LoginScreen() {
     : ['#fdf8f0', '#f5ede0', '#eee0cb'];
 
   return (
-    <LinearGradient colors={gradientColors} style={s.container}>
+    <LinearGradient colors={gradientColors} style={styles.container}>
       <KeyboardAvoidingView
-        style={s.flex}
+        style={styles.flex}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       >
         <ScrollView
-          contentContainerStyle={s.content}
+          contentContainerStyle={styles.content}
           keyboardShouldPersistTaps="handled"
         >
-          <View style={s.headerControls}>
+          <View style={styles.headerControls}>
             <HeaderControls />
           </View>
 
           <VacaLogo size="lg" style={{ marginTop: spacing.xxl }} />
 
           {/* Form card — warm surface with golden border */}
-          <View style={[s.card, { backgroundColor: colors.surface2, borderColor: colors.surfaceBorder }]}>
-            <View style={s.cardInner}>
+          <View style={[styles.card, { backgroundColor: colors.surface2, borderColor: colors.surfaceBorder }]}>
+            <View style={styles.cardInner}>
               {authStep === 'phone' && <PhoneStep />}
               {authStep === 'otp' && <OTPStep />}
               {authStep === 'register' && <RegisterStep />}
@@ -837,5 +842,22 @@ const createStyles = (colors: ThemeColors) =>
       fontSize: fontSize.sm,
       color: colors.textSecondary,
       textDecorationLine: 'underline',
+    },
+    labelRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      alignSelf: 'flex-start',
+      width: '100%',
+      gap: 4,
+    },
+    required: {
+      fontSize: fontSize.sm,
+      fontWeight: fontWeight.bold,
+      color: colors.danger,
+    },
+    optional: {
+      fontSize: fontSize.xs,
+      color: colors.textMuted,
+      fontStyle: 'italic',
     },
   });

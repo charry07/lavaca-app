@@ -1,16 +1,16 @@
 import { useCallback, useEffect } from 'react';
 import { PaymentSession } from '@lavaca/shared';
 import { useSocket } from './useSocket';
+import { api } from '../services/api';
 
 /**
- * Joins the Socket.IO room for `joinCode` and fires `onUpdate` whenever
- * the server emits a `session-update` event. Leaves the room on unmount.
+ * Subscribes to Supabase realtime updates for one session join code.
  */
 export function useSessionSocket(
   joinCode: string | undefined,
   onUpdate: (session: PaymentSession) => void,
 ): void {
-  const socket = useSocket();
+  const transport = useSocket();
 
   // Stable reference so the effect deps don't fire on every render
   const stableOnUpdate = useCallback(onUpdate, [onUpdate]);
@@ -18,12 +18,38 @@ export function useSessionSocket(
   useEffect(() => {
     if (!joinCode) return;
 
-    socket.emit('join-session', joinCode);
-    socket.on('session-update', stableOnUpdate);
+    const channel = transport.supabase
+      .channel(`session:${joinCode}`)
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'sessions',
+        filter: `join_code=eq.${joinCode}`,
+      }, async () => {
+        try {
+          const updated = await api.getSession(joinCode);
+          stableOnUpdate(updated);
+        } catch {
+          // ignore transient realtime fetch errors
+        }
+      })
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'participants',
+        filter: `join_code=eq.${joinCode}`,
+      }, async () => {
+        try {
+          const updated = await api.getSession(joinCode);
+          stableOnUpdate(updated);
+        } catch {
+          // ignore transient realtime fetch errors
+        }
+      })
+      .subscribe();
 
     return () => {
-      socket.off('session-update', stableOnUpdate);
-      socket.emit('leave-session', joinCode);
+      transport.supabase.removeChannel(channel);
     };
-  }, [socket, joinCode, stableOnUpdate]);
+  }, [transport, joinCode, stableOnUpdate]);
 }
