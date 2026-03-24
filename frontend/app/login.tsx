@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import {
   View,
   Text,
@@ -198,6 +198,14 @@ function PhoneStep() {
   );
 }
 
+// ── Lockout helper ──────────────────────────────────────
+// attempts 1-2: no lockout | 3rd: 60s | 4th: 60s | 5th+: 300s
+const getLockoutSeconds = (attempts: number): number => {
+  if (attempts < 3) return 0;
+  if (attempts < 5) return 60;
+  return 300;
+};
+
 // ── PIN Step ────────────────────────────────────────────
 function PINStep() {
   const { translate } = useI18n();
@@ -208,9 +216,33 @@ function PINStep() {
   const [pin, setPin] = useState(['', '', '', '', '', '']);
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
+  const [attempts, setAttempts] = useState(0);
+  const [secsLeft, setSecsLeft] = useState(0);
   const inputRefs = useRef<(TextInput | null)[]>([]);
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  useEffect(() => {
+    return () => { if (timerRef.current) clearInterval(timerRef.current); };
+  }, []);
+
+  const startLockout = (secs: number) => {
+    setSecsLeft(secs);
+    timerRef.current = setInterval(() => {
+      setSecsLeft(prev => {
+        if (prev <= 1) {
+          clearInterval(timerRef.current!);
+          timerRef.current = null;
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+  };
+
+  const isLocked = secsLeft > 0;
 
   const handlePinChange = (text: string, index: number) => {
+    if (isLocked) return;
     const newPin = [...pin];
     if (text.length > 1) {
       const digits = text.replace(/\D/g, '').split('').slice(0, 6);
@@ -234,6 +266,7 @@ function PINStep() {
   };
 
   const handleLogin = async (fullPin?: string) => {
+    if (isLocked) return;
     const entered = fullPin || pin.join('');
     if (entered.length !== 6) {
       setErrorMsg(translate('auth.invalidPin'));
@@ -244,9 +277,20 @@ function PINStep() {
     try {
       await loginWithPin(entered);
     } catch {
+      const newAttempts = attempts + 1;
+      setAttempts(newAttempts);
       setPin(['', '', '', '', '', '']);
       inputRefs.current[0]?.focus();
-      setErrorMsg(translate('auth.wrongPin'));
+
+      const lockSecs = getLockoutSeconds(newAttempts);
+      if (lockSecs > 0) {
+        const mins = lockSecs / 60;
+        setErrorMsg(translate('auth.pinLocked', { mins: String(mins) }));
+        startLockout(lockSecs);
+      } else {
+        const left = 3 - newAttempts;
+        setErrorMsg(translate('auth.wrongPinAttempts', { n: String(left) }));
+      }
     } finally {
       setLoading(false);
     }
@@ -268,6 +312,7 @@ function PINStep() {
               styles.otpInput,
               digit ? styles.otpInputFilled : null,
               errorMsg ? styles.otpInputError : null,
+              isLocked ? styles.otpInputBlocked : null,
             ]}
             keyboardType="number-pad"
             maxLength={index === 0 ? 6 : 1}
@@ -275,22 +320,26 @@ function PINStep() {
             onChangeText={(text) => handlePinChange(text, index)}
             onKeyPress={(e) => handleKeyPress(e, index)}
             autoFocus={index === 0}
-            editable={!loading}
+            editable={!loading && !isLocked}
             secureTextEntry
           />
         ))}
       </View>
 
-      {errorMsg ? (
-        <View style={styles.errorBanner}>
-          <Text style={styles.errorText}>{errorMsg}</Text>
+      {(errorMsg || isLocked) ? (
+        <View style={[styles.errorBanner, isLocked && { borderColor: colors.warning + '60' }]}>
+          <Text style={[styles.errorText, isLocked && { color: colors.warning }]}>
+            {isLocked
+              ? translate('auth.pinLockedCountdown', { s: String(secsLeft) })
+              : errorMsg}
+          </Text>
         </View>
       ) : null}
 
       <TouchableOpacity
-        style={[styles.button, loading && styles.buttonDisabled]}
+        style={[styles.button, (loading || isLocked) && styles.buttonDisabled]}
         onPress={() => handleLogin()}
-        disabled={loading}
+        disabled={loading || isLocked}
       >
         <LinearGradient
           colors={[colors.primary, colors.primaryDark]}
@@ -304,12 +353,12 @@ function PINStep() {
         </LinearGradient>
       </TouchableOpacity>
 
-      <TouchableOpacity onPress={goToReset} style={styles.linkButton}>
-        <Text style={styles.linkText}>{translate('auth.forgotPin')}</Text>
+      <TouchableOpacity onPress={goToReset} style={styles.linkButton} disabled={isLocked}>
+        <Text style={[styles.linkText, isLocked && { color: colors.textMuted }]}>{translate('auth.forgotPin')}</Text>
       </TouchableOpacity>
 
-      <TouchableOpacity onPress={resetAuth} style={styles.linkButton}>
-        <Text style={styles.linkText}>{translate('auth.changePhone')}</Text>
+      <TouchableOpacity onPress={resetAuth} style={styles.linkButton} disabled={isLocked}>
+        <Text style={[styles.linkText, isLocked && { color: colors.textMuted }]}>{translate('auth.changePhone')}</Text>
       </TouchableOpacity>
     </>
   );
@@ -817,6 +866,10 @@ const createStyles = (colors: ThemeColors) =>
     otpInputError: {
       borderColor: colors.danger,
       backgroundColor: colors.danger + '0d',
+    },
+    otpInputBlocked: {
+      borderColor: colors.warning,
+      opacity: 0.5,
     },
     errorBanner: {
       backgroundColor: colors.danger + '18',

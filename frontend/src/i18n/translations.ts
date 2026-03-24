@@ -196,6 +196,9 @@ const es = {
   'auth.invalidPin': 'El PIN debe ser de 6 digitos',
   'auth.weakPin': 'PIN demasiado simple. Evita secuencias como 123456',
   'auth.wrongPin': 'PIN incorrecto. Intenta de nuevo.',
+  'auth.wrongPinAttempts': 'PIN incorrecto. Te quedan {{n}} intento(s).',
+  'auth.pinLocked': 'Demasiados intentos. Espera {{mins}} minuto(s).',
+  'auth.pinLockedCountdown': 'Bloqueado. Espera {{s}}s para intentar de nuevo.',
   'auth.changePhone': 'Cambiar numero',
 
   // Auth - Register Step
@@ -472,6 +475,9 @@ const en: TranslationKeys = {
   'auth.invalidPin': 'PIN must be 6 digits',
   'auth.weakPin': 'PIN too simple. Avoid sequences like 123456',
   'auth.wrongPin': 'Wrong PIN. Please try again.',
+  'auth.wrongPinAttempts': 'Wrong PIN. {{n}} attempt(s) remaining.',
+  'auth.pinLocked': 'Too many attempts. Wait {{mins}} minute(s).',
+  'auth.pinLockedCountdown': 'Locked. Wait {{s}}s to try again.',
   'auth.changePhone': 'Change number',
 
   // Auth - Register Step
@@ -748,6 +754,9 @@ const pt: TranslationKeys = {
   'auth.invalidPin': 'O PIN deve ter 6 dígitos',
   'auth.weakPin': 'PIN muito simples. Evite sequências como 123456',
   'auth.wrongPin': 'PIN incorreto. Tente novamente.',
+  'auth.wrongPinAttempts': 'PIN incorreto. Você tem {{n}} tentativa(s) restante(s).',
+  'auth.pinLocked': 'Muitas tentativas. Aguarde {{mins}} minuto(s).',
+  'auth.pinLockedCountdown': 'Bloqueado. Aguarde {{s}}s para tentar novamente.',
   'auth.changePhone': 'Mudar número',
 
   // Auth - Register Step
