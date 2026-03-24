@@ -257,29 +257,27 @@ export const api = {
   isSupabaseEnabled: () => isSupabaseEnabled,
 
   // ── PIN Auth ───────────────────────────────────────────
-  checkPhone: async (phone: string): Promise<{ exists: boolean }> => {
-    if (DEV_MOCK) return { exists: false };
+  checkPhone: async (phone: string): Promise<{ exists: boolean; authEmail: string }> => {
+    if (DEV_MOCK) return { exists: false, authEmail: syntheticEmail(phone) };
     if (supabase) {
       const { data } = await supabase
         .from('users')
-        .select('id')
+        .select('id, email')
         .eq('phone', phone)
-        .maybeSingle();
-      return { exists: !!data };
+        .maybeSingle<{ id: string; email: string | null }>();
+      if (!data) return { exists: false, authEmail: syntheticEmail(phone) };
+      return { exists: true, authEmail: data.email || syntheticEmail(phone) };
     }
     throwWithFallback(SUPABASE_REQUIRED_ERROR);
   },
 
-  loginWithPin: async (phone: string, pin: string): Promise<User> => {
+  loginWithPin: async (authEmail: string, pin: string): Promise<User> => {
     if (DEV_MOCK) {
       if (pin !== '123456') throwWithFallback('Wrong PIN. Use 123456 in dev mode');
-      return { ...MOCK_USER, phone };
+      return { ...MOCK_USER };
     }
     if (supabase) {
-      const { error } = await supabase.auth.signInWithPassword({
-        email: syntheticEmail(phone),
-        password: pin,
-      });
+      const { error } = await supabase.auth.signInWithPassword({ email: authEmail, password: pin });
       if (error) throwWithFallback(error.message, 'Invalid PIN');
 
       const { data: authUserData, error: userErr } = await supabase.auth.getUser();
@@ -297,13 +295,13 @@ export const api = {
     throwWithFallback(SUPABASE_REQUIRED_ERROR);
   },
 
-  register: async (data: { phone: string; displayName: string; username: string; documentId: string; pin: string }): Promise<User> => {
+  register: async (data: { phone: string; displayName: string; username: string; documentId: string; pin: string; email: string }): Promise<User> => {
     if (DEV_MOCK) {
-      return { ...MOCK_USER, phone: data.phone, displayName: data.displayName, username: data.username, documentId: data.documentId };
+      return { ...MOCK_USER, phone: data.phone, displayName: data.displayName, username: data.username, documentId: data.documentId, email: data.email };
     }
     if (supabase) {
       const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
-        email: syntheticEmail(data.phone),
+        email: data.email.trim().toLowerCase(),
         password: data.pin,
       });
       if (signUpError) throwWithFallback(signUpError.message, 'Could not create account');
@@ -314,6 +312,7 @@ export const api = {
       const payload = {
         id: userId,
         phone: data.phone,
+        email: data.email.trim().toLowerCase(),
         display_name: data.displayName.trim(),
         username: data.username.trim().toLowerCase(),
         document_id: data.documentId.trim(),
@@ -330,6 +329,20 @@ export const api = {
 
       if (profileErr || !profile) throwWithFallback(profileErr?.message || 'Could not load registered user');
       return rowToUser(profile);
+    }
+    throwWithFallback(SUPABASE_REQUIRED_ERROR);
+  },
+
+  resetPin: async (email: string): Promise<void> => {
+    if (DEV_MOCK) return;
+    if (supabase) {
+      const redirectTo = process.env.EXPO_PUBLIC_RESET_PIN_URL;
+      const { error } = await supabase.auth.resetPasswordForEmail(
+        email.trim().toLowerCase(),
+        redirectTo ? { redirectTo } : undefined,
+      );
+      if (error) throwWithFallback(error.message, 'Could not send reset email');
+      return;
     }
     throwWithFallback(SUPABASE_REQUIRED_ERROR);
   },

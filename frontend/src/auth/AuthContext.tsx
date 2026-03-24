@@ -5,20 +5,23 @@ import { api } from '../services/api';
 
 const AUTH_KEY = 'lavaca_user';
 
-type AuthStep = 'phone' | 'pin' | 'register' | 'done';
+type AuthStep = 'phone' | 'pin' | 'register' | 'reset' | 'done';
 
 interface AuthContextValue {
   user: User | null;
   isLoading: boolean;
   authStep: AuthStep;
   pendingPhone: string | null;
+  pendingAuthEmail: string | null;
   checkPhone: (phone: string) => Promise<void>;
   loginWithPin: (pin: string) => Promise<void>;
-  register: (displayName: string, username: string, documentId: string, pin: string) => Promise<void>;
+  register: (displayName: string, username: string, documentId: string, pin: string, email: string) => Promise<void>;
+  resetPin: (email: string) => Promise<void>;
   logout: () => Promise<void>;
   deleteAccount: () => Promise<void>;
   updateProfile: (data: { displayName?: string; username?: string; documentId?: string; avatarUrl?: string }) => Promise<void>;
   resetAuth: () => void;
+  goToReset: () => void;
 }
 
 const AuthContext = createContext<AuthContextValue>({
@@ -26,13 +29,16 @@ const AuthContext = createContext<AuthContextValue>({
   isLoading: true,
   authStep: 'phone',
   pendingPhone: null,
+  pendingAuthEmail: null,
   checkPhone: async () => {},
   loginWithPin: async () => {},
   register: async () => {},
+  resetPin: async () => {},
   logout: async () => {},
   deleteAccount: async () => {},
   updateProfile: async () => {},
   resetAuth: () => {},
+  goToReset: () => {},
 });
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
@@ -40,8 +46,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
   const [authStep, setAuthStep] = useState<AuthStep>('phone');
   const [pendingPhone, setPendingPhone] = useState<string | null>(null);
+  const [pendingAuthEmail, setPendingAuthEmail] = useState<string | null>(null);
 
-  // Restore user from AsyncStorage on mount
   useEffect(() => {
     (async () => {
       try {
@@ -69,26 +75,32 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const cleanPhone = phone.replace(/\s/g, '').trim();
     const result = await api.checkPhone(cleanPhone);
     setPendingPhone(cleanPhone);
+    setPendingAuthEmail(result.authEmail);
     setAuthStep(result.exists ? 'pin' : 'register');
   }, []);
 
   const loginWithPin = useCallback(async (pin: string) => {
+    if (!pendingAuthEmail) throw new Error('No pending auth email');
+    const u = await api.loginWithPin(pendingAuthEmail, pin);
+    await persistUser(u);
+  }, [pendingAuthEmail]);
+
+  const register = useCallback(async (displayName: string, username: string, documentId: string, pin: string, email: string) => {
     if (!pendingPhone) throw new Error('No pending phone');
-    const u = await api.loginWithPin(pendingPhone, pin);
+    const u = await api.register({ phone: pendingPhone, displayName, username, documentId, pin, email });
     await persistUser(u);
   }, [pendingPhone]);
 
-  const register = useCallback(async (displayName: string, username: string, documentId: string, pin: string) => {
-    if (!pendingPhone) throw new Error('No pending phone');
-    const u = await api.register({ phone: pendingPhone, displayName, username, documentId, pin });
-    await persistUser(u);
-  }, [pendingPhone]);
+  const resetPin = useCallback(async (email: string) => {
+    await api.resetPin(email);
+  }, []);
 
   const logout = useCallback(async () => {
     await api.logout();
     setUser(null);
     setAuthStep('phone');
     setPendingPhone(null);
+    setPendingAuthEmail(null);
     await storage.removeItem(AUTH_KEY);
   }, []);
 
@@ -98,6 +110,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUser(null);
     setAuthStep('phone');
     setPendingPhone(null);
+    setPendingAuthEmail(null);
     await storage.removeItem(AUTH_KEY);
   }, [user]);
 
@@ -110,12 +123,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const resetAuth = useCallback(() => {
     setAuthStep('phone');
     setPendingPhone(null);
+    setPendingAuthEmail(null);
+  }, []);
+
+  const goToReset = useCallback(() => {
+    setAuthStep('reset');
   }, []);
 
   return (
     <AuthContext.Provider value={{
-      user, isLoading, authStep, pendingPhone,
-      checkPhone, loginWithPin, register, logout, deleteAccount, updateProfile, resetAuth,
+      user, isLoading, authStep, pendingPhone, pendingAuthEmail,
+      checkPhone, loginWithPin, register, resetPin,
+      logout, deleteAccount, updateProfile, resetAuth, goToReset,
     }}>
       {children}
     </AuthContext.Provider>

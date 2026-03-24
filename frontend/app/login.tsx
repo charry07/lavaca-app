@@ -202,7 +202,7 @@ function PhoneStep() {
 function PINStep() {
   const { translate } = useI18n();
   const { colors } = useTheme();
-  const { loginWithPin, pendingPhone, resetAuth } = useAuth();
+  const { loginWithPin, pendingPhone, resetAuth, goToReset } = useAuth();
   const styles = createStyles(colors);
 
   const [pin, setPin] = useState(['', '', '', '', '', '']);
@@ -304,8 +304,90 @@ function PINStep() {
         </LinearGradient>
       </TouchableOpacity>
 
+      <TouchableOpacity onPress={goToReset} style={styles.linkButton}>
+        <Text style={styles.linkText}>{translate('auth.forgotPin')}</Text>
+      </TouchableOpacity>
+
       <TouchableOpacity onPress={resetAuth} style={styles.linkButton}>
         <Text style={styles.linkText}>{translate('auth.changePhone')}</Text>
+      </TouchableOpacity>
+    </>
+  );
+}
+
+// ── Reset Step ──────────────────────────────────────────
+function ResetStep() {
+  const { translate } = useI18n();
+  const { colors } = useTheme();
+  const { resetPin, resetAuth } = useAuth();
+  const styles = createStyles(colors);
+
+  const [email, setEmail] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [sent, setSent] = useState(false);
+
+  const handleReset = async () => {
+    const cleanEmail = email.trim().toLowerCase();
+    if (!cleanEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanEmail)) {
+      Alert.alert(translate('common.error'), translate('auth.invalidEmail'));
+      return;
+    }
+    setLoading(true);
+    try {
+      await resetPin(cleanEmail);
+      setSent(true);
+    } catch (err: unknown) {
+      Alert.alert(translate('common.error'), getErrorMessage(err, translate('auth.resetError')));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <>
+      <Text style={styles.title}>{translate('auth.resetTitle')}</Text>
+      <Text style={styles.subtitle}>{translate('auth.resetSubtitle')}</Text>
+
+      {sent ? (
+        <View style={styles.errorBanner}>
+          <Text style={[styles.errorText, { color: colors.primary }]}>{translate('auth.resetSuccess')}</Text>
+        </View>
+      ) : (
+        <>
+          <Text style={styles.fieldLabel}>{translate('auth.emailLabel')}</Text>
+          <TextInput
+            style={styles.input}
+            placeholder={translate('auth.emailPlaceholder')}
+            placeholderTextColor={colors.textMuted}
+            keyboardType="email-address"
+            autoCapitalize="none"
+            autoCorrect={false}
+            value={email}
+            onChangeText={setEmail}
+            autoFocus
+          />
+
+          <TouchableOpacity
+            style={[styles.button, loading && styles.buttonDisabled]}
+            onPress={handleReset}
+            disabled={loading}
+          >
+            <LinearGradient
+              colors={[colors.primary, colors.primaryDark]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+              style={styles.buttonGradient}
+            >
+              {loading
+                ? <ActivityIndicator color={colors.background} />
+                : <Text style={styles.buttonText}>{translate('auth.resetButton')}</Text>}
+            </LinearGradient>
+          </TouchableOpacity>
+        </>
+      )}
+
+      <TouchableOpacity onPress={resetAuth} style={styles.linkButton}>
+        <Text style={styles.linkText}>{translate('auth.backToLogin')}</Text>
       </TouchableOpacity>
     </>
   );
@@ -321,6 +403,7 @@ function RegisterStep() {
   const [name, setName] = useState('');
   const [username, setUsername] = useState('');
   const [documentId, setDocumentId] = useState('');
+  const [email, setEmail] = useState('');
   const [pin, setPin] = useState('');
   const [confirmPin, setConfirmPin] = useState('');
   const [loading, setLoading] = useState(false);
@@ -333,6 +416,11 @@ function RegisterStep() {
     const cleanUsername = username.trim().toLowerCase().replace(/[^a-z0-9._]/g, '');
     if (!cleanUsername || cleanUsername.length < 3) {
       Alert.alert(translate('common.error'), translate('auth.invalidUsername'));
+      return;
+    }
+    const cleanEmail = email.trim().toLowerCase();
+    if (!cleanEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanEmail)) {
+      Alert.alert(translate('common.error'), translate('auth.invalidEmail'));
       return;
     }
     if (pin.length !== 6 || !/^\d{6}$/.test(pin)) {
@@ -350,7 +438,7 @@ function RegisterStep() {
 
     setLoading(true);
     try {
-      await register(name.trim(), cleanUsername, documentId.trim(), pin);
+      await register(name.trim(), cleanUsername, documentId.trim(), pin, cleanEmail);
     } catch (err: unknown) {
       Alert.alert(translate('common.error'), getErrorMessage(err, translate('auth.errorRegistering')));
     } finally {
@@ -403,6 +491,21 @@ function RegisterStep() {
         keyboardType="numeric"
         value={documentId}
         onChangeText={setDocumentId}
+      />
+
+      <View style={styles.labelRow}>
+        <Text style={styles.fieldLabel}>{translate('auth.emailLabel')}</Text>
+        <Text style={styles.required}>*</Text>
+      </View>
+      <TextInput
+        style={styles.input}
+        placeholder={translate('auth.emailPlaceholder')}
+        placeholderTextColor={colors.textMuted}
+        keyboardType="email-address"
+        autoCapitalize="none"
+        autoCorrect={false}
+        value={email}
+        onChangeText={setEmail}
       />
 
       <View style={styles.labelRow}>
@@ -492,6 +595,7 @@ export default function LoginScreen() {
               {authStep === 'phone' && <PhoneStep />}
               {authStep === 'pin' && <PINStep />}
               {authStep === 'register' && <RegisterStep />}
+              {authStep === 'reset' && <ResetStep />}
             </View>
           </View>
         </ScrollView>
