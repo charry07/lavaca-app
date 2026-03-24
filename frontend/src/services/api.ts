@@ -33,7 +33,7 @@ const MOCK_USER: User = {
   createdAt: new Date(),
 };
 
-const MOCK_DEV_CODE = '123456';
+const syntheticEmail = (phone: string) => `${phone.replace(/\D/g, '')}@lavaca.app`;
 
 type UserRow = {
   id: string;
@@ -94,17 +94,6 @@ type FeedEventRow = {
   created_at: string;
 };
 
-interface OTPSendResponse {
-  success: boolean;
-  message: string;
-  dev_code: string;
-}
-
-interface OTPVerifyResponse {
-  verified: boolean;
-  isRegistered: boolean;
-  user: User | null;
-}
 
 function throwWithFallback(message: string, fallback = 'Unknown error'): never {
   throw new Error(message || fallback);
@@ -267,83 +256,34 @@ async function getGroupMembersDetailed(groupId: string): Promise<{ id: string; d
 export const api = {
   isSupabaseEnabled: () => isSupabaseEnabled,
 
-  // ── OTP / Auth ────────────────────────────────────────
-  sendOTP: async (phone: string) => {
-    if (DEV_MOCK) {
-      return { success: true, message: 'Dev OTP sent', dev_code: MOCK_DEV_CODE } satisfies OTPSendResponse;
-    }
+  // ── PIN Auth ───────────────────────────────────────────
+  checkPhone: async (phone: string): Promise<{ exists: boolean }> => {
+    if (DEV_MOCK) return { exists: false };
     if (supabase) {
-      const { error } = await supabase.auth.signInWithOtp({ phone });
-      if (error) throwWithFallback(error.message, 'Could not send OTP');
-      return { success: true, message: 'OTP sent', dev_code: '' } satisfies OTPSendResponse;
+      const { data } = await supabase
+        .from('users')
+        .select('id')
+        .eq('phone', phone)
+        .maybeSingle();
+      return { exists: !!data };
     }
-
     throwWithFallback(SUPABASE_REQUIRED_ERROR);
   },
 
-  resendOTP: async (phone: string) => {
+  loginWithPin: async (phone: string, pin: string): Promise<User> => {
     if (DEV_MOCK) {
-      return { success: true, message: 'Dev OTP resent', dev_code: MOCK_DEV_CODE } satisfies OTPSendResponse;
+      if (pin !== '123456') throwWithFallback('Wrong PIN. Use 123456 in dev mode');
+      return { ...MOCK_USER, phone };
     }
     if (supabase) {
-      const { error } = await supabase.auth.signInWithOtp({ phone });
-      if (error) throwWithFallback(error.message, 'Could not resend OTP');
-      return { success: true, message: 'OTP resent', dev_code: '' } satisfies OTPSendResponse;
-    }
-
-    throwWithFallback(SUPABASE_REQUIRED_ERROR);
-  },
-
-  verifyOTP: async (phone: string, code: string) => {
-    if (DEV_MOCK) {
-      if (code !== MOCK_DEV_CODE) throwWithFallback('Wrong dev code. Use ' + MOCK_DEV_CODE);
-      const mockUser = { ...MOCK_USER, phone };
-      return { verified: true, isRegistered: true, user: mockUser } satisfies OTPVerifyResponse;
-    }
-    if (supabase) {
-      const { error } = await supabase.auth.verifyOtp({ phone, token: code, type: 'sms' });
-      if (error) throwWithFallback(error.message, 'Invalid OTP code');
+      const { error } = await supabase.auth.signInWithPassword({
+        email: syntheticEmail(phone),
+        password: pin,
+      });
+      if (error) throwWithFallback(error.message, 'Invalid PIN');
 
       const { data: authUserData, error: userErr } = await supabase.auth.getUser();
-      if (userErr || !authUserData.user) {
-        throwWithFallback(userErr?.message || 'Unable to load authenticated user');
-      }
-
-      const { data: profile, error: profileErr } = await supabase
-        .from('users')
-        .select('*')
-        .eq('id', authUserData.user.id)
-        .maybeSingle<UserRow>();
-
-      if (profileErr) throwWithFallback(profileErr.message, 'Could not verify user profile');
-      if (!profile) return { verified: true, isRegistered: false, user: null } satisfies OTPVerifyResponse;
-
-      return { verified: true, isRegistered: true, user: rowToUser(profile) } satisfies OTPVerifyResponse;
-    }
-
-    throwWithFallback(SUPABASE_REQUIRED_ERROR);
-  },
-
-  register: async (data: { phone: string; displayName: string; username: string; documentId: string }) => {
-    if (DEV_MOCK) {
-      return { ...MOCK_USER, phone: data.phone, displayName: data.displayName, username: data.username, documentId: data.documentId };
-    }
-    if (supabase) {
-      const { data: authUserData, error: authErr } = await supabase.auth.getUser();
-      if (authErr || !authUserData.user) {
-        throwWithFallback(authErr?.message || 'Missing authenticated session for registration');
-      }
-
-      const payload = {
-        id: authUserData.user.id,
-        phone: data.phone,
-        display_name: data.displayName.trim(),
-        username: data.username.trim().toLowerCase(),
-        document_id: data.documentId.trim(),
-      };
-
-      const { error: insertErr } = await supabase.from('users').upsert(payload);
-      if (insertErr) throwWithFallback(insertErr.message, 'Could not register user');
+      if (userErr || !authUserData.user) throwWithFallback('Could not load session');
 
       const { data: profile, error: profileErr } = await supabase
         .from('users')
@@ -351,32 +291,46 @@ export const api = {
         .eq('id', authUserData.user.id)
         .single<UserRow>();
 
-      if (profileErr || !profile) throwWithFallback(profileErr?.message || 'Could not load registered user');
+      if (profileErr || !profile) throwWithFallback(profileErr?.message || 'Could not load profile');
       return rowToUser(profile);
     }
-
     throwWithFallback(SUPABASE_REQUIRED_ERROR);
   },
 
-  login: async (_phone: string) => {
-    if (DEV_MOCK) return MOCK_USER;
+  register: async (data: { phone: string; displayName: string; username: string; documentId: string; pin: string }): Promise<User> => {
+    if (DEV_MOCK) {
+      return { ...MOCK_USER, phone: data.phone, displayName: data.displayName, username: data.username, documentId: data.documentId };
+    }
     if (supabase) {
-      const { data: authUserData, error: authErr } = await supabase.auth.getUser();
-      if (authErr || !authUserData.user) {
-        throwWithFallback('Use OTP verification to sign in', 'No active Supabase session');
-      }
+      const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
+        email: syntheticEmail(data.phone),
+        password: data.pin,
+      });
+      if (signUpError) throwWithFallback(signUpError.message, 'Could not create account');
+
+      const userId = signUpData.user?.id;
+      if (!userId) throwWithFallback('Missing user ID after sign up');
+
+      const payload = {
+        id: userId,
+        phone: data.phone,
+        display_name: data.displayName.trim(),
+        username: data.username.trim().toLowerCase(),
+        document_id: data.documentId.trim(),
+      };
+
+      const { error: insertErr } = await supabase.from('users').upsert(payload);
+      if (insertErr) throwWithFallback(insertErr.message, 'Could not save profile');
 
       const { data: profile, error: profileErr } = await supabase
         .from('users')
         .select('*')
-        .eq('id', authUserData.user.id)
-        .maybeSingle<UserRow>();
+        .eq('id', userId)
+        .single<UserRow>();
 
-      if (profileErr) throwWithFallback(profileErr.message, 'Could not load profile');
-      if (!profile) throwWithFallback('User not found. Please complete registration first.');
+      if (profileErr || !profile) throwWithFallback(profileErr?.message || 'Could not load registered user');
       return rowToUser(profile);
     }
-
     throwWithFallback(SUPABASE_REQUIRED_ERROR);
   },
 
