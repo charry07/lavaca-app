@@ -5,5 +5,3 @@ This directory will hold Supabase Edge Functions introduced during Phase 2 and P
 Planned functions:
 - session-split
 - session-close
-- stripe-checkout-create
-- stripe-webhook-proxy (if needed)

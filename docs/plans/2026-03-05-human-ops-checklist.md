@@ -31,8 +31,6 @@ Last sync: 2026-03-06 (update 12)
 
 ## Accounts and Access
 - [ ] Confirm owner access to Supabase org and create production project
-- [ ] Confirm owner access to Vercel team/project
-- [ ] Confirm owner access to Stripe account (test + live mode)
 - [ ] Confirm owner access to GitHub repo secrets and environment protection rules
 - [ ] Confirm owner access to GitHub Models (Copilot ecosystem) for org/repo
 
@@ -45,23 +43,8 @@ Last sync: 2026-03-06 (update 12)
 - [ ] Configure redirect URLs for web auth callbacks
 - [ ] Configure storage buckets and public/private policies
 
-## Vercel Dashboard Tasks
-- [ ] Create Vercel project and connect repository
-- [ ] Set production and preview environment variables
-- [ ] Configure `VERCEL_TOKEN`, `VERCEL_ORG_ID`, `VERCEL_PROJECT_ID` in GitHub Actions secrets
-- [ ] Configure `EXPO_PUBLIC_SUPABASE_URL` and `EXPO_PUBLIC_SUPABASE_ANON_KEY` in GitHub Actions secrets
-- [ ] Configure domains and DNS
-- [ ] Configure serverless region and runtime settings
-
-## Stripe Dashboard Tasks
-- [ ] Create products/prices for premium plans
-- [ ] Generate `STRIPE_SECRET_KEY`
-- [ ] Generate `EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY`
-- [ ] Create webhook endpoint and get `STRIPE_WEBHOOK_SECRET`
-- [ ] Enable customer portal and billing settings
-
 ## Security and Governance
-- [ ] Store all secrets in Vercel + GitHub secrets only
+- [ ] Store all secrets in Supabase + GitHub secrets only
 - [ ] Rotate any leaked keys immediately
 - [ ] Validate least-privilege access for team members
 

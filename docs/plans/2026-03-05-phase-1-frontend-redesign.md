@@ -594,7 +594,7 @@ Wrap the date in a consistent `<View style={{ flexDirection: 'row', alignItems: 
 **Step 3: Improve layout**
 - Use `<Avatar displayName={user.displayName} avatarUrl={user.avatarUrl} size={80} showRing />` as the profile photo
 - Stats row (sessions, amount, etc.) — wrap each stat in `<AnimatedCard>` with `index`
-- Add premium banner placeholder: a card at the bottom with `colors.accent` gradient hint and `t('premium.cta')` button (non-functional, Stripe Phase 4 implements it)
+- Add premium banner placeholder: a card at the bottom with `colors.accent` gradient hint and `t('premium.cta')` button (non-functional placeholder)
 
 **Step 4: Typecheck + commit**
 ```bash

@@ -4,7 +4,7 @@
 
 **Goal:** Transform La Vaca from a local SQLite prototype into a production-ready, deployed app with Supabase backend, professional UI, Vercel hosting, and AI-powered suggestions.
 
-**Architecture:** Supabase replaces the entire Express backend (DB + Auth + Realtime + Storage + Edge Functions). The Expo mobile app and Expo web export share one codebase. Vercel hosts the web export + thin Stripe webhook serverless function. Each phase is independently executable without conflicting with other phases.
+**Architecture:** Supabase replaces the entire Express backend (DB + Auth + Realtime + Storage + Edge Functions). The Expo mobile app and Expo web export share one codebase. Vercel hosts the static web export. Each phase is independently executable without conflicting with other phases.
 
 **Tech Stack:** Expo SDK 54, React Native, Supabase (PostgreSQL + Auth + Realtime + Storage + Edge Functions), Vercel, GitHub Models (AI), pnpm monorepo, TypeScript, GitHub Actions.
 
@@ -68,11 +68,10 @@ Last sync: 2026-03-06 (update 19)
 Phase 0: Copilot AI Integration ──────────────────────────► (recommended first)
 Phase 1: Frontend Redesign  ──────────────────────────────► (no deps, start anytime)
 Phase 2: Supabase Migration ──────────────────────────────► (no deps, start anytime)
-Phase 3: Vercel Deployment  ──── depends on Phase 2 ──────► (after Phase 2)
 Phase 5: Refactoring        ──── depends on Phase 1+2 ────► (after Phase 1+2)
 ```
 
-**Phase 0 is the AI foundation and is recommended first.** Phase 1 and Phase 2 can run in parallel. Phase 3 needs Phase 2 complete. Phase 5 refactors mobile code — runs after Phase 1+2 so there's a stable base to clean up.
+**Phase 0 is the AI foundation and is recommended first.** Phase 1 and Phase 2 can run in parallel. Phase 5 refactors mobile code — runs after Phase 1+2 so there's a stable base to clean up.
 
 ---
 
@@ -83,7 +82,6 @@ Phase 5: Refactoring        ──── depends on Phase 1+2 ────► (a
 | 0 — Copilot AI Integration | [phase-0-copilot-ai-integration.md](./2026-03-06-phase-0-copilot-ai-integration.md) | AI Agent E | none | 🟨 in-progress |
 | 1 — Frontend Redesign | [phase-1-frontend-redesign.md](./2026-03-05-phase-1-frontend-redesign.md) | AI Agent A | none | 🟩 done |
 | 2 — Supabase Migration | [phase-2-supabase-migration.md](./2026-03-05-phase-2-supabase-migration.md) | AI Agent B | none | 🟩 done |
-| 3 — Vercel Deployment | [phase-3-vercel-deployment.md](./2026-03-05-phase-3-vercel-deployment.md) | AI Agent C | Phase 2 | 🟨 in-progress |
 | 5 — Refactoring & Quality | [phase-5-refactoring.md](./2026-03-06-phase-5-refactoring.md) | AI Agent F | Phase 1+2 | 🟩 done |
 
 Human-only operations checklist: [2026-03-05-human-ops-checklist.md](./2026-03-05-human-ops-checklist.md)
@@ -120,23 +118,11 @@ These rules prevent agents from stepping on each other:
 - `apps/mobile/src/components/**` — UI components
 - `apps/mobile/src/constants/theme.ts`
 
-### Phase 3 (Vercel) — ONLY touches:
-- `vercel.json` — root
-- `.github/workflows/**` — CI/CD
-- `apps/vercel-functions/**` — new serverless functions
-- `.env.example` files
-- Root `package.json` — build scripts only
-
-### Phase 3 — NEVER touches:
-- `apps/mobile/**` — any mobile code
-- `supabase/**` — Supabase config
-- `packages/**`
-
 ---
 
 ## Environment Variables Required
 
-Every agent must know these exist. Set them in Vercel dashboard and local `.env`:
+Every agent must know these exist. Set them in local `.env.local`:
 
 ```bash
 # Supabase (Phase 2)

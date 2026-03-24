@@ -49,7 +49,7 @@ Owner: AI Agent B
 - Se revalido `pnpm -r typecheck` en verde luego de correcciones de lint.
 - Se limpiaron referencias legacy restantes en `README.md`, `CLAUDE.md` y `.github/copilot-instructions.md` para reflejar estado Supabase-only.
 - Se revalido `pnpm -r typecheck` y `pnpm lint` en verde tras la limpieza documental.
-- Se creo `.env.example` en raiz con placeholders de Supabase, AI y Stripe para onboarding reproducible.
+- Se creo `.env.example` en raiz con placeholders de Supabase y AI para onboarding reproducible.
 - La fase se mantiene `in-progress` por pendientes operativos: `supabase/config.toml` (requiere Supabase CLI local), `db push`, RPC `get_frequent_users` y despliegue de Edge Functions.
 - Se instalo/uso Supabase CLI via `pnpm dlx supabase` y se ejecuto `supabase init` (se genero `supabase/config.toml`).
 - Se creo migracion `supabase/migrations/202603060001_get_frequent_users.sql` para preparar RPC faltante.
@@ -58,7 +58,7 @@ Owner: AI Agent B
 - Se confirmo bloqueo operativo final: no existe `.env.local`, `SUPABASE_ACCESS_TOKEN` no esta configurado y `pnpm dlx supabase projects list` falla por falta de login.
 - Se detecto `apps/mobile/.env.local` con `EXPO_PUBLIC_SUPABASE_URL` y `EXPO_PUBLIC_SUPABASE_ANON_KEY` configurados.
 - El bloqueo operativo persiste para cierre de fase: falta `SUPABASE_ACCESS_TOKEN` (o `supabase login`) y credencial de DB para ejecutar `supabase link`/`db push`.
-- Se revalido nuevamente `pnpm -r typecheck` y `pnpm lint` en verde con workspaces activos (`apps/mobile`, `apps/vercel-functions`, `packages/*`).
+- Se revalido nuevamente `pnpm -r typecheck` y `pnpm lint` en verde con workspaces activos (`apps/mobile`, `packages/*`).
 - Se reconfirmo el bloqueo operativo: `SUPABASE_ACCESS_TOKEN=0`, `SUPABASE_DB_PASSWORD=0` y `pnpm dlx supabase projects list` sigue fallando por falta de login/token.
 - Se ejecuto `supabase link --project-ref ndlwyejijnuccbmdelgd` con exito.
 - Se ejecuto `supabase db push` con exito y se aplico la migracion RPC `202603060001_get_frequent_users.sql` en remoto.
@@ -122,9 +122,6 @@ Open `.gitignore` at repo root and add if not present:
 EXPO_PUBLIC_SUPABASE_URL=https://YOUR_PROJECT.supabase.co
 EXPO_PUBLIC_SUPABASE_ANON_KEY=eyJ...
 SUPABASE_SERVICE_ROLE_KEY=eyJ...
-EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY=pk_test_...
-STRIPE_SECRET_KEY=sk_test_...
-STRIPE_WEBHOOK_SECRET=whsec_...
 ```
 
 **Step 6: Commit**

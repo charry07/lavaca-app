@@ -62,7 +62,7 @@ Owner: AI Agent E
 
 **Files:**
 - Create: `apps/mobile/src/services/ai.ts` (client contract)
-- Create: `apps/vercel-functions/api/ai/copilot.ts` (or Supabase edge equivalent)
+- Create: `supabase/functions/ai-copilot/index.ts`
 - Modify: `.env.example`
 
 **Environment variables:**

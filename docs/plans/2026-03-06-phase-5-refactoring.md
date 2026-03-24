@@ -8,7 +8,7 @@
 
 **Tech Stack:** TypeScript, React Native, Expo Router (same stack — no new deps).
 
-**Conflict rules:** ONLY touches `apps/mobile/`. Never touches `supabase/`, `apps/vercel-functions/`, `packages/`.
+**Conflict rules:** ONLY touches `apps/mobile/`. Never touches `supabase/` or `packages/`.
 
 ---
 

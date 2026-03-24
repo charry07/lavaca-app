@@ -160,8 +160,7 @@ Palette: warm espresso & dorado — inspired by a Colombian café interior at ni
 | [`docs/plans/2026-03-05-lavaca-roadmap.md`](docs/plans/2026-03-05-lavaca-roadmap.md) | Master plan — phase overview, conflict rules, cleanup rules, definition of done |
 | [`docs/plans/2026-03-05-phase-1-frontend-redesign.md`](docs/plans/2026-03-05-phase-1-frontend-redesign.md) | Frontend redesign — new components, animations, web layout |
 | [`docs/plans/2026-03-05-phase-2-supabase-migration.md`](docs/plans/2026-03-05-phase-2-supabase-migration.md) | Supabase migration — replaces Express + SQLite + Socket.IO |
-| [`docs/plans/2026-03-05-phase-3-vercel-deployment.md`](docs/plans/2026-03-05-phase-3-vercel-deployment.md) | Vercel deployment — CI/CD, serverless functions, Azure path |
-| [`docs/plans/2026-03-05-human-ops-checklist.md`](docs/plans/2026-03-05-human-ops-checklist.md) | Manual tasks the human must do (Supabase, Vercel setup) |
+| [`docs/plans/2026-03-05-human-ops-checklist.md`](docs/plans/2026-03-05-human-ops-checklist.md) | Manual tasks the human must do (Supabase, GitHub Models setup) |
 
 ### Rules every AI agent must follow
 
@@ -175,5 +174,5 @@ Palette: warm espresso & dorado — inspired by a Colombian café interior at ni
 - Phase 0: 🟨 in-progress (AI service + Edge Function + UI integration done; pending deploy)
 - Phase 1: 🟩 done
 - Phase 2: 🟩 done
-- Phase 3: 🟨 in-progress (pending human CI/CD setup)
+- Phase 3: ❌ cancelled (Vercel removed)
 - Phase 4: ❌ cancelled (Stripe removed)
