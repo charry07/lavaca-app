@@ -16,7 +16,7 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { PaymentSession, Participant, User, formatCOP } from '@lavaca/shared';
+import { PaymentSession, Participant, User, formatCOP } from '@lavaca/types';
 import { api } from '../../src/services/api';
 import { aiService, AI_ENABLED } from '../../src/services/ai';
 import { spacing, borderRadius, fontSize, fontWeight, type ThemeColors } from '../../src/constants/theme';

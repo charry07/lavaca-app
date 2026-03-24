@@ -3,7 +3,7 @@ import {View, Text, TouchableOpacity, StyleSheet, FlatList, RefreshControl} from
 import {LinearGradient} from "expo-linear-gradient";
 import {useRouter} from "expo-router";
 import {useFocusEffect} from "@react-navigation/native";
-import {PaymentSession, formatCOP} from "@lavaca/shared";
+import {PaymentSession, formatCOP} from "@lavaca/types";
 import {spacing, borderRadius, fontSize, fontWeight, type ThemeColors} from "../../src/constants/theme";
 import {SkeletonCard, ErrorState, Avatar, StatusPill, AnimatedCard, SplitBar, VacaLogo, HeaderControls} from "../../src/components";
 import {useI18n} from "../../src/i18n";

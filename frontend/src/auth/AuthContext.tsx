@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { storage } from '../utils/storage';
-import { User } from '@lavaca/shared';
+import { User } from '@lavaca/types';
 import { api } from '../services/api';
 
 const AUTH_KEY = 'lavaca_user';

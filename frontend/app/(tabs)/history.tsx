@@ -8,7 +8,7 @@ import {
   RefreshControl,
 } from 'react-native';
 import { useRouter } from 'expo-router';
-import { PaymentSession , formatCOP } from '@lavaca/shared';
+import { PaymentSession , formatCOP } from '@lavaca/types';
 import { spacing, borderRadius, fontSize, fontWeight, type ThemeColors } from '../../src/constants/theme';
 import { SkeletonCard, EmptyState, Avatar, StatusPill, AnimatedCard } from '../../src/components';
 import { useI18n } from '../../src/i18n';

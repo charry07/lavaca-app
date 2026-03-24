@@ -1,7 +1,3 @@
 packages:
-  - apps/mobile
+  - frontend
   - packages/*
-
-ignoredBuiltDependencies:
-  - better-sqlite3
-  - esbuild

@@ -78,7 +78,7 @@
 │                 └──────────┬─────────────┘                       │
 │                            ▼                                     │
 │      ┌──────────────────────┐   ┌──────────────────────┐         │
-│      │   📦 @lavaca/shared   │   │  📦 @lavaca/supabase │         │
+│      │   📦 @lavaca/types   │   │    📦 @lavaca/api    │         │
 │      │  Tipos + Utilidades  │   │  cliente compartido  │         │
 │      └──────────────────────┘   └──────────────────────┘         │
 └─────────────────────────────────────────────────────────────────┘
@@ -90,36 +90,37 @@
 
 ```
 lavaca-app/
-├── apps/
-│   ├── mobile/                 # 📱 App React Native (Expo SDK 54)
-│   │   ├── app/
-│   │   │   ├── (tabs)/         # Pestañas principales
-│   │   │   │   ├── index.tsx   #  → Inicio / Sesiones activas
-│   │   │   │   ├── feed.tsx    #  → Feed de actividad social
-│   │   │   │   ├── groups.tsx  #  → Grupos de amigos
-│   │   │   │   ├── history.tsx #  → Historial de pagos
-│   │   │   │   └── profile.tsx #  → Perfil de usuario
-│   │   │   ├── session/
-│   │   │   │   └── [joinCode].tsx  # Vista de sesión en vivo
-│   │   │   ├── group/
-│   │   │   │   └── [id].tsx        # Detalle de grupo
-│   │   │   ├── create.tsx      # Crear nueva sesión
-│   │   │   ├── join.tsx        # Unirse con código o QR
-│   │   │   └── login.tsx       # Autenticación OTP
-│   │   └── src/
-│   │       ├── auth/           # AuthContext + flujo OTP
-│   │       ├── components/     # GlassCard, SkeletonCard, EmptyState, ErrorState…
-│   │       ├── constants/      # theme.ts — tokens de diseño
-│   │       ├── hooks/          # useSocket, useSessionSocket (Supabase Realtime)
-│   │       ├── i18n/           # Traducciones ES/EN/PT
-│   │       ├── services/       # api.ts (Supabase), ai.ts (GitHub Models)
-│   │       └── theme/          # ThemeContext claro/oscuro
-└── packages/
-  ├── supabase/               # 📦 Cliente Supabase compartido
-    └── shared/                 # 📦 Tipos y utilidades compartidas
-        └── src/
-            ├── types.ts        # Interfaces (Session, User, Participant, Debt…)
-            └── utils.ts        # formatCOP, helpers
+├── frontend/               # 📱 @lavaca/frontend — App React Native (Expo SDK 54)
+│   ├── app/
+│   │   ├── (tabs)/         # Pestañas principales
+│   │   │   ├── index.tsx   #  → Inicio / Sesiones activas
+│   │   │   ├── feed.tsx    #  → Feed de actividad social
+│   │   │   ├── groups.tsx  #  → Grupos de amigos
+│   │   │   ├── history.tsx #  → Historial de pagos
+│   │   │   └── profile.tsx #  → Perfil de usuario
+│   │   ├── session/
+│   │   │   └── [joinCode].tsx  # Vista de sesión en vivo
+│   │   ├── group/
+│   │   │   └── [id].tsx        # Detalle de grupo
+│   │   ├── create.tsx      # Crear nueva sesión
+│   │   ├── join.tsx        # Unirse con código o QR
+│   │   └── login.tsx       # Autenticación OTP
+│   └── src/
+│       ├── auth/           # AuthContext + flujo OTP
+│       ├── components/     # GlassCard, SkeletonCard, EmptyState, ErrorState…
+│       ├── constants/      # theme.ts — tokens de diseño
+│       ├── hooks/          # useSocket, useSessionSocket (Supabase Realtime)
+│       ├── i18n/           # Traducciones ES/EN/PT
+│       ├── services/       # api.ts (Supabase), ai.ts (GitHub Models)
+│       └── theme/          # ThemeContext claro/oscuro
+├── packages/
+│   ├── api/                # 📦 @lavaca/api — cliente Supabase compartido
+│   └── types/              # 📦 @lavaca/types — tipos y utilidades (sin deps)
+│       └── src/
+│           ├── types.ts    # Interfaces (Session, User, Participant, Debt…)
+│           ├── utils.ts    # formatCOP, helpers
+│           └── ai.ts       # Tipos AI Copilot
+└── supabase/               # ⚙️ Supabase CLI — migraciones, Edge Functions
 ```
 
 ---
@@ -165,11 +166,11 @@ EXPO_PUBLIC_AI_ENABLED=false
 ### Desarrollo
 
 ```bash
-# App móvil completa (Expo, escáner QR, native)
-pnpm dev:mobile
+# App completa (Expo, escáner QR, native)
+pnpm dev
 
 # Web — más rápido para desarrollo/pruebas
-cd apps/mobile && npx expo start --web
+cd frontend && npx expo start --web
 ```
 
 > Escanea el QR con **Expo Go** en tu teléfono o presiona `w` para web, `i` para iOS, `a` para Android.

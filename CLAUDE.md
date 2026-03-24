@@ -12,20 +12,17 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 # Install all dependencies (run from root)
 pnpm install
 
-# Start the mobile app (Expo)
-pnpm dev:mobile          # or: pnpm --filter @lavaca/mobile start
+# Start the app (Expo)
+pnpm dev                         # or: cd frontend && npx expo start
 
 # Web mode (fast for development/testing)
-cd apps/mobile && npx expo start --web
+cd frontend && npx expo start --web
 
 # Type-check all workspaces
 pnpm typecheck
 
 # Lint all workspaces
 pnpm lint
-
-# Clean builds
-pnpm clean
 ```
 
 There are no tests configured.
@@ -34,27 +31,22 @@ There are no tests configured.
 
 ```
 lavaca-app/               ← pnpm monorepo root
-├── apps/
-│   └── mobile/           ← @lavaca/mobile (React Native + Expo SDK 54)
-└── packages/
-    ├── supabase/         ← @lavaca/supabase (shared Supabase client)
-    └── shared/           ← @lavaca/shared (TypeScript types + utils, no runtime deps)
+├── frontend/             ← @lavaca/frontend (React Native + Expo SDK 54)
+├── packages/
+│   ├── api/              ← @lavaca/api (Supabase client factory)
+│   └── types/            ← @lavaca/types (TypeScript types + utils, zero runtime deps)
+└── supabase/             ← Supabase CLI config, migrations, Edge Functions
 ```
 
-### Backend Status
+### `@lavaca/frontend` — React Native App
 
-- Legacy `apps/api` was removed during Phase 2 migration cleanup.
-- Mobile now uses Supabase Auth/Realtime/Postgres through `packages/supabase` and `apps/mobile/src/services/api.ts`.
-
-### `@lavaca/mobile` — React Native App
-
-- File-based routing via **Expo Router** (`apps/mobile/app/`).
-- Root layout: [apps/mobile/app/_layout.tsx](apps/mobile/app/_layout.tsx) — `ThemeProvider → I18nProvider → AuthProvider → ToastProvider` + `AuthGuard`.
+- File-based routing via **Expo Router** (`frontend/app/`).
+- Root layout: [frontend/app/_layout.tsx](frontend/app/_layout.tsx) — `ThemeProvider → I18nProvider → AuthProvider → ToastProvider` + `AuthGuard`.
 - Tabs: `(tabs)/` — Home (index), Feed, Groups, History, Profile.
 - Modals: `create.tsx` (new session), `join.tsx` (join by code/QR).
 - Dynamic routes: `session/[joinCode].tsx`, `group/[id].tsx`.
 
-**Contexts (all in `apps/mobile/src/`):**
+**Contexts (all in `frontend/src/`):**
 
 | Context | Hook | Provides |
 |---|---|---|
@@ -65,25 +57,30 @@ lavaca-app/               ← pnpm monorepo root
 
 **Styling rules — always follow these:**
 - All colors from `useTheme().colors` — never hardcode hex values.
-- Design tokens: `spacing`, `borderRadius`, `fontSize`, `fontWeight` from [apps/mobile/src/constants/theme.ts](apps/mobile/src/constants/theme.ts).
+- Design tokens: `spacing`, `borderRadius`, `fontSize`, `fontWeight` from [frontend/src/constants/theme.ts](frontend/src/constants/theme.ts).
 - Pattern: `const styles = createStyles(colors)` + `StyleSheet.create()` at the bottom of every screen.
 - **Signature element**: all session/history/participant cards use `borderLeftWidth: 3, borderLeftColor: <statusColor>` — colored by status.
 
 **i18n:**
-- Translation keys in [apps/mobile/src/i18n/translations.ts](apps/mobile/src/i18n/translations.ts) — `es`, `en`, `pt`.
+- Translation keys in [frontend/src/i18n/translations.ts](frontend/src/i18n/translations.ts) — `es`, `en`, `pt`.
 - Use `translate('key')` (destructured from `useI18n()`) for all user-facing strings. Supports `{{variable}}` interpolation.
 - When adding a new key, add it to all three locales.
 
 **API client:**
-- Single client in [apps/mobile/src/services/api.ts](apps/mobile/src/services/api.ts) — exports `api` object.
+- Single client in [frontend/src/services/api.ts](frontend/src/services/api.ts) — exports `api` object.
 - Uses Supabase as the only backend path; requires `EXPO_PUBLIC_SUPABASE_URL` and `EXPO_PUBLIC_SUPABASE_ANON_KEY`.
 
-### `@lavaca/shared` — Shared Types
+### `@lavaca/api` — Supabase Client
 
-- [packages/shared/src/types.ts](packages/shared/src/types.ts) — `User`, `PaymentSession`, `Participant`, `Group`, `FeedEvent`, `Debt`.
-- [packages/shared/src/utils.ts](packages/shared/src/utils.ts) — `formatCOP` and helpers.
-- [packages/shared/src/ai.ts](packages/shared/src/ai.ts) — `AISplitRequest/Response`, `AIReminderRequest/Response` types.
-- Import as `@lavaca/shared` in both workspaces.
+- [packages/api/src/index.ts](packages/api/src/index.ts) — exports `createSupabaseClient(url, key)`.
+- Wraps `@supabase/supabase-js`. Import as `@lavaca/api` from the frontend.
+
+### `@lavaca/types` — Shared Types
+
+- [packages/types/src/types.ts](packages/types/src/types.ts) — `User`, `PaymentSession`, `Participant`, `Group`, `FeedEvent`, `Debt`.
+- [packages/types/src/utils.ts](packages/types/src/utils.ts) — `formatCOP` and helpers.
+- [packages/types/src/ai.ts](packages/types/src/ai.ts) — `AISplitRequest/Response`, `AIReminderRequest/Response` types.
+- Zero runtime dependencies. Import as `@lavaca/types`.
 
 ## Key Domain Concepts
 
@@ -129,16 +126,16 @@ Palette: warm espresso & dorado — inspired by a Colombian café interior at ni
 
 ## AI Copilot (Phase 0)
 
-- `apps/mobile/src/services/ai.ts` — `aiService.suggestSplit()` and `aiService.generateReminder()`; all calls guarded by `AI_ENABLED = EXPO_PUBLIC_AI_ENABLED === 'true'`; returns `null` on any error (graceful fallback).
+- `frontend/src/services/ai.ts` — `aiService.suggestSplit()` and `aiService.generateReminder()`; all calls guarded by `AI_ENABLED = EXPO_PUBLIC_AI_ENABLED === 'true'`; returns `null` on any error (graceful fallback).
 - `supabase/functions/ai-copilot/index.ts` — Deno Edge Function that calls GitHub Models API (`gpt-4o-mini`). Actions: `split` and `reminder`.
-- Types in `packages/shared/src/ai.ts`.
+- Types in `packages/types/src/ai.ts`.
 - In `create.tsx`: AI suggest button appears when `AI_ENABLED`. Calls `suggestSplit` and auto-selects the mode.
 - In `session/[joinCode].tsx`: Admin reminder button when session is open with pending participants. Calls `generateReminder` and opens native share sheet.
 - Deploy: `supabase functions deploy ai-copilot` + set `GITHUB_MODELS_TOKEN` in Supabase secrets.
 
 ## Utilities
 
-- `src/utils/cameraPermission.ts` — `requestCameraPermission()` for `expo-camera`
+- `frontend/src/utils/cameraPermission.ts` — `requestCameraPermission()` for `expo-camera`
 
 ## Security Notes
 

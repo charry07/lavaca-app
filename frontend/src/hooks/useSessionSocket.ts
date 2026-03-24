@@ -1,5 +1,5 @@
 import { useCallback, useEffect } from 'react';
-import { PaymentSession } from '@lavaca/shared';
+import { PaymentSession } from '@lavaca/types';
 import { useSocket } from './useSocket';
 import { api } from '../services/api';
 

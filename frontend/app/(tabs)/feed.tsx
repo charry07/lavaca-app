@@ -11,7 +11,7 @@ import { GlassCard, SkeletonCard, EmptyState, ErrorState } from '../../src/compo
 import { useI18n } from '../../src/i18n';
 import { useTheme } from '../../src/theme';
 import { api } from '../../src/services/api';
-import { FeedEvent } from '@lavaca/shared';
+import { FeedEvent } from '@lavaca/types';
 
 import { getErrorMessage } from '../../src/utils/errorMessage';
 const EVENT_EMOJI: Record<FeedEvent['type'], string> = {

@@ -1,10 +1,10 @@
-import { createSupabaseClient } from '@lavaca/supabase';
+import { createSupabaseClient } from '@lavaca/api';
 import type {
   AISplitRequest,
   AISplitResponse,
   AIReminderRequest,
   AIReminderResponse,
-} from '@lavaca/shared';
+} from '@lavaca/types';
 
 const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL ?? '';
 const SUPABASE_ANON_KEY = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY ?? '';

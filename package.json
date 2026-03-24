@@ -4,18 +4,12 @@
   "private": true,
   "description": "La Vaca 🐄 - Simple y sencillo de dividir y pagar cuentas",
   "scripts": {
-    "mobile": "pnpm --filter @lavaca/mobile start",
-    "shared": "pnpm --filter @lavaca/shared typecheck",
-    "dev:mobile": "pnpm --filter @lavaca/mobile start",
+    "dev": "pnpm --filter @lavaca/frontend start",
     "lint": "pnpm -r lint",
     "typecheck": "pnpm -r typecheck",
-    "clean": "pnpm -r clean",
-    "build:web": "pnpm --filter @lavaca/mobile exec expo export --platform web",
+    "build:web": "pnpm --filter @lavaca/frontend exec expo export --platform web",
     "db:seed": "supabase db reset --debug",
     "db:seed:only": "supabase db seed"
-  },
-  "pnpm": {
-    "onlyBuiltDependencies": []
   },
   "engines": {
     "node": ">=20.0.0",

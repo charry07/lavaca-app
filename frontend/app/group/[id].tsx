@@ -13,7 +13,7 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useLocalSearchParams, useNavigation, useRouter } from 'expo-router';
-import { User } from '@lavaca/shared';
+import { User } from '@lavaca/types';
 import { spacing, borderRadius, fontSize, fontWeight, type ThemeColors } from '../../src/constants/theme';
 import { GlassCard, SkeletonCard, ErrorState } from '../../src/components';
 import { useI18n } from '../../src/i18n';

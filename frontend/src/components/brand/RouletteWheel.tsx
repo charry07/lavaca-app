@@ -1,7 +1,7 @@
 import {useCallback, useEffect, useRef, useState} from "react";
 import {View, Text, StyleSheet, Animated, Easing} from "react-native";
 import Svg, {Path, Circle, G, Polygon} from "react-native-svg";
-import {Participant} from "@lavaca/shared";
+import {Participant} from "@lavaca/types";
 import {spacing, borderRadius, fontSize, type ThemeColors} from "../../constants/theme";
 import {useI18n} from "../../i18n";
 import {useTheme} from "../../theme";

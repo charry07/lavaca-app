@@ -14,7 +14,7 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
-import { SplitMode, User } from '@lavaca/shared';
+import { SplitMode, User } from '@lavaca/types';
 import { api } from '../src/services/api';
 import { aiService, AI_ENABLED } from '../src/services/ai';
 import { spacing, borderRadius, fontSize, fontWeight, type ThemeColors } from '../src/constants/theme';

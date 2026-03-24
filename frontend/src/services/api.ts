@@ -9,8 +9,8 @@ import {
   splitByPercentage,
   splitEqual,
   User,
-} from '@lavaca/shared';
-import { createSupabaseClient } from '@lavaca/supabase';
+} from '@lavaca/types';
+import { createSupabaseClient } from '@lavaca/api';
 
 const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL;
 const SUPABASE_ANON_KEY = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;

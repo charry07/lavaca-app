@@ -1,5 +1,5 @@
 import { useRef } from 'react';
-import { createSupabaseClient } from '@lavaca/supabase';
+import { createSupabaseClient } from '@lavaca/api';
 
 type RealtimeTransport = { mode: 'supabase'; supabase: ReturnType<typeof createSupabaseClient> };
 

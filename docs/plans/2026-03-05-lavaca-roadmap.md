@@ -55,8 +55,6 @@
 - Se completo cierre operativo de Fase 2: `supabase link`, `supabase db push` y migraciones remotas sincronizadas (`202603050001`, `202603060001`).
 - Se separo configuracion de entorno: `apps/mobile/.env.local` para vars publicas y `.env.cli.local` en raiz para secretos de CLI.
 - Fase 2 queda marcada como `done`.
-- Se avanzo Fase 3 con entregables documentales y de build: guia `docs/azure-migration.md` + `pnpm build:web` validado (17 rutas exportadas).
-- Se documentaron secretos exactos de CI/CD para Fase 3 en checklist humano.
 
 Last sync: 2026-03-06 (update 19)
 
