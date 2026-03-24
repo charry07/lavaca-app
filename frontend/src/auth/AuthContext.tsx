@@ -5,18 +5,16 @@ import { api } from '../services/api';
 
 const AUTH_KEY = 'lavaca_user';
 
-type AuthStep = 'phone' | 'otp' | 'register' | 'done';
+type AuthStep = 'phone' | 'pin' | 'register' | 'done';
 
 interface AuthContextValue {
   user: User | null;
   isLoading: boolean;
   authStep: AuthStep;
   pendingPhone: string | null;
-  devCode: string | null;
-  sendOTP: (phone: string) => Promise<void>;
-  resendOTP: () => Promise<void>;
-  verifyOTP: (code: string) => Promise<void>;
-  register: (displayName: string, username: string, documentId: string) => Promise<void>;
+  checkPhone: (phone: string) => Promise<void>;
+  loginWithPin: (pin: string) => Promise<void>;
+  register: (displayName: string, username: string, documentId: string, pin: string) => Promise<void>;
   logout: () => Promise<void>;
   deleteAccount: () => Promise<void>;
   updateProfile: (data: { displayName?: string; username?: string; documentId?: string; avatarUrl?: string }) => Promise<void>;
@@ -28,10 +26,8 @@ const AuthContext = createContext<AuthContextValue>({
   isLoading: true,
   authStep: 'phone',
   pendingPhone: null,
-  devCode: null,
-  sendOTP: async () => {},
-  resendOTP: async () => {},
-  verifyOTP: async () => {},
+  checkPhone: async () => {},
+  loginWithPin: async () => {},
   register: async () => {},
   logout: async () => {},
   deleteAccount: async () => {},
@@ -44,7 +40,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
   const [authStep, setAuthStep] = useState<AuthStep>('phone');
   const [pendingPhone, setPendingPhone] = useState<string | null>(null);
-  const [devCode, setDevCode] = useState<string | null>(null);
 
   // Restore user from AsyncStorage on mount
   useEffect(() => {
@@ -70,37 +65,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     await storage.setItem(AUTH_KEY, JSON.stringify(u));
   };
 
-  const sendOTP = useCallback(async (phone: string) => {
+  const checkPhone = useCallback(async (phone: string) => {
     const cleanPhone = phone.replace(/\s/g, '').trim();
-    const result = await api.sendOTP(cleanPhone);
+    const result = await api.checkPhone(cleanPhone);
     setPendingPhone(cleanPhone);
-    setDevCode(result.dev_code);
-    setAuthStep('otp');
+    setAuthStep(result.exists ? 'pin' : 'register');
   }, []);
 
-  const resendOTP = useCallback(async () => {
+  const loginWithPin = useCallback(async (pin: string) => {
     if (!pendingPhone) throw new Error('No pending phone');
-    const result = await api.resendOTP(pendingPhone);
-    setDevCode(result.dev_code);
+    const u = await api.loginWithPin(pendingPhone, pin);
+    await persistUser(u);
   }, [pendingPhone]);
 
-  const verifyOTP = useCallback(async (code: string) => {
+  const register = useCallback(async (displayName: string, username: string, documentId: string, pin: string) => {
     if (!pendingPhone) throw new Error('No pending phone');
-    const result = await api.verifyOTP(pendingPhone, code);
-    if (!result.verified) throw new Error('Invalid OTP');
-
-    if (result.isRegistered && result.user) {
-      // Existing user — auto login (data recovery)
-      await persistUser(result.user);
-    } else {
-      // New user — need to complete registration
-      setAuthStep('register');
-    }
-  }, [pendingPhone]);
-
-  const register = useCallback(async (displayName: string, username: string, documentId: string) => {
-    if (!pendingPhone) throw new Error('No pending phone');
-    const u = await api.register({ phone: pendingPhone, displayName, username, documentId });
+    const u = await api.register({ phone: pendingPhone, displayName, username, documentId, pin });
     await persistUser(u);
   }, [pendingPhone]);
 
@@ -109,7 +89,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUser(null);
     setAuthStep('phone');
     setPendingPhone(null);
-    setDevCode(null);
     await storage.removeItem(AUTH_KEY);
   }, []);
 
@@ -119,7 +98,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUser(null);
     setAuthStep('phone');
     setPendingPhone(null);
-    setDevCode(null);
     await storage.removeItem(AUTH_KEY);
   }, [user]);
 
@@ -132,13 +110,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const resetAuth = useCallback(() => {
     setAuthStep('phone');
     setPendingPhone(null);
-    setDevCode(null);
   }, []);
 
   return (
     <AuthContext.Provider value={{
-      user, isLoading, authStep, pendingPhone, devCode,
-      sendOTP, resendOTP, verifyOTP, register, logout, deleteAccount, updateProfile, resetAuth,
+      user, isLoading, authStep, pendingPhone,
+      checkPhone, loginWithPin, register, logout, deleteAccount, updateProfile, resetAuth,
     }}>
       {children}
     </AuthContext.Provider>
