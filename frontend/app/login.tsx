@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef } from 'react';
 import {
   View,
   Text,
@@ -19,8 +19,8 @@ import { useI18n } from '../src/i18n';
 import { useTheme } from '../src/theme';
 import { useAuth } from '../src/auth';
 import { VacaLogo, HeaderControls } from '../src/components';
-
 import { getErrorMessage } from '../src/utils/errorMessage';
+
 // ── Country data ────────────────────────────────────────
 interface Country {
   flag: string;
@@ -52,11 +52,20 @@ const COUNTRIES: Country[] = [
   { flag: '🇪🇸', name: 'España', dial: '+34' },
 ];
 
+// ── Weak PIN blacklist ───────────────────────────────────
+const WEAK_PINS = new Set([
+  '123456', '654321', '000000', '111111', '222222', '333333',
+  '444444', '555555', '666666', '777777', '888888', '999999',
+  '112233', '121212', '123123', '010101',
+]);
+
+const isWeakPin = (pin: string) => WEAK_PINS.has(pin);
+
 // ── Phone Step ──────────────────────────────────────────
 function PhoneStep() {
   const { translate } = useI18n();
   const { colors } = useTheme();
-  const { sendOTP } = useAuth();
+  const { checkPhone } = useAuth();
   const styles = createStyles(colors);
 
   const [phone, setPhone] = useState('');
@@ -72,7 +81,7 @@ function PhoneStep() {
       )
     : COUNTRIES;
 
-  const handleSendOTP = async () => {
+  const handleContinue = async () => {
     const cleanPhone = phone.replace(/\s/g, '').replace(/^0+/, '').trim();
     if (!cleanPhone || cleanPhone.length < 7) {
       Alert.alert(translate('common.error'), translate('auth.invalidPhone'));
@@ -83,9 +92,9 @@ function PhoneStep() {
 
     setLoading(true);
     try {
-      await sendOTP(fullPhone);
+      await checkPhone(fullPhone);
     } catch (err: unknown) {
-      Alert.alert(translate('common.error'), getErrorMessage(err, translate('auth.errorSendingOTP')));
+      Alert.alert(translate('common.error'), getErrorMessage(err, translate('auth.invalidPhone')));
     } finally {
       setLoading(false);
     }
@@ -122,7 +131,7 @@ function PhoneStep() {
 
       <TouchableOpacity
         style={[styles.button, loading && styles.buttonDisabled]}
-        onPress={handleSendOTP}
+        onPress={handleContinue}
         disabled={loading}
       >
         <LinearGradient
@@ -134,13 +143,12 @@ function PhoneStep() {
           {loading ? (
             <ActivityIndicator color={colors.background} />
           ) : (
-            <Text style={styles.buttonText}>{translate('auth.sendCode')}</Text>
+            <Text style={styles.buttonText}>{translate('auth.continue')}</Text>
           )}
         </LinearGradient>
       </TouchableOpacity>
 
       <Text style={styles.hint}>{translate('auth.hint')}</Text>
-      <Text style={styles.hintDev}>{translate('auth.hintDev')}</Text>
 
       {/* Country picker modal */}
       <Modal visible={showPicker} animationType="slide" transparent>
@@ -190,158 +198,69 @@ function PhoneStep() {
   );
 }
 
-// ── OTP Step ────────────────────────────────────────────
-function OTPStep() {
+// ── PIN Step ────────────────────────────────────────────
+function PINStep() {
   const { translate } = useI18n();
   const { colors } = useTheme();
-  const { verifyOTP, resendOTP, pendingPhone, devCode, resetAuth } = useAuth();
+  const { loginWithPin, pendingPhone, resetAuth } = useAuth();
   const styles = createStyles(colors);
 
-  const MAX_ATTEMPTS = 3;
-  const BLOCK_SECONDS = 60;
-  const RESEND_COOLDOWN = 60;
-
-  const [code, setCode] = useState(['', '', '', '', '', '']);
+  const [pin, setPin] = useState(['', '', '', '', '', '']);
   const [loading, setLoading] = useState(false);
-  const [attempts, setAttempts] = useState(0);
   const [errorMsg, setErrorMsg] = useState('');
-  const [blockedSecsLeft, setBlockedSecsLeft] = useState(0);
-  const [resendCooldown, setResendCooldown] = useState(RESEND_COOLDOWN);
-  const [resending, setResending] = useState(false);
-
   const inputRefs = useRef<(TextInput | null)[]>([]);
-  const countdownRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const resendTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  useEffect(() => {
-    resendTimerRef.current = setInterval(() => {
-      setResendCooldown(prev => {
-        if (prev <= 1) {
-          clearInterval(resendTimerRef.current!);
-          resendTimerRef.current = null;
-          return 0;
-        }
-        return prev - 1;
-      });
-    }, 1000);
-    return () => {
-      if (countdownRef.current) clearInterval(countdownRef.current);
-      if (resendTimerRef.current) clearInterval(resendTimerRef.current);
-    };
-  }, []);
-
-  const startBlockCountdown = () => {
-    setBlockedSecsLeft(BLOCK_SECONDS);
-    countdownRef.current = setInterval(() => {
-      setBlockedSecsLeft(prev => {
-        if (prev <= 1) {
-          clearInterval(countdownRef.current!);
-          countdownRef.current = null;
-          resetAuth();
-          return 0;
-        }
-        return prev - 1;
-      });
-    }, 1000);
-  };
-
-  const handleResend = async () => {
-    if (resendCooldown > 0 || resending) return;
-    setResending(true);
-    try {
-      await resendOTP();
-      setResendCooldown(RESEND_COOLDOWN);
-      resendTimerRef.current = setInterval(() => {
-        setResendCooldown(prev => {
-          if (prev <= 1) {
-            clearInterval(resendTimerRef.current!);
-            resendTimerRef.current = null;
-            return 0;
-          }
-          return prev - 1;
-        });
-      }, 1000);
-      setCode(['', '', '', '', '', '']);
-      setErrorMsg('');
-      setAttempts(0);
-      inputRefs.current[0]?.focus();
-    } catch (err: unknown) {
-      Alert.alert(translate('common.error'), getErrorMessage(err, translate('auth.errorSendingOTP')));
-    } finally {
-      setResending(false);
-    }
-  };
-
-  const handleCodeChange = (text: string, index: number) => {
-    if (blockedSecsLeft > 0) return;
-    const newCode = [...code];
+  const handlePinChange = (text: string, index: number) => {
+    const newPin = [...pin];
     if (text.length > 1) {
       const digits = text.replace(/\D/g, '').split('').slice(0, 6);
-      digits.forEach((d, i) => { if (i < 6) newCode[i] = d; });
-      setCode(newCode);
+      digits.forEach((d, i) => { if (i < 6) newPin[i] = d; });
+      setPin(newPin);
       const nextEmpty = digits.length < 6 ? digits.length : 5;
       inputRefs.current[nextEmpty]?.focus();
-      if (digits.length === 6) handleVerify(newCode.join(''));
+      if (digits.length === 6) handleLogin(newPin.join(''));
       return;
     }
-    newCode[index] = text;
-    setCode(newCode);
+    newPin[index] = text;
+    setPin(newPin);
     if (text && index < 5) inputRefs.current[index + 1]?.focus();
-    if (text && index === 5) handleVerify(newCode.join(''));
+    if (text && index === 5) handleLogin(newPin.join(''));
   };
 
-  const handleKeyPress = (e: any, index: number) => {
-    if (e.nativeEvent.key === 'Backspace' && !code[index] && index > 0) {
+  const handleKeyPress = (e: { nativeEvent: { key: string } }, index: number) => {
+    if (e.nativeEvent.key === 'Backspace' && !pin[index] && index > 0) {
       inputRefs.current[index - 1]?.focus();
     }
   };
 
-  const handleVerify = async (fullCode?: string) => {
-    const verifyCode = fullCode || code.join('');
-    if (verifyCode.length !== 6) {
-      setErrorMsg(translate('auth.invalidOTP'));
+  const handleLogin = async (fullPin?: string) => {
+    const entered = fullPin || pin.join('');
+    if (entered.length !== 6) {
+      setErrorMsg(translate('auth.invalidPin'));
       return;
     }
-
     setLoading(true);
     setErrorMsg('');
     try {
-      await verifyOTP(verifyCode);
+      await loginWithPin(entered);
     } catch {
-      const newAttempts = attempts + 1;
-      setAttempts(newAttempts);
-      setCode(['', '', '', '', '', '']);
+      setPin(['', '', '', '', '', '']);
       inputRefs.current[0]?.focus();
-
-      if (newAttempts >= MAX_ATTEMPTS) {
-        setErrorMsg(translate('auth.tooManyAttempts') + ' ' + translate('auth.blockedFor', { s: String(BLOCK_SECONDS) }));
-        startBlockCountdown();
-      } else {
-        const left = MAX_ATTEMPTS - newAttempts;
-        setErrorMsg(translate('auth.wrongCode') + '\n' + translate('auth.attemptsLeft', { n: String(left) }));
-      }
+      setErrorMsg(translate('auth.wrongPin'));
     } finally {
       setLoading(false);
     }
   };
 
-  const isBlocked = blockedSecsLeft > 0;
-
   return (
     <>
-      <Text style={styles.title}>{translate('auth.verifyTitle')}</Text>
+      <Text style={styles.title}>{translate('auth.pinTitle')}</Text>
       <Text style={styles.subtitle}>
-        {translate('auth.verifySubtitle', { phone: pendingPhone || '' })}
+        {translate('auth.pinSubtitle', { phone: pendingPhone || '' })}
       </Text>
 
-      {devCode && (
-        <View style={styles.devBanner}>
-          <Text style={styles.devBannerText}>🔧 Dev code: <Text style={{ color: colors.accent, fontWeight: fontWeight.bold }}>{devCode}</Text></Text>
-        </View>
-      )}
-
       <View style={styles.otpContainer}>
-        {code.map((digit, index) => (
+        {pin.map((digit, index) => (
           <TextInput
             key={index}
             ref={(ref) => { inputRefs.current[index] = ref; }}
@@ -349,33 +268,29 @@ function OTPStep() {
               styles.otpInput,
               digit ? styles.otpInputFilled : null,
               errorMsg ? styles.otpInputError : null,
-              isBlocked ? styles.otpInputBlocked : null,
             ]}
             keyboardType="number-pad"
             maxLength={index === 0 ? 6 : 1}
             value={digit}
-            onChangeText={(text) => handleCodeChange(text, index)}
+            onChangeText={(text) => handlePinChange(text, index)}
             onKeyPress={(e) => handleKeyPress(e, index)}
             autoFocus={index === 0}
-            editable={!isBlocked && !loading}
+            editable={!loading}
+            secureTextEntry
           />
         ))}
       </View>
 
       {errorMsg ? (
-        <View style={[styles.errorBanner, isBlocked && { borderColor: colors.warning }]}>
-          <Text style={[styles.errorText, isBlocked && { color: colors.warning }]}>
-            {isBlocked
-              ? translate('auth.tooManyAttempts') + '\n' + translate('auth.blockedFor', { s: String(blockedSecsLeft) })
-              : errorMsg}
-          </Text>
+        <View style={styles.errorBanner}>
+          <Text style={styles.errorText}>{errorMsg}</Text>
         </View>
       ) : null}
 
       <TouchableOpacity
-        style={[styles.button, (loading || isBlocked) && styles.buttonDisabled]}
-        onPress={() => handleVerify()}
-        disabled={loading || isBlocked}
+        style={[styles.button, loading && styles.buttonDisabled]}
+        onPress={() => handleLogin()}
+        disabled={loading}
       >
         <LinearGradient
           colors={[colors.primary, colors.primaryDark]}
@@ -383,32 +298,14 @@ function OTPStep() {
           end={{ x: 1, y: 0 }}
           style={styles.buttonGradient}
         >
-          {loading ? (
-            <ActivityIndicator color={colors.background} />
-          ) : (
-            <Text style={styles.buttonText}>{translate('auth.verifyButton')}</Text>
-          )}
+          {loading
+            ? <ActivityIndicator color={colors.background} />
+            : <Text style={styles.buttonText}>{translate('auth.pinButton')}</Text>}
         </LinearGradient>
       </TouchableOpacity>
 
-      <View style={styles.resendRow}>
-        {resendCooldown > 0 ? (
-          <Text style={styles.resendCooldown}>
-            {translate('auth.resendIn', { s: String(resendCooldown) })}
-          </Text>
-        ) : (
-          <TouchableOpacity onPress={handleResend} disabled={resending}>
-            {resending ? (
-              <ActivityIndicator size="small" color={colors.primary} />
-            ) : (
-              <Text style={styles.resendLink}>{translate('auth.resendCode')}</Text>
-            )}
-          </TouchableOpacity>
-        )}
-      </View>
-
-      <TouchableOpacity onPress={resetAuth} style={styles.linkButton} disabled={isBlocked}>
-        <Text style={[styles.linkText, isBlocked && { color: colors.textMuted }]}>{translate('auth.changePhone')}</Text>
+      <TouchableOpacity onPress={resetAuth} style={styles.linkButton}>
+        <Text style={styles.linkText}>{translate('auth.changePhone')}</Text>
       </TouchableOpacity>
     </>
   );
@@ -424,6 +321,8 @@ function RegisterStep() {
   const [name, setName] = useState('');
   const [username, setUsername] = useState('');
   const [documentId, setDocumentId] = useState('');
+  const [pin, setPin] = useState('');
+  const [confirmPin, setConfirmPin] = useState('');
   const [loading, setLoading] = useState(false);
 
   const handleRegister = async () => {
@@ -436,10 +335,22 @@ function RegisterStep() {
       Alert.alert(translate('common.error'), translate('auth.invalidUsername'));
       return;
     }
+    if (pin.length !== 6 || !/^\d{6}$/.test(pin)) {
+      Alert.alert(translate('common.error'), translate('auth.invalidPin'));
+      return;
+    }
+    if (isWeakPin(pin)) {
+      Alert.alert(translate('common.error'), translate('auth.weakPin'));
+      return;
+    }
+    if (pin !== confirmPin) {
+      Alert.alert(translate('common.error'), translate('auth.pinMismatch'));
+      return;
+    }
 
     setLoading(true);
     try {
-      await register(name.trim(), cleanUsername, documentId.trim());
+      await register(name.trim(), cleanUsername, documentId.trim(), pin);
     } catch (err: unknown) {
       Alert.alert(translate('common.error'), getErrorMessage(err, translate('auth.errorRegistering')));
     } finally {
@@ -494,6 +405,36 @@ function RegisterStep() {
         onChangeText={setDocumentId}
       />
 
+      <View style={styles.labelRow}>
+        <Text style={styles.fieldLabel}>{translate('auth.pinSetLabel')}</Text>
+        <Text style={styles.required}>*</Text>
+      </View>
+      <TextInput
+        style={styles.input}
+        placeholder="••••••"
+        placeholderTextColor={colors.textMuted}
+        keyboardType="number-pad"
+        maxLength={6}
+        secureTextEntry
+        value={pin}
+        onChangeText={setPin}
+      />
+
+      <View style={styles.labelRow}>
+        <Text style={styles.fieldLabel}>{translate('auth.pinConfirmLabel')}</Text>
+        <Text style={styles.required}>*</Text>
+      </View>
+      <TextInput
+        style={styles.input}
+        placeholder="••••••"
+        placeholderTextColor={colors.textMuted}
+        keyboardType="number-pad"
+        maxLength={6}
+        secureTextEntry
+        value={confirmPin}
+        onChangeText={setConfirmPin}
+      />
+
       <TouchableOpacity
         style={[styles.button, loading && styles.buttonDisabled]}
         onPress={handleRegister}
@@ -526,7 +467,6 @@ export default function LoginScreen() {
   const { authStep } = useAuth();
   const styles = createStyles(colors);
 
-  // Warm espresso gradient — like the inside of a café at night
   const gradientColors: [string, string, string] = isDark
     ? ['#0c0a06', '#131008', '#1a1510']
     : ['#fdf8f0', '#f5ede0', '#eee0cb'];
@@ -547,11 +487,10 @@ export default function LoginScreen() {
 
           <VacaLogo size="lg" style={{ marginTop: spacing.xxl }} />
 
-          {/* Form card — warm surface with golden border */}
           <View style={[styles.card, { backgroundColor: colors.surface2, borderColor: colors.surfaceBorder }]}>
             <View style={styles.cardInner}>
               {authStep === 'phone' && <PhoneStep />}
-              {authStep === 'otp' && <OTPStep />}
+              {authStep === 'pin' && <PINStep />}
               {authStep === 'register' && <RegisterStep />}
             </View>
           </View>
@@ -648,13 +587,6 @@ const createStyles = (colors: ThemeColors) =>
       textAlign: 'center',
       marginTop: spacing.lg,
       lineHeight: 18,
-    },
-    hintDev: {
-      fontSize: fontSize.xs,
-      color: colors.accent,
-      textAlign: 'center',
-      marginTop: spacing.xs,
-      fontStyle: 'italic',
     },
     phoneRow: {
       flexDirection: 'row',
@@ -755,7 +687,7 @@ const createStyles = (colors: ThemeColors) =>
       color: colors.textSecondary,
       fontWeight: fontWeight.semibold,
     },
-    // OTP styles
+    // PIN / OTP styles
     otpContainer: {
       flexDirection: 'row',
       justifyContent: 'center',
@@ -782,10 +714,6 @@ const createStyles = (colors: ThemeColors) =>
       borderColor: colors.danger,
       backgroundColor: colors.danger + '0d',
     },
-    otpInputBlocked: {
-      borderColor: colors.warning,
-      opacity: 0.55,
-    },
     errorBanner: {
       backgroundColor: colors.danger + '18',
       borderRadius: borderRadius.md,
@@ -802,37 +730,6 @@ const createStyles = (colors: ThemeColors) =>
       fontSize: fontSize.sm,
       fontWeight: fontWeight.semibold,
       textAlign: 'center',
-    },
-    devBanner: {
-      paddingVertical: spacing.sm,
-      paddingHorizontal: spacing.md,
-      borderRadius: borderRadius.md,
-      marginBottom: spacing.lg,
-      width: '100%',
-      alignItems: 'center',
-      backgroundColor: colors.accent + '14',
-      borderWidth: 1,
-      borderColor: colors.accent + '30',
-    },
-    devBannerText: {
-      fontSize: fontSize.sm,
-      color: colors.textSecondary,
-    },
-    resendRow: {
-      marginTop: spacing.sm,
-      alignItems: 'center',
-      minHeight: 28,
-    },
-    resendCooldown: {
-      fontSize: fontSize.xs,
-      textAlign: 'center',
-      color: colors.textMuted,
-    },
-    resendLink: {
-      fontSize: fontSize.sm,
-      fontWeight: fontWeight.semibold,
-      color: colors.primary,
-      textDecorationLine: 'underline',
     },
     linkButton: {
       marginTop: spacing.md,
