@@ -12,7 +12,9 @@
     "clean": "pnpm -r clean",
     "build:web": "pnpm --filter @lavaca/mobile exec expo export --platform web",
     "build:vercel": "pnpm install && pnpm build:web",
-    "vercel-build": "pnpm build:vercel"
+    "vercel-build": "pnpm build:vercel",
+    "db:seed": "supabase db reset --debug",
+    "db:seed:only": "supabase db seed"
   },
   "pnpm": {
     "onlyBuiltDependencies": []

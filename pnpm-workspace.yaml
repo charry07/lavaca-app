@@ -1,6 +1,5 @@
 packages:
   - apps/mobile
-  - apps/vercel-functions
   - packages/*
 
 ignoredBuiltDependencies:

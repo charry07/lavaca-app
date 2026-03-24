@@ -14,7 +14,6 @@ import { spacing, borderRadius, fontSize, fontWeight, type ThemeColors } from '.
 import { useI18n } from '../../src/i18n';
 import { useTheme } from '../../src/theme';
 import { useAuth } from '../../src/auth';
-
 import { getErrorMessage } from '../../src/utils/errorMessage';
 export default function ProfileTab() {
   const { translate } = useI18n();
@@ -169,7 +168,6 @@ export default function ProfileTab() {
             : <Text style={styles.cameraText}>📷</Text>}
         </View>
       </TouchableOpacity>
-
       {/* User info card */}
       <GlassCard style={styles.card}>
         {renderField(translate('profile.name'), 'displayName', user.displayName)}
@@ -185,15 +183,6 @@ export default function ProfileTab() {
           </View>
         </View>
       </GlassCard>
-
-      {/* Premium banner */}
-      <View style={styles.premiumBanner}>
-        <Text style={styles.premiumBannerText}>✨ {translate('premium.title')}</Text>
-        <Text style={styles.premiumBannerSub}>{translate('premium.subtitle')}</Text>
-        <TouchableOpacity style={styles.premiumCta} activeOpacity={0.8}>
-          <Text style={styles.premiumCtaText}>{translate('premium.cta')}</Text>
-        </TouchableOpacity>
-      </View>
 
       {/* Logout */}
       <TouchableOpacity
@@ -325,36 +314,6 @@ const createStyles = (colors: ThemeColors) =>
       borderColor: colors.surfaceBorder,
     },
     cancelBtnText: { color: colors.textMuted, fontSize: fontSize.md, fontWeight: fontWeight.bold },
-    premiumBanner: {
-      marginTop: spacing.xl,
-      padding: spacing.lg,
-      borderRadius: borderRadius.lg,
-      borderWidth: 1,
-      borderColor: colors.accent + '50',
-      backgroundColor: colors.accent + '10',
-      gap: spacing.sm,
-    },
-    premiumBannerText: {
-      fontSize: fontSize.md,
-      fontWeight: fontWeight.bold,
-      color: colors.accent,
-    },
-    premiumBannerSub: {
-      fontSize: fontSize.sm,
-      color: colors.textSecondary,
-    },
-    premiumCta: {
-      alignSelf: 'flex-start',
-      backgroundColor: colors.accent,
-      paddingVertical: spacing.xs + 2,
-      paddingHorizontal: spacing.md,
-      borderRadius: borderRadius.md,
-    },
-    premiumCtaText: {
-      fontSize: fontSize.sm,
-      fontWeight: fontWeight.bold,
-      color: colors.background,
-    },
     logoutButton: {
       marginTop: spacing.md,
       paddingVertical: spacing.md,

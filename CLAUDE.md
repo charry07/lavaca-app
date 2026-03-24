@@ -60,18 +60,18 @@ lavaca-app/               ← pnpm monorepo root
 |---|---|---|
 | `auth/AuthContext.tsx` | `useAuth()` | `user`, OTP flow, `logout`, `deleteAccount`, `updateProfile` |
 | `theme/ThemeContext.tsx` | `useTheme()` | `colors`, `isDark`, `toggleTheme` |
-| `i18n/I18nContext.tsx` | `useI18n()` | `t()`, `locale`, `setLocale` |
+| `i18n/I18nContext.tsx` | `useI18n()` | `translate()`, `locale`, `setLocale` |
 | `components/Toast.tsx` | `useToast()` | `showToast()`, `showError()`, `showSuccess()` |
 
 **Styling rules — always follow these:**
 - All colors from `useTheme().colors` — never hardcode hex values.
 - Design tokens: `spacing`, `borderRadius`, `fontSize`, `fontWeight` from [apps/mobile/src/constants/theme.ts](apps/mobile/src/constants/theme.ts).
-- Pattern: `const s = createStyles(colors)` + `StyleSheet.create()` at the bottom of every screen.
+- Pattern: `const styles = createStyles(colors)` + `StyleSheet.create()` at the bottom of every screen.
 - **Signature element**: all session/history/participant cards use `borderLeftWidth: 3, borderLeftColor: <statusColor>` — colored by status.
 
 **i18n:**
 - Translation keys in [apps/mobile/src/i18n/translations.ts](apps/mobile/src/i18n/translations.ts) — `es`, `en`, `pt`.
-- Use `t('key')` for all user-facing strings. Supports `{{variable}}` interpolation.
+- Use `translate('key')` (destructured from `useI18n()`) for all user-facing strings. Supports `{{variable}}` interpolation.
 - When adding a new key, add it to all three locales.
 
 **API client:**
@@ -82,6 +82,7 @@ lavaca-app/               ← pnpm monorepo root
 
 - [packages/shared/src/types.ts](packages/shared/src/types.ts) — `User`, `PaymentSession`, `Participant`, `Group`, `FeedEvent`, `Debt`.
 - [packages/shared/src/utils.ts](packages/shared/src/utils.ts) — `formatCOP` and helpers.
+- [packages/shared/src/ai.ts](packages/shared/src/ai.ts) — `AISplitRequest/Response`, `AIReminderRequest/Response` types.
 - Import as `@lavaca/shared` in both workspaces.
 
 ## Key Domain Concepts
@@ -126,6 +127,15 @@ Palette: warm espresso & dorado — inspired by a Colombian café interior at ni
 - `useSocket()` — singleton Supabase Realtime transport
 - `useSessionSocket(joinCode, onUpdate)` — subscribes to `postgres_changes` for sessions/participants
 
+## AI Copilot (Phase 0)
+
+- `apps/mobile/src/services/ai.ts` — `aiService.suggestSplit()` and `aiService.generateReminder()`; all calls guarded by `AI_ENABLED = EXPO_PUBLIC_AI_ENABLED === 'true'`; returns `null` on any error (graceful fallback).
+- `supabase/functions/ai-copilot/index.ts` — Deno Edge Function that calls GitHub Models API (`gpt-4o-mini`). Actions: `split` and `reminder`.
+- Types in `packages/shared/src/ai.ts`.
+- In `create.tsx`: AI suggest button appears when `AI_ENABLED`. Calls `suggestSplit` and auto-selects the mode.
+- In `session/[joinCode].tsx`: Admin reminder button when session is open with pending participants. Calls `generateReminder` and opens native share sheet.
+- Deploy: `supabase functions deploy ai-copilot` + set `GITHUB_MODELS_TOKEN` in Supabase secrets.
+
 ## Utilities
 
 - `src/utils/cameraPermission.ts` — `requestCameraPermission()` for `expo-camera`
@@ -151,8 +161,7 @@ Palette: warm espresso & dorado — inspired by a Colombian café interior at ni
 | [`docs/plans/2026-03-05-phase-1-frontend-redesign.md`](docs/plans/2026-03-05-phase-1-frontend-redesign.md) | Frontend redesign — new components, animations, web layout |
 | [`docs/plans/2026-03-05-phase-2-supabase-migration.md`](docs/plans/2026-03-05-phase-2-supabase-migration.md) | Supabase migration — replaces Express + SQLite + Socket.IO |
 | [`docs/plans/2026-03-05-phase-3-vercel-deployment.md`](docs/plans/2026-03-05-phase-3-vercel-deployment.md) | Vercel deployment — CI/CD, serverless functions, Azure path |
-| [`docs/plans/2026-03-05-phase-4-stripe-integration.md`](docs/plans/2026-03-05-phase-4-stripe-integration.md) | Stripe payments — checkout, webhooks, feature flags |
-| [`docs/plans/2026-03-05-human-ops-checklist.md`](docs/plans/2026-03-05-human-ops-checklist.md) | Manual tasks the human must do (Supabase, Vercel, Stripe setup) |
+| [`docs/plans/2026-03-05-human-ops-checklist.md`](docs/plans/2026-03-05-human-ops-checklist.md) | Manual tasks the human must do (Supabase, Vercel setup) |
 
 ### Rules every AI agent must follow
 
@@ -162,8 +171,9 @@ Palette: warm espresso & dorado — inspired by a Colombian café interior at ni
 4. **Delete what you replace** — no dead code, no unused deps, no legacy files. The cleanup checklist in the roadmap is mandatory.
 5. **Log changes** — append a `## Changelog` section to the phase file noting what you did.
 
-### Current status (as of 2026-03-05)
-- Phase 1: ⬜ pending
-- Phase 2: 🟨 in-progress (schema + workspace scaffold done)
-- Phase 3: ⬜ pending (depends on Phase 2)
-- Phase 4: ⬜ pending (depends on Phase 2+3)
+### Current status (as of 2026-03-24)
+- Phase 0: 🟨 in-progress (AI service + Edge Function + UI integration done; pending deploy)
+- Phase 1: 🟩 done
+- Phase 2: 🟩 done
+- Phase 3: 🟨 in-progress (pending human CI/CD setup)
+- Phase 4: ❌ cancelled (Stripe removed)

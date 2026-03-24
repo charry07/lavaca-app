@@ -162,10 +162,13 @@ const es = {
   'nav.history': 'Historial',
   'nav.profile': 'Perfil',
 
-  // Premium
-  'premium.title': 'La Vaca Pro',
-  'premium.subtitle': 'Desbloquea todo el potencial',
-  'premium.cta': 'Ver planes',
+  // AI Copilot
+  'ai.suggest': '✨ Sugerir modo con IA',
+  'ai.suggesting': 'Analizando...',
+  'ai.suggestionApplied': 'Modo sugerido: {{mode}}',
+  'ai.error': 'No se pudo obtener sugerencia de IA',
+  'ai.reminder': '🤖 Generar recordatorio',
+  'ai.reminderGenerating': 'Generando...',
 
   // Tabs
   'tabs.home': 'Inicio',
@@ -431,10 +434,13 @@ const en: TranslationKeys = {
   'nav.history': 'History',
   'nav.profile': 'Profile',
 
-  // Premium
-  'premium.title': 'La Vaca Pro',
-  'premium.subtitle': 'Unlock the full potential',
-  'premium.cta': 'View plans',
+  // AI Copilot
+  'ai.suggest': '✨ Suggest mode with AI',
+  'ai.suggesting': 'Analyzing...',
+  'ai.suggestionApplied': 'Suggested mode: {{mode}}',
+  'ai.error': 'Could not get AI suggestion',
+  'ai.reminder': '🤖 Generate reminder',
+  'ai.reminderGenerating': 'Generating...',
 
   // Tabs
   'tabs.home': 'Home',
@@ -700,10 +706,13 @@ const pt: TranslationKeys = {
   'nav.history': 'Histórico',
   'nav.profile': 'Perfil',
 
-  // Premium
-  'premium.title': 'La Vaca Pro',
-  'premium.subtitle': 'Desbloqueie todo o potencial',
-  'premium.cta': 'Ver planos',
+  // AI Copilot
+  'ai.suggest': '✨ Sugerir modo com IA',
+  'ai.suggesting': 'Analisando...',
+  'ai.suggestionApplied': 'Modo sugerido: {{mode}}',
+  'ai.error': 'Nao foi possivel obter sugestao de IA',
+  'ai.reminder': '🤖 Gerar lembrete',
+  'ai.reminderGenerating': 'Gerando...',
 
   // Tabs
   'tabs.home': 'Início',

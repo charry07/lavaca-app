@@ -29,6 +29,7 @@
 | 📲 **QR + Código de unión** | Comparte la sesión al instante sin fricciones |
 | 📷 **Escáner QR** | Escanea el QR con la cámara para unirte instantáneamente |
 | ⚡ **Tiempo real** | Actualizaciones en vivo vía Supabase Realtime (`postgres_changes`) — sin polling |
+| 🤖 **IA Copilot** | Sugerencia automática del modo de división y generación de recordatorios de pago (GitHub Models `gpt-4o-mini`) |
 | 👥 **Participantes frecuentes** | Los 7 más recientes aparecen al instante al crear una mesa; rellena con sugeridos si no hay suficientes |
 | 👥 **Grupos** | Crea grupos de amigos para sesiones recurrentes |
 | 📰 **Feed de actividad** | Eventos sociales: pagadores rápidos, ganadores de ruleta, etc. |
@@ -111,7 +112,7 @@ lavaca-app/
 │   │       ├── constants/      # theme.ts — tokens de diseño
 │   │       ├── hooks/          # useSocket, useSessionSocket (Supabase Realtime)
 │   │       ├── i18n/           # Traducciones ES/EN/PT
-│   │       ├── services/       # Cliente HTTP (api.ts)
+│   │       ├── services/       # api.ts (Supabase), ai.ts (GitHub Models)
 │   │       └── theme/          # ThemeContext claro/oscuro
 └── packages/
   ├── supabase/               # 📦 Cliente Supabase compartido
@@ -144,65 +145,47 @@ cd lavaca-app
 pnpm install
 ```
 
+### Variables de entorno
+
+Copia el ejemplo y rellena tus credenciales:
+
+```bash
+cp .env.example apps/mobile/.env.local
+```
+
+```bash
+# Requeridas
+EXPO_PUBLIC_SUPABASE_URL=https://TU_PROYECTO.supabase.co
+EXPO_PUBLIC_SUPABASE_ANON_KEY=TU_ANON_KEY
+
+# IA Copilot (opcional — false por defecto)
+EXPO_PUBLIC_AI_ENABLED=false
+```
+
 ### Desarrollo
 
 ```bash
-# Terminal 1 — App móvil (Expo)
+# App móvil completa (Expo, escáner QR, native)
 pnpm dev:mobile
 
-# Para web (útil en desarrollo rápido)
+# Web — más rápido para desarrollo/pruebas
 cd apps/mobile && npx expo start --web
 ```
 
 > Escanea el QR con **Expo Go** en tu teléfono o presiona `w` para web, `i` para iOS, `a` para Android.
 
-### Backend actual
-
-La app está migrando a Supabase (Auth, Postgres y Realtime). El backend Express local fue retirado del flujo principal.
-
 ---
 
-## 🛰️ API Endpoints
+## 🛰️ Backend
 
-### Usuarios
+Todo el backend corre en **Supabase** — no hay servidor Express. El cliente mobile habla directamente con:
 
-| Método | Ruta | Descripción |
-|---|---|---|
-| `POST` | `/api/users/send-otp` | Enviar OTP al teléfono |
-| `POST` | `/api/users/resend-otp` | Reenviar OTP (cooldown 60s) |
-| `POST` | `/api/users/verify-otp` | Verificar código OTP |
-| `POST` | `/api/users/register` | Registrar nuevo usuario |
-| `POST` | `/api/users/login` | Login por teléfono |
-| `GET` | `/api/users/search?q=` | Buscar usuarios (mín. 2 chars) |
-| `GET` | `/api/users/random?limit=&exclude=` | Usuarios aleatorios para sugerencias |
-| `GET` | `/api/users/:id` | Perfil de usuario |
-| `PUT` | `/api/users/:id` | Actualizar perfil (avatar hasta 4 MB) |
-| `DELETE` | `/api/users/:id` | Eliminar cuenta |
-| `GET` | `/api/users/:id/history` | Historial de mesas |
-| `GET` | `/api/users/:id/frequent?limit=7` | Personas con quienes más comparte mesas |
+- **Supabase Auth** — OTP por teléfono, sesiones JWT
+- **Supabase Postgres** — todas las tablas vía `@supabase/supabase-js`
+- **Supabase Realtime** — `postgres_changes` para actualizaciones en vivo en sesiones
+- **Supabase Edge Functions** — `ai-copilot` (GitHub Models, Deno)
 
-### Sesiones
-
-| Método | Ruta | Descripción |
-|---|---|---|
-| `POST` | `/api/sessions` | Crear sesión de pago |
-| `GET` | `/api/sessions/:joinCode` | Obtener sesión por código |
-| `POST` | `/api/sessions/:joinCode/join` | Unirse a una sesión |
-| `POST` | `/api/sessions/:joinCode/split` | Calcular división |
-| `POST` | `/api/sessions/:joinCode/pay` | Admin marca pago (directo) |
-| `POST` | `/api/sessions/:joinCode/pay/report` | Participante reporta pago |
-| `POST` | `/api/sessions/:joinCode/pay/approve` | Admin aprueba pago reportado |
-| `PATCH` | `/api/sessions/:joinCode/close` | Cerrar sesión (admin) |
-| `DELETE` | `/api/sessions/:joinCode` | Eliminar sesión (admin) |
-
-### WebSocket events
-
-```
-Cliente → Servidor       Servidor → Cliente
-─────────────────────    ─────────────────────
-join-session (code)      session-update (data)
-leave-session (code)
-```
+La lógica de negocio está en `apps/mobile/src/services/api.ts`.
 
 ---
 
@@ -262,6 +245,7 @@ interface Participant {
 | **UI** | `expo-blur` · `expo-linear-gradient` · diseño espresso & dorado |
 | **Cámara / QR Scan** | `expo-camera` (`CameraView`) |
 | **QR generación** | `react-native-qrcode-svg` |
+| **IA** | GitHub Models (`gpt-4o-mini`) vía Supabase Edge Function |
 
 ---
 

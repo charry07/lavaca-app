@@ -14,7 +14,6 @@ export { ToastProvider, useToast } from './feedback/Toast';
 
 // Layout
 export { HeaderControls } from './layout/HeaderControls';
-export { WebSidebar } from './layout/WebSidebar';
 
 // Brand / domain
 export { QRCode } from './brand/QRCode';

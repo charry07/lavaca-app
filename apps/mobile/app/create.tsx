@@ -16,6 +16,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { SplitMode, User } from '@lavaca/shared';
 import { api } from '../src/services/api';
+import { aiService, AI_ENABLED } from '../src/services/ai';
 import { spacing, borderRadius, fontSize, fontWeight, type ThemeColors } from '../src/constants/theme';
 import { useI18n } from '../src/i18n';
 import { useTheme } from '../src/theme';
@@ -28,7 +29,7 @@ export default function CreateScreen() {
   const { translate } = useI18n();
   const { colors } = useTheme();
   const { user } = useAuth();
-  const { showError } = useToast();
+  const { showError, showSuccess } = useToast();
   const styles = createStyles(colors);
 
   const [amount, setAmount] = useState('');
@@ -44,6 +45,7 @@ export default function CreateScreen() {
   const [selectedParticipants, setSelectedParticipants] = useState<User[]>([]);
   const [loadingFrequent, setLoadingFrequent] = useState(false);
   const [searchingUsers, setSearchingUsers] = useState(false);
+  const [suggestingMode, setSuggestingMode] = useState(false);
 
   const CURRENCIES: { key: 'COP' | 'USD' | 'EUR'; symbol: string }[] = [
     { key: 'COP', symbol: '🇨🇴 COP' },
@@ -56,6 +58,28 @@ export default function CreateScreen() {
     { key: 'percentage', label: translate('create.percentage'), emoji: '📊', desc: 'Por porcentaje' },
     { key: 'roulette', label: translate('create.roulette'), emoji: '🎰', desc: 'A la suerte' },
   ];
+
+  const handleAiSuggest = async () => {
+    const numAmount = Number(amount.replace(/[^0-9]/g, ''));
+    if (!numAmount) { showError(translate('create.invalidAmount')); return; }
+    setSuggestingMode(true);
+    try {
+      const result = await aiService.suggestSplit({
+        action: 'split',
+        totalAmount: numAmount,
+        participantCount: selectedParticipants.length + 1,
+        description: description || undefined,
+        currency,
+      });
+      if (!result) { showError(translate('ai.error')); return; }
+      setSplitMode(result.mode);
+      showSuccess(`${translate('ai.suggestionApplied', { mode: result.mode })} — ${result.reasoning}`);
+    } catch {
+      showError(translate('ai.error'));
+    } finally {
+      setSuggestingMode(false);
+    }
+  };
 
   const handleCreate = async () => {
     const numAmount = Number(amount.replace(/[^0-9]/g, ''));
@@ -238,6 +262,20 @@ export default function CreateScreen() {
             </TouchableOpacity>
           ))}
         </View>
+
+        {/* AI split suggestion */}
+        {AI_ENABLED && (
+          <TouchableOpacity
+            style={[styles.aiSuggestBtn, suggestingMode && { opacity: 0.5 }]}
+            onPress={handleAiSuggest}
+            disabled={suggestingMode}
+            activeOpacity={0.7}
+          >
+            {suggestingMode
+              ? <ActivityIndicator size="small" color={colors.accent} />
+              : <Text style={styles.aiSuggestText}>{translate('ai.suggest')}</Text>}
+          </TouchableOpacity>
+        )}
 
         {/* Add participants */}
         <TouchableOpacity style={styles.addParticipantButton} onPress={openAddParticipantModal}>
@@ -520,6 +558,22 @@ const createStyles = (colors: ThemeColors) =>
     },
     modeLabelActive: {
       color: colors.primary,
+      fontWeight: fontWeight.semibold,
+    },
+    aiSuggestBtn: {
+      alignSelf: 'flex-end',
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: spacing.xs,
+      paddingHorizontal: spacing.sm,
+      paddingVertical: spacing.xs,
+      marginTop: -spacing.sm,
+      marginBottom: spacing.md,
+      minHeight: 28,
+    },
+    aiSuggestText: {
+      fontSize: fontSize.xs,
+      color: colors.accent,
       fontWeight: fontWeight.semibold,
     },
     addParticipantButton: {

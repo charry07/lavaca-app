@@ -2,11 +2,11 @@
 
 > **For Claude:** REQUIRED SUB-SKILL: Use `superpowers:executing-plans` to implement any phase task-by-task.
 
-**Goal:** Transform La Vaca from a local SQLite prototype into a production-ready, deployed app with Supabase backend, professional UI, Vercel hosting, and Stripe payments.
+**Goal:** Transform La Vaca from a local SQLite prototype into a production-ready, deployed app with Supabase backend, professional UI, Vercel hosting, and AI-powered suggestions.
 
 **Architecture:** Supabase replaces the entire Express backend (DB + Auth + Realtime + Storage + Edge Functions). The Expo mobile app and Expo web export share one codebase. Vercel hosts the web export + thin Stripe webhook serverless function. Each phase is independently executable without conflicting with other phases.
 
-**Tech Stack:** Expo SDK 54, React Native, Supabase (PostgreSQL + Auth + Realtime + Storage + Edge Functions), Vercel, Stripe, pnpm monorepo, TypeScript, GitHub Actions.
+**Tech Stack:** Expo SDK 54, React Native, Supabase (PostgreSQL + Auth + Realtime + Storage + Edge Functions), Vercel, GitHub Models (AI), pnpm monorepo, TypeScript, GitHub Actions.
 
 ## Plan Hygiene (Anti-Basura)
 
@@ -69,11 +69,10 @@ Phase 0: Copilot AI Integration ────────────────
 Phase 1: Frontend Redesign  ──────────────────────────────► (no deps, start anytime)
 Phase 2: Supabase Migration ──────────────────────────────► (no deps, start anytime)
 Phase 3: Vercel Deployment  ──── depends on Phase 2 ──────► (after Phase 2)
-Phase 4: Stripe Integration ──── depends on Phase 2+3 ────► (after Phase 2+3)
 Phase 5: Refactoring        ──── depends on Phase 1+2 ────► (after Phase 1+2)
 ```
 
-**Phase 0 is the AI foundation and is recommended first.** Phase 1 and Phase 2 can run in parallel. Phase 3 needs Phase 2 complete. Phase 4 needs Phase 2+3. Phase 5 refactors mobile code — runs after Phase 1+2 so there's a stable base to clean up.
+**Phase 0 is the AI foundation and is recommended first.** Phase 1 and Phase 2 can run in parallel. Phase 3 needs Phase 2 complete. Phase 5 refactors mobile code — runs after Phase 1+2 so there's a stable base to clean up.
 
 ---
 
@@ -81,12 +80,11 @@ Phase 5: Refactoring        ──── depends on Phase 1+2 ────► (a
 
 | Phase | File | Owner | Depends On | Status |
 |-------|------|-------|------------|--------|
-| 0 — Copilot AI Integration | [phase-0-copilot-ai-integration.md](./2026-03-06-phase-0-copilot-ai-integration.md) | AI Agent E | none | ⬜ pending |
+| 0 — Copilot AI Integration | [phase-0-copilot-ai-integration.md](./2026-03-06-phase-0-copilot-ai-integration.md) | AI Agent E | none | 🟨 in-progress |
 | 1 — Frontend Redesign | [phase-1-frontend-redesign.md](./2026-03-05-phase-1-frontend-redesign.md) | AI Agent A | none | 🟩 done |
 | 2 — Supabase Migration | [phase-2-supabase-migration.md](./2026-03-05-phase-2-supabase-migration.md) | AI Agent B | none | 🟩 done |
 | 3 — Vercel Deployment | [phase-3-vercel-deployment.md](./2026-03-05-phase-3-vercel-deployment.md) | AI Agent C | Phase 2 | 🟨 in-progress |
-| 4 — Stripe Integration | [phase-4-stripe-integration.md](./2026-03-05-phase-4-stripe-integration.md) | AI Agent D | Phase 2+3 | ⬜ pending |
-| 5 — Refactoring & Quality | [phase-5-refactoring.md](./2026-03-06-phase-5-refactoring.md) | AI Agent F | Phase 1+2 | ⬜ pending |
+| 5 — Refactoring & Quality | [phase-5-refactoring.md](./2026-03-06-phase-5-refactoring.md) | AI Agent F | Phase 1+2 | 🟩 done |
 
 Human-only operations checklist: [2026-03-05-human-ops-checklist.md](./2026-03-05-human-ops-checklist.md)
 
@@ -134,18 +132,6 @@ These rules prevent agents from stepping on each other:
 - `supabase/**` — Supabase config
 - `packages/**`
 
-### Phase 4 (Stripe) — ONLY touches:
-- `supabase/migrations/**` — new stripe tables only
-- `supabase/functions/stripe-*/**` — new edge functions
-- `apps/mobile/app/(tabs)/premium.tsx` — new screen
-- `apps/mobile/src/services/stripe.ts` — new service
-- `apps/vercel-functions/api/stripe-webhook.ts` — webhook handler
-
-### Phase 4 — NEVER touches:
-- Existing screens (except adding premium badge to profile)
-- Existing Supabase functions
-- `vercel.json`
-
 ---
 
 ## Environment Variables Required
@@ -156,11 +142,12 @@ Every agent must know these exist. Set them in Vercel dashboard and local `.env`
 # Supabase (Phase 2)
 EXPO_PUBLIC_SUPABASE_URL=https://xxxx.supabase.co
 EXPO_PUBLIC_SUPABASE_ANON_KEY=eyJ...
+SUPABASE_SERVICE_ROLE_KEY=eyJ...       # server-side only
 
-# Stripe (Phase 4)
-STRIPE_SECRET_KEY=sk_live_...          # server-side only (Vercel Functions)
-STRIPE_WEBHOOK_SECRET=whsec_...        # server-side only
-EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY=pk_live_...  # client-side safe
+# AI Copilot (Phase 0)
+EXPO_PUBLIC_AI_ENABLED=false           # set to true to enable AI features
+GITHUB_MODELS_TOKEN=...                # set in Supabase Edge Function secrets
+GITHUB_MODELS_MODEL=gpt-4o-mini
 
 # App
 EXPO_PUBLIC_APP_ENV=production
@@ -238,10 +225,6 @@ pnpm --filter @lavaca/<workspace> remove <package-name>
 **Phase 3 cleanup:**
 - Remove any test/debug console.log statements from serverless functions
 - Confirm `.gitignore` excludes `apps/mobile/dist/` and `.vercel/`
-
-**Phase 4 cleanup:**
-- Remove the webhook placeholder comment from `stripe-webhook.ts` (it's now implemented)
-- Confirm no Stripe secret keys are in any committed file
 
 ---
 
