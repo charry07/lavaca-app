@@ -5,6 +5,13 @@ export type PaymentStatus = 'pending' | 'reported' | 'confirmed' | 'failed' | 'r
 export type SessionStatus = 'open' | 'closed' | 'cancelled';
 export type PaymentMethod = 'nequi' | 'daviplata' | 'pse' | 'transfiya' | 'cash' | 'other';
 
+export interface Country {
+  flag: string;
+  name: string;
+  dial: string;
+  code: string; // ISO 3166-1 alpha-2 code
+}
+
 export interface User {
   id: string;
   phone: string;

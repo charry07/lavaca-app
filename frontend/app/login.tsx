@@ -7,37 +7,8 @@ import {useTheme} from "../src/theme";
 import {useAuth} from "../src/auth";
 import {VacaLogo, HeaderControls, useToast} from "../src/components";
 import {getErrorMessage} from "../src/utils/errorMessage";
-
-// ── Country data ────────────────────────────────────────
-interface Country {
-  flag: string;
-  name: string;
-  dial: string;
-}
-
-const COUNTRIES: Country[] = [
-  {flag: "🇨🇴", name: "Colombia", dial: "+57"},
-  {flag: "🇲🇽", name: "México", dial: "+52"},
-  {flag: "🇦🇷", name: "Argentina", dial: "+54"},
-  {flag: "🇨🇱", name: "Chile", dial: "+56"},
-  {flag: "🇵🇪", name: "Perú", dial: "+51"},
-  {flag: "🇪🇨", name: "Ecuador", dial: "+593"},
-  {flag: "🇻🇪", name: "Venezuela", dial: "+58"},
-  {flag: "🇧🇷", name: "Brasil", dial: "+55"},
-  {flag: "🇧🇴", name: "Bolivia", dial: "+591"},
-  {flag: "🇵🇾", name: "Paraguay", dial: "+595"},
-  {flag: "🇺🇾", name: "Uruguay", dial: "+598"},
-  {flag: "🇵🇦", name: "Panamá", dial: "+507"},
-  {flag: "🇨🇷", name: "Costa Rica", dial: "+506"},
-  {flag: "🇬🇹", name: "Guatemala", dial: "+502"},
-  {flag: "🇭🇳", name: "Honduras", dial: "+504"},
-  {flag: "🇸🇻", name: "El Salvador", dial: "+503"},
-  {flag: "🇳🇮", name: "Nicaragua", dial: "+505"},
-  {flag: "🇩🇴", name: "Rep. Dominicana", dial: "+1"},
-  {flag: "🇨🇺", name: "Cuba", dial: "+53"},
-  {flag: "🇺🇸", name: "Estados Unidos", dial: "+1"},
-  {flag: "🇪🇸", name: "España", dial: "+34"},
-];
+import {fetchCountries, getCountriesSync} from "../src/services/countries";
+import type {Country} from "@lavaca/types";
 
 // ── Weak PIN blacklist ───────────────────────────────────
 const WEAK_PINS = new Set(["123456", "654321", "000000", "111111", "222222", "333333", "444444", "555555", "666666", "777777", "888888", "999999", "112233", "121212", "123123", "010101"]);
@@ -54,11 +25,29 @@ function PhoneStep() {
 
   const [phone, setPhone] = useState("");
   const [loading, setLoading] = useState(false);
-  const [country, setCountry] = useState<Country>(COUNTRIES[0]);
+  const [countries, setCountries] = useState<Country[]>(getCountriesSync());
+  const [country, setCountry] = useState<Country>(getCountriesSync()[0]);
   const [showPicker, setShowPicker] = useState(false);
   const [search, setSearch] = useState("");
 
-  const filteredCountries = search.trim() ? COUNTRIES.filter((c) => c.name.toLowerCase().includes(search.toLowerCase()) || c.dial.includes(search)) : COUNTRIES;
+  // Fetch countries on mount
+  useEffect(() => {
+    fetchCountries().then(fetchedCountries => {
+      setCountries(fetchedCountries);
+      // Update selected country to match fetched data if possible
+      setCountry(prevCountry => {
+        const currentCode = prevCountry.code || prevCountry.dial;
+        const updatedCountry = fetchedCountries.find(
+          c => c.code === currentCode || c.dial === prevCountry.dial
+        );
+        return updatedCountry || prevCountry;
+      });
+    });
+  }, []);
+
+  const filteredCountries = search.trim() 
+    ? countries.filter((c) => c.name.toLowerCase().includes(search.toLowerCase()) || c.dial.includes(search)) 
+    : countries;
 
   const handleContinue = async () => {
     const cleanPhone = phone.replace(/\s/g, "").replace(/^0+/, "").trim();
@@ -236,8 +225,8 @@ function PINStep() {
     try {
       await loginWithPin(entered);
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : '';
-      if (msg === 'EMAIL_NOT_CONFIRMED') {
+      const msg = err instanceof Error ? err.message : "";
+      if (msg === "EMAIL_NOT_CONFIRMED") {
         setErrorMsg(translate("auth.emailNotConfirmed"));
         setPin(["", "", "", "", "", ""]);
         inputRefs.current[0]?.focus();
@@ -380,6 +369,71 @@ function ResetStep() {
   );
 }
 
+// ── New PIN Step (password recovery) ────────────────────
+function NewPinStep() {
+  const {translate} = useI18n();
+  const {colors} = useTheme();
+  const {updatePin} = useAuth();
+  const {showError, showSuccess} = useToast();
+  const styles = createStyles(colors);
+
+  const [pin, setPin] = useState("");
+  const [confirmPin, setConfirmPin] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  const handleUpdate = async () => {
+    if (pin.length !== 6 || !/^\d{6}$/.test(pin)) {
+      showError(translate("auth.invalidPin"));
+      return;
+    }
+    if (isWeakPin(pin)) {
+      showError(translate("auth.weakPin"));
+      return;
+    }
+    if (pin !== confirmPin) {
+      showError(translate("auth.pinMismatch"));
+      return;
+    }
+    setLoading(true);
+    try {
+      await updatePin(pin);
+      showSuccess(translate("auth.newPinSuccess"));
+    } catch (err: unknown) {
+      showError(getErrorMessage(err, translate("auth.resetError")));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <>
+      <Text style={styles.title}>{translate("auth.newPinTitle")}</Text>
+      <Text style={styles.subtitle}>{translate("auth.newPinSubtitle")}</Text>
+
+      <Text style={styles.fieldLabel}>{translate("auth.newPinLabel")}</Text>
+      <TextInput style={styles.input} placeholder='••••••' placeholderTextColor={colors.textMuted} keyboardType='numeric' secureTextEntry maxLength={6} value={pin} onChangeText={setPin} autoFocus />
+
+      <Text style={styles.fieldLabel}>{translate("auth.newPinConfirmLabel")}</Text>
+      <TextInput
+        style={styles.input}
+        placeholder='••••••'
+        placeholderTextColor={colors.textMuted}
+        keyboardType='numeric'
+        secureTextEntry
+        maxLength={6}
+        value={confirmPin}
+        onChangeText={setConfirmPin}
+      />
+
+      <TouchableOpacity style={[styles.button, loading && styles.buttonDisabled]} onPress={handleUpdate} disabled={loading}>
+        <LinearGradient colors={[colors.primary, colors.primaryDark]} start={{x: 0, y: 0}} end={{x: 1, y: 0}} style={styles.buttonGradient}>
+          {loading ? <ActivityIndicator color={colors.background} /> : <Text style={styles.buttonText}>{translate("auth.newPinButton")}</Text>}
+        </LinearGradient>
+      </TouchableOpacity>
+    </>
+  );
+}
+
 // ── Register Step ───────────────────────────────────────
 function RegisterStep() {
   const {translate} = useI18n();
@@ -431,8 +485,8 @@ function RegisterStep() {
     try {
       await register(name.trim(), cleanUsername, documentId.trim(), pin, cleanEmail);
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : '';
-      if (msg.toLowerCase().includes('over_email_send_rate_limit') || msg.toLowerCase().includes('email rate limit')) {
+      const msg = err instanceof Error ? err.message : "";
+      if (msg.toLowerCase().includes("over_email_send_rate_limit") || msg.toLowerCase().includes("email rate limit")) {
         showError(translate("auth.emailRateLimit"));
       } else {
         showError(getErrorMessage(err, translate("auth.errorRegistering")));
@@ -553,6 +607,7 @@ export default function LoginScreen() {
               {authStep === "pin" && <PINStep />}
               {authStep === "register" && <RegisterStep />}
               {authStep === "reset" && <ResetStep />}
+              {authStep === "new-pin" && <NewPinStep />}
             </View>
           </View>
         </ScrollView>

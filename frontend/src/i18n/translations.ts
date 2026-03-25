@@ -229,6 +229,12 @@ const es = {
   'auth.backToLogin': 'Volver al inicio',
   'auth.emailNotConfirmed': 'Debes confirmar tu correo antes de iniciar sesión. Revisa tu bandeja de entrada.',
   'auth.emailRateLimit': 'Demasiados intentos de registro. Espera unos minutos e intenta de nuevo.',
+  'auth.newPinTitle': 'Nuevo PIN 🔐',
+  'auth.newPinSubtitle': 'Elige un nuevo PIN de 6 dígitos',
+  'auth.newPinLabel': 'Nuevo PIN',
+  'auth.newPinConfirmLabel': 'Confirmar nuevo PIN',
+  'auth.newPinButton': 'Guardar nuevo PIN',
+  'auth.newPinSuccess': 'PIN actualizado. Ya puedes iniciar sesión.',
 
   // Feed
   'feed.empty': 'No hay actividad aun',
@@ -510,6 +516,12 @@ const en: TranslationKeys = {
   'auth.backToLogin': 'Back to login',
   'auth.emailNotConfirmed': 'You must confirm your email before signing in. Check your inbox.',
   'auth.emailRateLimit': 'Too many registration attempts. Please wait a few minutes and try again.',
+  'auth.newPinTitle': 'New PIN 🔐',
+  'auth.newPinSubtitle': 'Choose a new 6-digit PIN',
+  'auth.newPinLabel': 'New PIN',
+  'auth.newPinConfirmLabel': 'Confirm new PIN',
+  'auth.newPinButton': 'Save new PIN',
+  'auth.newPinSuccess': 'PIN updated. You can now sign in.',
 
   // Feed
   'feed.empty': 'No activity yet',
@@ -791,6 +803,12 @@ const pt: TranslationKeys = {
   'auth.backToLogin': 'Voltar ao login',
   'auth.emailNotConfirmed': 'Você deve confirmar seu e-mail antes de entrar. Verifique sua caixa de entrada.',
   'auth.emailRateLimit': 'Muitas tentativas de registro. Aguarde alguns minutos e tente novamente.',
+  'auth.newPinTitle': 'Novo PIN 🔐',
+  'auth.newPinSubtitle': 'Escolha um novo PIN de 6 dígitos',
+  'auth.newPinLabel': 'Novo PIN',
+  'auth.newPinConfirmLabel': 'Confirmar novo PIN',
+  'auth.newPinButton': 'Salvar novo PIN',
+  'auth.newPinSuccess': 'PIN atualizado. Você já pode entrar.',
 
   // Feed
   'feed.empty': 'Nenhuma atividade ainda',

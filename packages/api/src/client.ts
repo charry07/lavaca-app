@@ -8,7 +8,7 @@ export function createSupabaseClient(url: string, anonKey: string) {
     auth: {
       persistSession: true,
       autoRefreshToken: true,
-      detectSessionInUrl: false,
+      detectSessionInUrl: true,
     },
   });
 }

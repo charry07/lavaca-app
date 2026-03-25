@@ -16,6 +16,10 @@ const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL;
 const SUPABASE_ANON_KEY = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
 const DEV_MOCK = process.env.EXPO_PUBLIC_DEV_MOCK === 'true';
 
+// Capture BEFORE createSupabaseClient clears the URL hash
+export const pendingRecovery = typeof window !== 'undefined' &&
+  window.location.hash.includes('type=recovery');
+
 const supabase = SUPABASE_URL && SUPABASE_ANON_KEY
   ? createSupabaseClient(SUPABASE_URL, SUPABASE_ANON_KEY)
   : null;
@@ -953,5 +957,24 @@ export const api = {
     }
 
     throwWithFallback(SUPABASE_REQUIRED_ERROR);
+  },
+
+  updatePin: async (newPin: string): Promise<void> => {
+    if (DEV_MOCK) return;
+    if (supabase) {
+      const { error } = await supabase.auth.updateUser({ password: newPin });
+      if (error) throwWithFallback(error.message, 'Could not update PIN');
+      await supabase.auth.signOut();
+      return;
+    }
+    throwWithFallback(SUPABASE_REQUIRED_ERROR);
+  },
+
+  onAuthStateChange: (callback: (event: string) => void): { unsubscribe: () => void } => {
+    if (!supabase) return { unsubscribe: () => {} };
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+      callback(event);
+    });
+    return { unsubscribe: () => subscription.unsubscribe() };
   },
 };

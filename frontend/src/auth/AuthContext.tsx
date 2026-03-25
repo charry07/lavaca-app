@@ -1,11 +1,11 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { storage } from '../utils/storage';
 import { User } from '@lavaca/types';
-import { api } from '../services/api';
+import { api, pendingRecovery } from '../services/api';
 
 const AUTH_KEY = 'lavaca_user';
 
-type AuthStep = 'phone' | 'pin' | 'register' | 'reset' | 'done';
+type AuthStep = 'phone' | 'pin' | 'register' | 'reset' | 'new-pin' | 'done';
 
 interface AuthContextValue {
   user: User | null;
@@ -17,6 +17,7 @@ interface AuthContextValue {
   loginWithPin: (pin: string) => Promise<void>;
   register: (displayName: string, username: string, documentId: string, pin: string, email: string) => Promise<void>;
   resetPin: (email: string) => Promise<void>;
+  updatePin: (newPin: string) => Promise<void>;
   logout: () => Promise<void>;
   deleteAccount: () => Promise<void>;
   updateProfile: (data: { displayName?: string; username?: string; documentId?: string; avatarUrl?: string }) => Promise<void>;
@@ -34,6 +35,7 @@ const AuthContext = createContext<AuthContextValue>({
   loginWithPin: async () => {},
   register: async () => {},
   resetPin: async () => {},
+  updatePin: async () => {},
   logout: async () => {},
   deleteAccount: async () => {},
   updateProfile: async () => {},
@@ -44,11 +46,15 @@ const AuthContext = createContext<AuthContextValue>({
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [authStep, setAuthStep] = useState<AuthStep>('phone');
+  const [authStep, setAuthStep] = useState<AuthStep>(() => pendingRecovery ? 'new-pin' : 'phone');
   const [pendingPhone, setPendingPhone] = useState<string | null>(null);
   const [pendingAuthEmail, setPendingAuthEmail] = useState<string | null>(null);
 
   useEffect(() => {
+    if (pendingRecovery) {
+      setIsLoading(false);
+      return;
+    }
     (async () => {
       try {
         const stored = await storage.getItem(AUTH_KEY);
@@ -63,6 +69,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setIsLoading(false);
       }
     })();
+  }, []);
+
+  useEffect(() => {
+    const sub = api.onAuthStateChange((event) => {
+      if (event === 'PASSWORD_RECOVERY') {
+        setUser(null);
+        setAuthStep('new-pin');
+        storage.removeItem(AUTH_KEY);
+      }
+    });
+    return () => sub.unsubscribe();
   }, []);
 
   const persistUser = async (u: User) => {
@@ -130,10 +147,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setAuthStep('reset');
   }, []);
 
+  const updatePin = useCallback(async (newPin: string) => {
+    await api.updatePin(newPin);
+    setUser(null);
+    setAuthStep('phone');
+    setPendingPhone(null);
+    setPendingAuthEmail(null);
+    await storage.removeItem(AUTH_KEY);
+  }, []);
+
   return (
     <AuthContext.Provider value={{
       user, isLoading, authStep, pendingPhone, pendingAuthEmail,
-      checkPhone, loginWithPin, register, resetPin,
+      checkPhone, loginWithPin, register, resetPin, updatePin,
       logout, deleteAccount, updateProfile, resetAuth, goToReset,
     }}>
       {children}
