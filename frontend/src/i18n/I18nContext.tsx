@@ -23,7 +23,7 @@ export function I18nProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     storage.getItem(STORAGE_KEY).then((saved) => {
-      if (saved === 'es' || saved === 'en' || saved === 'pt') {
+      if (saved === 'es' || saved === 'en' || saved === 'pt' || saved === 'de') {
         setLocaleState(saved);
       }
     });

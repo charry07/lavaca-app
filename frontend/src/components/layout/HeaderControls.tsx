@@ -3,7 +3,7 @@ import { useI18n, LOCALE_FLAGS, type Locale } from '../../i18n';
 import { useTheme } from '../../theme';
 import { borderRadius } from '../../constants/theme';
 
-const LOCALES: Locale[] = ['es', 'en', 'pt'];
+const LOCALES: Locale[] = ['es', 'en', 'pt', 'de'];
 
 export function HeaderControls() {
   const { locale, setLocale } = useI18n();
