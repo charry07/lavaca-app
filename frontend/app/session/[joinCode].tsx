@@ -18,7 +18,6 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { PaymentSession, Participant, User, formatCOP } from '@lavaca/types';
 import { api } from '../../src/services/api';
-import { aiService, AI_ENABLED } from '../../src/services/ai';
 import { spacing, borderRadius, fontSize, fontWeight, type ThemeColors } from '../../src/constants/theme';
 import { SkeletonCard, ErrorState, Avatar, StatusPill, AnimatedCard, SplitBar, RouletteWheel, QRCode, useToast } from '../../src/components';
 import { useI18n } from '../../src/i18n';
@@ -53,8 +52,6 @@ export default function SessionScreen() {
   const [participantResults, setParticipantResults] = useState<User[]>([]);
   const [searchingUsers, setSearchingUsers] = useState(false);
   const [addingParticipantId, setAddingParticipantId] = useState<string | null>(null);
-  const [generatingReminder, setGeneratingReminder] = useState(false);
-
   // Animated progress bar width
   const progressAnim = useRef(new Animated.Value(0)).current;
 
@@ -341,28 +338,6 @@ export default function SessionScreen() {
     }
   };
 
-  const handleGenerateReminder = async () => {
-    if (!session) return;
-    const pending = session.participants.filter((p) => p.status === 'pending' && p.amount > 0);
-    if (pending.length === 0) return;
-    setGeneratingReminder(true);
-    try {
-      const result = await aiService.generateReminder({
-        action: 'reminder',
-        sessionDescription: session.description,
-        pendingNames: pending.map((p) => p.displayName),
-        totalAmount: pending[0].amount,
-        currency: session.currency,
-      });
-      if (!result) { showError(translate('ai.error')); return; }
-      await Share.share({ message: result.message });
-    } catch {
-      showError(translate('ai.error'));
-    } finally {
-      setGeneratingReminder(false);
-    }
-  };
-
   // ── Loading state ──────────────────────────────────────
   if (loading) {
     return (
@@ -629,19 +604,6 @@ export default function SessionScreen() {
               ) : (
                 <Text style={styles.closeSessionButtonText}>{translate('session.closeSession')}</Text>
               )}
-            </TouchableOpacity>
-          )}
-
-          {AI_ENABLED && isAdmin && session.status === 'open' &&
-            session.participants.some((p) => p.status === 'pending' && p.amount > 0) && (
-            <TouchableOpacity
-              style={[styles.reminderButton, generatingReminder && styles.splitButtonDisabled]}
-              onPress={handleGenerateReminder}
-              disabled={generatingReminder}
-            >
-              {generatingReminder
-                ? <ActivityIndicator color={colors.accent} size="small" />
-                : <Text style={styles.reminderButtonText}>{translate('ai.reminder')}</Text>}
             </TouchableOpacity>
           )}
 
@@ -1098,21 +1060,6 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     fontSize: fontSize.sm,
     fontWeight: fontWeight.bold,
     color: colors.danger,
-  },
-  reminderButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: spacing.sm + 2,
-    borderRadius: borderRadius.md,
-    borderWidth: 1.5,
-    borderColor: colors.accent + '80',
-    gap: spacing.xs,
-  },
-  reminderButtonText: {
-    fontSize: fontSize.sm,
-    fontWeight: fontWeight.semibold,
-    color: colors.accent,
   },
   deleteSessionLink: {
     paddingVertical: spacing.sm,

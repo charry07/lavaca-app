@@ -50,7 +50,7 @@ lavaca-app/               ← pnpm monorepo root
 
 | Context | Hook | Provides |
 |---|---|---|
-| `auth/AuthContext.tsx` | `useAuth()` | `user`, OTP flow, `logout`, `deleteAccount`, `updateProfile` |
+| `auth/AuthContext.tsx` | `useAuth()` | `user`, PIN auth flow, `logout`, `deleteAccount`, `updateProfile` |
 | `theme/ThemeContext.tsx` | `useTheme()` | `colors`, `isDark`, `toggleTheme` |
 | `i18n/I18nContext.tsx` | `useI18n()` | `translate()`, `locale`, `setLocale` |
 | `components/Toast.tsx` | `useToast()` | `showToast()`, `showError()`, `showSuccess()` |
@@ -79,7 +79,6 @@ lavaca-app/               ← pnpm monorepo root
 
 - [packages/types/src/types.ts](packages/types/src/types.ts) — `User`, `PaymentSession`, `Participant`, `Group`, `FeedEvent`, `Debt`.
 - [packages/types/src/utils.ts](packages/types/src/utils.ts) — `formatCOP` and helpers.
-- [packages/types/src/ai.ts](packages/types/src/ai.ts) — `AISplitRequest/Response`, `AIReminderRequest/Response` types.
 - Zero runtime dependencies. Import as `@lavaca/types`.
 
 ## Key Domain Concepts
@@ -124,15 +123,6 @@ Palette: warm espresso & dorado — inspired by a Colombian café interior at ni
 - `useSocket()` — singleton Supabase Realtime transport
 - `useSessionSocket(joinCode, onUpdate)` — subscribes to `postgres_changes` for sessions/participants
 
-## AI Copilot (Phase 0)
-
-- `frontend/src/services/ai.ts` — `aiService.suggestSplit()` and `aiService.generateReminder()`; all calls guarded by `AI_ENABLED = EXPO_PUBLIC_AI_ENABLED === 'true'`; returns `null` on any error (graceful fallback).
-- `supabase/functions/ai-copilot/index.ts` — Deno Edge Function that calls GitHub Models API (`gpt-4o-mini`). Actions: `split` and `reminder`.
-- Types in `packages/types/src/ai.ts`.
-- In `create.tsx`: AI suggest button appears when `AI_ENABLED`. Calls `suggestSplit` and auto-selects the mode.
-- In `session/[joinCode].tsx`: Admin reminder button when session is open with pending participants. Calls `generateReminder` and opens native share sheet.
-- Deploy: `supabase functions deploy ai-copilot` + set `GITHUB_MODELS_TOKEN` in Supabase secrets.
-
 ## Utilities
 
 - `frontend/src/utils/cameraPermission.ts` — `requestCameraPermission()` for `expo-camera`
@@ -146,31 +136,3 @@ Palette: warm espresso & dorado — inspired by a Colombian café interior at ni
 - Avatar validation: max 5.5M chars, must start with `data:image/` or `http`
 - `documentId` (cédula) is validated unique and ≤ 20 chars at registration
 
----
-
-## Roadmap & Implementation Plans
-
-**All planned work lives in `docs/plans/`.** Before starting any task, read these files:
-
-| File | Purpose |
-|------|---------|
-| [`docs/plans/2026-03-05-lavaca-roadmap.md`](docs/plans/2026-03-05-lavaca-roadmap.md) | Master plan — phase overview, conflict rules, cleanup rules, definition of done |
-| [`docs/plans/2026-03-05-phase-1-frontend-redesign.md`](docs/plans/2026-03-05-phase-1-frontend-redesign.md) | Frontend redesign — new components, animations, web layout |
-| [`docs/plans/2026-03-05-phase-2-supabase-migration.md`](docs/plans/2026-03-05-phase-2-supabase-migration.md) | Supabase migration — replaces Express + SQLite + Socket.IO |
-| [`docs/plans/2026-03-05-human-ops-checklist.md`](docs/plans/2026-03-05-human-ops-checklist.md) | Manual tasks the human must do (Supabase, GitHub Models setup) |
-
-### Rules every AI agent must follow
-
-1. **Read the roadmap first** — understand which phase you are on and the conflict rules before touching any file.
-0. **Always delete unused code, files, and dependencies.** When replacing something, delete what it replaced. No dead code, no legacy files, no stale imports, no unused deps. The cleanup is mandatory — not optional.
-2. **Mark tasks done** — update `- [ ]` → `- [x]` in the phase file as you complete each task.
-3. **Update the roadmap status** — change `⬜ pending` → `🟨 in-progress` → `🟩 done` in the Phase Overview table.
-4. **Delete what you replace** — no dead code, no unused deps, no legacy files. The cleanup checklist in the roadmap is mandatory.
-5. **Log changes** — append a `## Changelog` section to the phase file noting what you did.
-
-### Current status (as of 2026-03-24)
-- Phase 0: 🟨 in-progress (AI service + Edge Function + UI integration done; pending deploy)
-- Phase 1: 🟩 done
-- Phase 2: 🟩 done
-- Phase 3: ❌ cancelled (Vercel removed)
-- Phase 4: ❌ cancelled (Stripe removed)

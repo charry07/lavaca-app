@@ -1,97 +1,60 @@
-import { useEffect, useMemo, useState } from 'react';
-import {
-  View,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  StyleSheet,
-  ActivityIndicator,
-  KeyboardAvoidingView,
-  Platform,
-  ScrollView,
-  FlatList,
-  Modal,
-} from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
-import { useRouter } from 'expo-router';
-import { SplitMode, User } from '@lavaca/types';
-import { api } from '../src/services/api';
-import { aiService, AI_ENABLED } from '../src/services/ai';
-import { spacing, borderRadius, fontSize, fontWeight, type ThemeColors } from '../src/constants/theme';
-import { useI18n } from '../src/i18n';
-import { useTheme } from '../src/theme';
-import { useAuth } from '../src/auth';
-import { useToast } from '../src/components';
+import {useEffect, useMemo, useState} from "react";
+import {View, Text, TextInput, TouchableOpacity, StyleSheet, ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView, FlatList, Modal} from "react-native";
+import {LinearGradient} from "expo-linear-gradient";
+import {useRouter} from "expo-router";
+import {SplitMode, User} from "@lavaca/types";
+import {api} from "../src/services/api";
+import {spacing, borderRadius, fontSize, fontWeight, type ThemeColors} from "../src/constants/theme";
+import {useI18n} from "../src/i18n";
+import {useTheme} from "../src/theme";
+import {useAuth} from "../src/auth";
+import {useToast} from "../src/components";
 
-import { getErrorMessage } from '../src/utils/errorMessage';
+import {getErrorMessage} from "../src/utils/errorMessage";
 export default function CreateScreen() {
   const router = useRouter();
-  const { translate } = useI18n();
-  const { colors } = useTheme();
-  const { user } = useAuth();
-  const { showError, showSuccess } = useToast();
+  const {translate} = useI18n();
+  const {colors} = useTheme();
+  const {user} = useAuth();
+  const {showError} = useToast();
   const styles = createStyles(colors);
 
-  const [amount, setAmount] = useState('');
-  const [description, setDescription] = useState('');
-  const [splitMode, setSplitMode] = useState<SplitMode>('equal');
-  const [currency, setCurrency] = useState<'COP' | 'USD' | 'EUR'>('COP');
+  const [amount, setAmount] = useState("");
+  const [description, setDescription] = useState("");
+  const [splitMode, setSplitMode] = useState<SplitMode>("equal");
+  const [currency, setCurrency] = useState<"COP" | "USD" | "EUR">("COP");
   const [loading, setLoading] = useState(false);
   const [showAddParticipantModal, setShowAddParticipantModal] = useState(false);
-  const [participantSearchQuery, setParticipantSearchQuery] = useState('');
+  const [participantSearchQuery, setParticipantSearchQuery] = useState("");
   const [participantResults, setParticipantResults] = useState<User[]>([]);
   const [frequentParticipants, setFrequentParticipants] = useState<User[]>([]);
   const [suggestedParticipants, setSuggestedParticipants] = useState<User[]>([]);
   const [selectedParticipants, setSelectedParticipants] = useState<User[]>([]);
   const [loadingFrequent, setLoadingFrequent] = useState(false);
   const [searchingUsers, setSearchingUsers] = useState(false);
-  const [suggestingMode, setSuggestingMode] = useState(false);
-
-  const CURRENCIES: { key: 'COP' | 'USD' | 'EUR'; symbol: string }[] = [
-    { key: 'COP', symbol: '🇨🇴 COP' },
-    { key: 'USD', symbol: '🇺🇸 USD' },
-    { key: 'EUR', symbol: '🇪🇺 EUR' },
+  const CURRENCIES: {key: "COP" | "USD" | "EUR"; symbol: string}[] = [
+    {key: "COP", symbol: "🇨🇴 COP"},
+    {key: "USD", symbol: "🇺🇸 USD"},
+    {key: "EUR", symbol: "🇪🇺 EUR"},
   ];
 
-  const SPLIT_MODES: { key: SplitMode; label: string; emoji: string; desc: string }[] = [
-    { key: 'equal', label: translate('create.equalParts'), emoji: '⚖️', desc: 'Todos pagan igual' },
-    { key: 'percentage', label: translate('create.percentage'), emoji: '📊', desc: 'Por porcentaje' },
-    { key: 'roulette', label: translate('create.roulette'), emoji: '🎰', desc: 'A la suerte' },
+  const SPLIT_MODES: {key: SplitMode; label: string; emoji: string; desc: string}[] = [
+    {key: "equal", label: translate("create.equalParts"), emoji: "⚖️", desc: "Todos pagan igual"},
+    {key: "percentage", label: translate("create.percentage"), emoji: "📊", desc: "Por porcentaje"},
+    {key: "roulette", label: translate("create.roulette"), emoji: "🎰", desc: "A la suerte"},
   ];
-
-  const handleAiSuggest = async () => {
-    const numAmount = Number(amount.replace(/[^0-9]/g, ''));
-    if (!numAmount) { showError(translate('create.invalidAmount')); return; }
-    setSuggestingMode(true);
-    try {
-      const result = await aiService.suggestSplit({
-        action: 'split',
-        totalAmount: numAmount,
-        participantCount: selectedParticipants.length + 1,
-        description: description || undefined,
-        currency,
-      });
-      if (!result) { showError(translate('ai.error')); return; }
-      setSplitMode(result.mode);
-      showSuccess(`${translate('ai.suggestionApplied', { mode: result.mode })} — ${result.reasoning}`);
-    } catch {
-      showError(translate('ai.error'));
-    } finally {
-      setSuggestingMode(false);
-    }
-  };
 
   const handleCreate = async () => {
-    const numAmount = Number(amount.replace(/[^0-9]/g, ''));
+    const numAmount = Number(amount.replace(/[^0-9]/g, ""));
     if (!numAmount || numAmount <= 0) {
-      showError(translate('create.invalidAmount'));
+      showError(translate("create.invalidAmount"));
       return;
     }
 
     setLoading(true);
     try {
       const session = await api.createSession({
-        adminId: user?.id || 'anonymous',
+        adminId: user?.id || "anonymous",
         totalAmount: numAmount,
         currency,
         splitMode,
@@ -104,14 +67,14 @@ export default function CreateScreen() {
             api.joinSession(session.joinCode, {
               userId: participant.id,
               displayName: participant.displayName,
-            })
-          )
+            }),
+          ),
         );
       }
 
       router.push(`/session/${session.joinCode}`);
     } catch (err: unknown) {
-      showError(getErrorMessage(err, translate('create.errorCreating')));
+      showError(getErrorMessage(err, translate("create.errorCreating")));
     } finally {
       setLoading(false);
     }
@@ -119,11 +82,14 @@ export default function CreateScreen() {
 
   const openAddParticipantModal = async () => {
     setShowAddParticipantModal(true);
-    setParticipantSearchQuery('');
+    setParticipantSearchQuery("");
     setParticipantResults([]);
     setSuggestedParticipants([]);
 
-    if (!user?.id) { setFrequentParticipants([]); return; }
+    if (!user?.id) {
+      setFrequentParticipants([]);
+      return;
+    }
 
     setLoadingFrequent(true);
     try {
@@ -156,20 +122,19 @@ export default function CreateScreen() {
 
   const selectedIds = new Set(selectedParticipants.map((p) => p.id));
 
-  const frequentRank = useMemo(
-    () => new Map(frequentParticipants.map((p, i) => [p.id, i])),
-    [frequentParticipants]
-  );
+  const frequentRank = useMemo(() => new Map(frequentParticipants.map((p, i) => [p.id, i])), [frequentParticipants]);
 
   const isSearching = participantSearchQuery.trim().length >= 2;
-  const displayedParticipants = isSearching
-    ? participantResults
-    : [...frequentParticipants, ...suggestedParticipants];
+  const displayedParticipants = isSearching ? participantResults : [...frequentParticipants, ...suggestedParticipants];
 
   useEffect(() => {
     if (!showAddParticipantModal) return;
     const query = participantSearchQuery.trim();
-    if (query.length < 2) { setParticipantResults([]); setSearchingUsers(false); return; }
+    if (query.length < 2) {
+      setParticipantResults([]);
+      setSearchingUsers(false);
+      return;
+    }
 
     const timer = setTimeout(async () => {
       setSearchingUsers(true);
@@ -194,93 +159,47 @@ export default function CreateScreen() {
   }, [participantSearchQuery, showAddParticipantModal, user?.id, frequentRank]);
 
   return (
-    <KeyboardAvoidingView
-      style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-    >
-      <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
-
+    <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === "ios" ? "padding" : "height"}>
+      <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps='handled'>
         {/* Amount input — hero field */}
         <View style={styles.amountSection}>
-          <Text style={styles.sectionLabel}>{translate('create.totalAmount')}</Text>
+          <Text style={styles.sectionLabel}>{translate("create.totalAmount")}</Text>
           <View style={styles.amountInputWrap}>
             <Text style={styles.amountCurrencySymbol}>$</Text>
-            <TextInput
-              style={styles.amountInput}
-              placeholder="0"
-              placeholderTextColor={colors.textMuted}
-              keyboardType="numeric"
-              value={amount}
-              onChangeText={setAmount}
-              autoFocus
-            />
+            <TextInput style={styles.amountInput} placeholder='0' placeholderTextColor={colors.textMuted} keyboardType='numeric' value={amount} onChangeText={setAmount} autoFocus />
           </View>
         </View>
 
         {/* Description */}
-        <Text style={styles.sectionLabel}>{translate('create.description')}</Text>
-        <TextInput
-          style={styles.input}
-          placeholder={translate('create.descriptionPlaceholder')}
-          placeholderTextColor={colors.textMuted}
-          value={description}
-          onChangeText={setDescription}
-        />
+        <Text style={styles.sectionLabel}>{translate("create.description")}</Text>
+        <TextInput style={styles.input} placeholder={translate("create.descriptionPlaceholder")} placeholderTextColor={colors.textMuted} value={description} onChangeText={setDescription} />
 
         {/* Currency selector */}
-        <Text style={styles.sectionLabel}>{translate('create.currency')}</Text>
+        <Text style={styles.sectionLabel}>{translate("create.currency")}</Text>
         <View style={styles.pillRow}>
           {CURRENCIES.map((c) => (
-            <TouchableOpacity
-              key={c.key}
-              style={[styles.currencyPill, currency === c.key && styles.currencyPillActive]}
-              onPress={() => setCurrency(c.key)}
-            >
-              <Text style={[styles.currencyPillText, currency === c.key && styles.currencyPillTextActive]}>
-                {c.symbol}
-              </Text>
+            <TouchableOpacity key={c.key} style={[styles.currencyPill, currency === c.key && styles.currencyPillActive]} onPress={() => setCurrency(c.key)}>
+              <Text style={[styles.currencyPillText, currency === c.key && styles.currencyPillTextActive]}>{c.symbol}</Text>
             </TouchableOpacity>
           ))}
         </View>
 
         {/* Split mode selector */}
-        <Text style={styles.sectionLabel}>{translate('create.howToSplit')}</Text>
+        <Text style={styles.sectionLabel}>{translate("create.howToSplit")}</Text>
         <View style={styles.modeRow}>
           {SPLIT_MODES.map((mode) => (
-            <TouchableOpacity
-              key={mode.key}
-              style={[styles.modeCard, splitMode === mode.key && styles.modeCardActive]}
-              onPress={() => setSplitMode(mode.key)}
-            >
-              {splitMode === mode.key && (
-                <View style={styles.modeActiveBar} />
-              )}
+            <TouchableOpacity key={mode.key} style={[styles.modeCard, splitMode === mode.key && styles.modeCardActive]} onPress={() => setSplitMode(mode.key)}>
+              {splitMode === mode.key && <View style={styles.modeActiveBar} />}
               <Text style={styles.modeEmoji}>{mode.emoji}</Text>
-              <Text style={[styles.modeLabel, splitMode === mode.key && styles.modeLabelActive]}>
-                {mode.label}
-              </Text>
+              <Text style={[styles.modeLabel, splitMode === mode.key && styles.modeLabelActive]}>{mode.label}</Text>
             </TouchableOpacity>
           ))}
         </View>
 
-        {/* AI split suggestion */}
-        {AI_ENABLED && (
-          <TouchableOpacity
-            style={[styles.aiSuggestBtn, suggestingMode && { opacity: 0.5 }]}
-            onPress={handleAiSuggest}
-            disabled={suggestingMode}
-            activeOpacity={0.7}
-          >
-            {suggestingMode
-              ? <ActivityIndicator size="small" color={colors.accent} />
-              : <Text style={styles.aiSuggestText}>{translate('ai.suggest')}</Text>}
-          </TouchableOpacity>
-        )}
-
         {/* Add participants */}
         <TouchableOpacity style={styles.addParticipantButton} onPress={openAddParticipantModal}>
           <Text style={styles.addParticipantIcon}>+</Text>
-          <Text style={styles.addParticipantText}>{translate('session.addParticipants')}</Text>
+          <Text style={styles.addParticipantText}>{translate("session.addParticipants")}</Text>
           {selectedParticipants.length > 0 && (
             <View style={styles.selectedBadge}>
               <Text style={styles.selectedBadgeText}>{selectedParticipants.length}</Text>
@@ -289,39 +208,20 @@ export default function CreateScreen() {
         </TouchableOpacity>
 
         {/* Create button */}
-        <TouchableOpacity
-          style={[styles.createButtonWrap, loading && { opacity: 0.55 }]}
-          onPress={handleCreate}
-          disabled={loading}
-        >
-          <LinearGradient
-            colors={[colors.primary, colors.primaryDark]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 0 }}
-            style={styles.createButton}
-          >
-            {loading ? (
-              <ActivityIndicator color={colors.background} />
-            ) : (
-              <Text style={styles.createButtonText}>{translate('create.createButton')}</Text>
-            )}
+        <TouchableOpacity style={[styles.createButtonWrap, loading && {opacity: 0.55}]} onPress={handleCreate} disabled={loading}>
+          <LinearGradient colors={[colors.primary, colors.primaryDark]} start={{x: 0, y: 0}} end={{x: 1, y: 0}} style={styles.createButton}>
+            {loading ? <ActivityIndicator color={colors.background} /> : <Text style={styles.createButtonText}>{translate("create.createButton")}</Text>}
           </LinearGradient>
         </TouchableOpacity>
-
       </ScrollView>
 
       {/* Add Participants Modal */}
-      <Modal
-        visible={showAddParticipantModal}
-        animationType="slide"
-        transparent
-        onRequestClose={() => setShowAddParticipantModal(false)}
-      >
+      <Modal visible={showAddParticipantModal} animationType='slide' transparent onRequestClose={() => setShowAddParticipantModal(false)}>
         <View style={styles.modalOverlay}>
-          <View style={[styles.modalContent, { backgroundColor: colors.surface }]}>
+          <View style={[styles.modalContent, {backgroundColor: colors.surface}]}>
             <View style={styles.modalHandle} />
             <View style={styles.searchModalHeader}>
-              <Text style={styles.modalTitle}>{translate('session.addParticipants')}</Text>
+              <Text style={styles.modalTitle}>{translate("session.addParticipants")}</Text>
               <TouchableOpacity onPress={() => setShowAddParticipantModal(false)} style={styles.modalCloseBtn}>
                 <Text style={styles.modalCloseBtnText}>✕</Text>
               </TouchableOpacity>
@@ -329,81 +229,64 @@ export default function CreateScreen() {
 
             <TextInput
               style={styles.searchInput}
-              placeholder={translate('session.searchPeoplePlaceholder')}
+              placeholder={translate("session.searchPeoplePlaceholder")}
               placeholderTextColor={colors.textMuted}
               value={participantSearchQuery}
               onChangeText={setParticipantSearchQuery}
               autoFocus
-              autoCapitalize="none"
+              autoCapitalize='none'
               autoCorrect={false}
             />
 
             {/* Selected participants chips */}
             {selectedParticipants.length > 0 && (
-              <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                style={styles.chipsScroll}
-                contentContainerStyle={styles.chipsContainer}
-                keyboardShouldPersistTaps="handled"
-              >
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipsScroll} contentContainerStyle={styles.chipsContainer} keyboardShouldPersistTaps='handled'>
                 {selectedParticipants.map((p) => (
-                  <TouchableOpacity
-                    key={p.id}
-                    style={styles.chip}
-                    onPress={() => toggleParticipant(p)}
-                    activeOpacity={0.7}
-                  >
+                  <TouchableOpacity key={p.id} style={styles.chip} onPress={() => toggleParticipant(p)} activeOpacity={0.7}>
                     <View style={styles.chipAvatar}>
                       <Text style={styles.chipAvatarText}>{p.displayName.charAt(0).toUpperCase()}</Text>
                     </View>
-                    <Text style={styles.chipName} numberOfLines={1}>{p.displayName.split(' ')[0]}</Text>
+                    <Text style={styles.chipName} numberOfLines={1}>
+                      {p.displayName.split(" ")[0]}
+                    </Text>
                     <Text style={styles.chipRemove}>×</Text>
                   </TouchableOpacity>
                 ))}
               </ScrollView>
             )}
 
-            {(loadingFrequent || (searchingUsers && isSearching)) && (
-              <ActivityIndicator size="small" color={colors.primary} style={{ marginVertical: spacing.md }} />
-            )}
-            {!loadingFrequent && !searchingUsers && isSearching && displayedParticipants.length === 0 && (
-              <Text style={styles.searchHintText}>{translate('session.noUserResults')}</Text>
-            )}
+            {(loadingFrequent || (searchingUsers && isSearching)) && <ActivityIndicator size='small' color={colors.primary} style={{marginVertical: spacing.md}} />}
+            {!loadingFrequent && !searchingUsers && isSearching && displayedParticipants.length === 0 && <Text style={styles.searchHintText}>{translate("session.noUserResults")}</Text>}
 
             {!loadingFrequent && !isSearching && (
               <FlatList
-                data={[
-                  ...(frequentParticipants.length > 0
-                    ? [{ type: 'label', id: '__recent__', label: translate('create.frequentPeopleHint') }, ...frequentParticipants.map((u) => ({ type: 'user', ...u }))]
-                    : []),
-                  ...(suggestedParticipants.length > 0
-                    ? [{ type: 'label', id: '__suggested__', label: translate('create.suggestedPeople') }, ...suggestedParticipants.map((u) => ({ type: 'user', ...u }))]
-                    : []),
-                ] as any[]}
+                data={
+                  [
+                    ...(frequentParticipants.length > 0
+                      ? [{type: "label", id: "__recent__", label: translate("create.frequentPeopleHint")}, ...frequentParticipants.map((u) => ({type: "user", ...u}))]
+                      : []),
+                    ...(suggestedParticipants.length > 0
+                      ? [{type: "label", id: "__suggested__", label: translate("create.suggestedPeople")}, ...suggestedParticipants.map((u) => ({type: "user", ...u}))]
+                      : []),
+                  ] as any[]
+                }
                 keyExtractor={(item) => item.id}
-                keyboardShouldPersistTaps="handled"
-                renderItem={({ item }) => {
-                  if (item.type === 'label') {
+                keyboardShouldPersistTaps='handled'
+                renderItem={({item}) => {
+                  if (item.type === "label") {
                     return <Text style={styles.searchSectionLabel}>{item.label}</Text>;
                   }
                   const isSelected = selectedIds.has(item.id);
                   return (
-                    <TouchableOpacity
-                      style={[styles.userRow, isSelected && styles.userRowSelected]}
-                      onPress={() => toggleParticipant(item as User)}
-                      activeOpacity={0.7}
-                    >
-                      <View style={[styles.avatar, isSelected && { backgroundColor: colors.primary }]}>
+                    <TouchableOpacity style={[styles.userRow, isSelected && styles.userRowSelected]} onPress={() => toggleParticipant(item as User)} activeOpacity={0.7}>
+                      <View style={[styles.avatar, isSelected && {backgroundColor: colors.primary}]}>
                         <Text style={styles.avatarText}>{item.displayName.charAt(0).toUpperCase()}</Text>
                       </View>
                       <View style={styles.userInfo}>
                         <Text style={styles.userName}>{item.displayName}</Text>
                         <Text style={styles.userMeta}>@{item.username}</Text>
                       </View>
-                      <View style={[styles.checkCircle, isSelected && styles.checkCircleActive]}>
-                        {isSelected && <Text style={styles.checkMark}>✓</Text>}
-                      </View>
+                      <View style={[styles.checkCircle, isSelected && styles.checkCircleActive]}>{isSelected && <Text style={styles.checkMark}>✓</Text>}</View>
                     </TouchableOpacity>
                   );
                 }}
@@ -414,25 +297,19 @@ export default function CreateScreen() {
               <FlatList
                 data={displayedParticipants}
                 keyExtractor={(item) => item.id}
-                keyboardShouldPersistTaps="handled"
-                renderItem={({ item: foundUser }) => {
+                keyboardShouldPersistTaps='handled'
+                renderItem={({item: foundUser}) => {
                   const isSelected = selectedIds.has(foundUser.id);
                   return (
-                    <TouchableOpacity
-                      style={[styles.userRow, isSelected && styles.userRowSelected]}
-                      onPress={() => toggleParticipant(foundUser)}
-                      activeOpacity={0.7}
-                    >
-                      <View style={[styles.avatar, isSelected && { backgroundColor: colors.primary }]}>
+                    <TouchableOpacity style={[styles.userRow, isSelected && styles.userRowSelected]} onPress={() => toggleParticipant(foundUser)} activeOpacity={0.7}>
+                      <View style={[styles.avatar, isSelected && {backgroundColor: colors.primary}]}>
                         <Text style={styles.avatarText}>{foundUser.displayName.charAt(0).toUpperCase()}</Text>
                       </View>
                       <View style={styles.userInfo}>
                         <Text style={styles.userName}>{foundUser.displayName}</Text>
                         <Text style={styles.userMeta}>@{foundUser.username}</Text>
                       </View>
-                      <View style={[styles.checkCircle, isSelected && styles.checkCircleActive]}>
-                        {isSelected && <Text style={styles.checkMark}>✓</Text>}
-                      </View>
+                      <View style={[styles.checkCircle, isSelected && styles.checkCircleActive]}>{isSelected && <Text style={styles.checkMark}>✓</Text>}</View>
                     </TouchableOpacity>
                   );
                 }}
@@ -447,42 +324,43 @@ export default function CreateScreen() {
 
 const createStyles = (colors: ThemeColors) =>
   StyleSheet.create({
-    container: { flex: 1, backgroundColor: colors.background },
-    scroll: { padding: spacing.lg, paddingBottom: spacing.xxl },
+    container: {flex: 1, backgroundColor: colors.background},
+    scroll: {padding: spacing.lg, paddingBottom: spacing.xxl},
     // Amount hero section
     amountSection: {
       backgroundColor: colors.surface2,
       borderRadius: borderRadius.lg,
-      padding: spacing.lg,
+      paddingVertical: spacing.md,
+      paddingHorizontal: spacing.lg,
       marginBottom: spacing.lg,
       borderWidth: 1,
       borderColor: colors.surfaceBorder,
-      alignItems: 'center',
+      alignItems: "center",
     },
     sectionLabel: {
       fontSize: fontSize.xs,
       fontWeight: fontWeight.semibold,
       color: colors.textMuted,
-      marginBottom: spacing.sm,
-      textTransform: 'uppercase',
+      marginBottom: spacing.xs,
+      textTransform: "uppercase",
       letterSpacing: 0.8,
     },
     amountInputWrap: {
-      flexDirection: 'row',
-      alignItems: 'center',
+      flexDirection: "row",
+      alignItems: "center",
       gap: spacing.xs,
     },
     amountCurrencySymbol: {
-      fontSize: fontSize.xxl,
+      fontSize: fontSize.xl,
       fontWeight: fontWeight.bold,
       color: colors.textMuted,
     },
     amountInput: {
-      fontSize: fontSize.xxl + 8,
+      fontSize: fontSize.xxl,
       fontWeight: fontWeight.bold,
       color: colors.accent,
-      minWidth: 120,
-      textAlign: 'center',
+      width:'100%',
+      textAlign: "center",
     },
     input: {
       fontSize: fontSize.md,
@@ -495,7 +373,7 @@ const createStyles = (colors: ThemeColors) =>
       marginBottom: spacing.lg,
     },
     pillRow: {
-      flexDirection: 'row',
+      flexDirection: "row",
       gap: spacing.sm,
       marginBottom: spacing.lg,
     },
@@ -504,13 +382,13 @@ const createStyles = (colors: ThemeColors) =>
       backgroundColor: colors.surface2,
       borderRadius: borderRadius.md,
       paddingVertical: spacing.sm + 2,
-      alignItems: 'center',
+      alignItems: "center",
       borderWidth: 1,
       borderColor: colors.surfaceBorder,
     },
     currencyPillActive: {
       borderColor: colors.primary,
-      backgroundColor: colors.primary + '14',
+      backgroundColor: colors.primary + "14",
     },
     currencyPillText: {
       fontSize: fontSize.sm,
@@ -521,7 +399,7 @@ const createStyles = (colors: ThemeColors) =>
       color: colors.primary,
     },
     modeRow: {
-      flexDirection: 'row',
+      flexDirection: "row",
       gap: spacing.sm,
       marginBottom: spacing.lg,
     },
@@ -530,57 +408,41 @@ const createStyles = (colors: ThemeColors) =>
       backgroundColor: colors.surface2,
       borderRadius: borderRadius.md,
       padding: spacing.md,
-      alignItems: 'center',
+      alignItems: "center",
       borderWidth: 1,
       borderColor: colors.surfaceBorder,
-      overflow: 'hidden',
-      position: 'relative',
+      overflow: "hidden",
+      position: "relative",
     },
     modeCardActive: {
-      borderColor: colors.primary + '60',
-      backgroundColor: colors.primary + '0e',
+      borderColor: colors.primary + "60",
+      backgroundColor: colors.primary + "0e",
     },
     // Active bar — thin top accent line (signature element variant)
     modeActiveBar: {
-      position: 'absolute',
+      position: "absolute",
       top: 0,
       left: 0,
       right: 0,
       height: 2,
       backgroundColor: colors.primary,
     },
-    modeEmoji: { fontSize: 26, marginBottom: spacing.xs },
+    modeEmoji: {fontSize: 26, marginBottom: spacing.xs},
     modeLabel: {
       fontSize: fontSize.xs,
       color: colors.textSecondary,
-      textAlign: 'center',
+      textAlign: "center",
       fontWeight: fontWeight.medium,
     },
     modeLabelActive: {
       color: colors.primary,
       fontWeight: fontWeight.semibold,
     },
-    aiSuggestBtn: {
-      alignSelf: 'flex-end',
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: spacing.xs,
-      paddingHorizontal: spacing.sm,
-      paddingVertical: spacing.xs,
-      marginTop: -spacing.sm,
-      marginBottom: spacing.md,
-      minHeight: 28,
-    },
-    aiSuggestText: {
-      fontSize: fontSize.xs,
-      color: colors.accent,
-      fontWeight: fontWeight.semibold,
-    },
     addParticipantButton: {
-      flexDirection: 'row',
-      alignItems: 'center',
+      flexDirection: "row",
+      alignItems: "center",
       borderWidth: 1,
-      borderColor: colors.primary + '50',
+      borderColor: colors.primary + "50",
       borderRadius: borderRadius.md,
       paddingVertical: spacing.sm + 2,
       paddingHorizontal: spacing.md,
@@ -605,8 +467,8 @@ const createStyles = (colors: ThemeColors) =>
       borderRadius: borderRadius.full,
       width: 22,
       height: 22,
-      justifyContent: 'center',
-      alignItems: 'center',
+      justifyContent: "center",
+      alignItems: "center",
     },
     selectedBadgeText: {
       fontSize: fontSize.xs,
@@ -615,12 +477,12 @@ const createStyles = (colors: ThemeColors) =>
     },
     createButtonWrap: {
       borderRadius: borderRadius.md,
-      overflow: 'hidden',
+      overflow: "hidden",
     },
     createButton: {
       paddingVertical: spacing.md + 2,
       borderRadius: borderRadius.md,
-      alignItems: 'center',
+      alignItems: "center",
     },
     createButtonText: {
       fontSize: fontSize.md,
@@ -632,12 +494,12 @@ const createStyles = (colors: ThemeColors) =>
     modalOverlay: {
       flex: 1,
       backgroundColor: colors.overlay,
-      justifyContent: 'flex-end',
+      justifyContent: "flex-end",
     },
     modalContent: {
       borderTopLeftRadius: 20,
       borderTopRightRadius: 20,
-      maxHeight: '75%',
+      maxHeight: "75%",
       paddingBottom: spacing.xxl,
       paddingHorizontal: spacing.lg,
     },
@@ -646,14 +508,14 @@ const createStyles = (colors: ThemeColors) =>
       height: 4,
       backgroundColor: colors.surfaceBorder,
       borderRadius: 2,
-      alignSelf: 'center',
+      alignSelf: "center",
       marginTop: spacing.sm,
       marginBottom: spacing.md,
     },
     searchModalHeader: {
-      flexDirection: 'row',
-      justifyContent: 'space-between',
-      alignItems: 'center',
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
       marginBottom: spacing.md,
     },
     modalTitle: {
@@ -666,8 +528,8 @@ const createStyles = (colors: ThemeColors) =>
       height: 30,
       borderRadius: 15,
       backgroundColor: colors.surface2,
-      alignItems: 'center',
-      justifyContent: 'center',
+      alignItems: "center",
+      justifyContent: "center",
     },
     modalCloseBtnText: {
       fontSize: fontSize.sm,
@@ -686,28 +548,28 @@ const createStyles = (colors: ThemeColors) =>
     searchHintText: {
       fontSize: fontSize.sm,
       color: colors.textMuted,
-      textAlign: 'center',
+      textAlign: "center",
       paddingVertical: spacing.md,
     },
     searchSectionLabel: {
       fontSize: fontSize.xs,
       color: colors.textMuted,
       fontWeight: fontWeight.semibold,
-      textTransform: 'uppercase',
+      textTransform: "uppercase",
       letterSpacing: 0.6,
       marginBottom: spacing.sm,
     },
     // User rows in modal
     userRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
+      flexDirection: "row",
+      alignItems: "center",
       paddingVertical: spacing.sm + 2,
       borderBottomWidth: StyleSheet.hairlineWidth,
       borderBottomColor: colors.surfaceBorder,
       gap: spacing.sm,
     },
     userRowSelected: {
-      backgroundColor: colors.primary + '08',
+      backgroundColor: colors.primary + "08",
     },
     avatar: {
       width: 40,
@@ -716,15 +578,15 @@ const createStyles = (colors: ThemeColors) =>
       backgroundColor: colors.surface2,
       borderWidth: 1,
       borderColor: colors.surfaceBorder,
-      justifyContent: 'center',
-      alignItems: 'center',
+      justifyContent: "center",
+      alignItems: "center",
     },
     avatarText: {
       fontSize: fontSize.md,
       fontWeight: fontWeight.bold,
       color: colors.text,
     },
-    userInfo: { flex: 1 },
+    userInfo: {flex: 1},
     userName: {
       fontSize: fontSize.md,
       fontWeight: fontWeight.semibold,
@@ -741,8 +603,8 @@ const createStyles = (colors: ThemeColors) =>
       borderRadius: 12,
       borderWidth: 1.5,
       borderColor: colors.surfaceBorder,
-      alignItems: 'center',
-      justifyContent: 'center',
+      alignItems: "center",
+      justifyContent: "center",
     },
     checkCircleActive: {
       backgroundColor: colors.primary,
@@ -758,18 +620,18 @@ const createStyles = (colors: ThemeColors) =>
       marginBottom: spacing.sm,
     },
     chipsContainer: {
-      flexDirection: 'row',
+      flexDirection: "row",
       gap: spacing.xs,
       paddingHorizontal: 2,
       paddingVertical: spacing.xs,
     },
     chip: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      backgroundColor: colors.primary + '18',
+      flexDirection: "row",
+      alignItems: "center",
+      backgroundColor: colors.primary + "18",
       borderRadius: borderRadius.full,
       borderWidth: 1,
-      borderColor: colors.primary + '50',
+      borderColor: colors.primary + "50",
       paddingVertical: 5,
       paddingLeft: 5,
       paddingRight: spacing.sm,
@@ -781,8 +643,8 @@ const createStyles = (colors: ThemeColors) =>
       height: 22,
       borderRadius: 11,
       backgroundColor: colors.primary,
-      justifyContent: 'center',
-      alignItems: 'center',
+      justifyContent: "center",
+      alignItems: "center",
     },
     chipAvatarText: {
       fontSize: 11,

@@ -162,14 +162,6 @@ const es = {
   'nav.history': 'Historial',
   'nav.profile': 'Perfil',
 
-  // AI Copilot
-  'ai.suggest': '✨ Sugerir modo con IA',
-  'ai.suggesting': 'Analizando...',
-  'ai.suggestionApplied': 'Modo sugerido: {{mode}}',
-  'ai.error': 'No se pudo obtener sugerencia de IA',
-  'ai.reminder': '🤖 Generar recordatorio',
-  'ai.reminderGenerating': 'Generando...',
-
   // Tabs
   'tabs.home': 'Inicio',
   'tabs.groups': 'Grupos',
@@ -449,14 +441,6 @@ const en: TranslationKeys = {
   'nav.history': 'History',
   'nav.profile': 'Profile',
 
-  // AI Copilot
-  'ai.suggest': '✨ Suggest mode with AI',
-  'ai.suggesting': 'Analyzing...',
-  'ai.suggestionApplied': 'Suggested mode: {{mode}}',
-  'ai.error': 'Could not get AI suggestion',
-  'ai.reminder': '🤖 Generate reminder',
-  'ai.reminderGenerating': 'Generating...',
-
   // Tabs
   'tabs.home': 'Home',
   'tabs.groups': 'Groups',
@@ -735,14 +719,6 @@ const pt: TranslationKeys = {
   'nav.groups': 'Grupos',
   'nav.history': 'Histórico',
   'nav.profile': 'Perfil',
-
-  // AI Copilot
-  'ai.suggest': '✨ Sugerir modo com IA',
-  'ai.suggesting': 'Analisando...',
-  'ai.suggestionApplied': 'Modo sugerido: {{mode}}',
-  'ai.error': 'Nao foi possivel obter sugestao de IA',
-  'ai.reminder': '🤖 Gerar lembrete',
-  'ai.reminderGenerating': 'Gerando...',
 
   // Tabs
   'tabs.home': 'Início',
