@@ -278,7 +278,12 @@ export const api = {
     }
     if (supabase) {
       const { error } = await supabase.auth.signInWithPassword({ email: authEmail, password: pin });
-      if (error) throwWithFallback(error.message, 'Invalid PIN');
+      if (error) {
+        if (error.message.toLowerCase().includes('email not confirmed') || error.code === 'email_not_confirmed') {
+          throw new Error('EMAIL_NOT_CONFIRMED');
+        }
+        throwWithFallback(error.message, 'Invalid PIN');
+      }
 
       const { data: authUserData, error: userErr } = await supabase.auth.getUser();
       if (userErr || !authUserData.user) throwWithFallback('Could not load session');

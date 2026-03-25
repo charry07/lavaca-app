@@ -162,6 +162,7 @@ Palette: warm espresso & dorado — inspired by a Colombian café interior at ni
 ### Rules every AI agent must follow
 
 1. **Read the roadmap first** — understand which phase you are on and the conflict rules before touching any file.
+0. **Always delete unused code, files, and dependencies.** When replacing something, delete what it replaced. No dead code, no legacy files, no stale imports, no unused deps. The cleanup is mandatory — not optional.
 2. **Mark tasks done** — update `- [ ]` → `- [x]` in the phase file as you complete each task.
 3. **Update the roadmap status** — change `⬜ pending` → `🟨 in-progress` → `🟩 done` in the Phase Overview table.
 4. **Delete what you replace** — no dead code, no unused deps, no legacy files. The cleanup checklist in the roadmap is mandatory.

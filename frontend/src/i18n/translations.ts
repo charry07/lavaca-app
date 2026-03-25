@@ -227,6 +227,8 @@ const es = {
   'auth.resetSuccess': 'Enlace enviado. Revisa tu correo.',
   'auth.resetError': 'No se pudo enviar el enlace',
   'auth.backToLogin': 'Volver al inicio',
+  'auth.emailNotConfirmed': 'Debes confirmar tu correo antes de iniciar sesión. Revisa tu bandeja de entrada.',
+  'auth.emailRateLimit': 'Demasiados intentos de registro. Espera unos minutos e intenta de nuevo.',
 
   // Feed
   'feed.empty': 'No hay actividad aun',
@@ -506,6 +508,8 @@ const en: TranslationKeys = {
   'auth.resetSuccess': 'Link sent. Check your email.',
   'auth.resetError': 'Could not send reset link',
   'auth.backToLogin': 'Back to login',
+  'auth.emailNotConfirmed': 'You must confirm your email before signing in. Check your inbox.',
+  'auth.emailRateLimit': 'Too many registration attempts. Please wait a few minutes and try again.',
 
   // Feed
   'feed.empty': 'No activity yet',
@@ -785,6 +789,8 @@ const pt: TranslationKeys = {
   'auth.resetSuccess': 'Link enviado. Verifique seu e-mail.',
   'auth.resetError': 'Não foi possível enviar o link',
   'auth.backToLogin': 'Voltar ao login',
+  'auth.emailNotConfirmed': 'Você deve confirmar seu e-mail antes de entrar. Verifique sua caixa de entrada.',
+  'auth.emailRateLimit': 'Muitas tentativas de registro. Aguarde alguns minutos e tente novamente.',
 
   // Feed
   'feed.empty': 'Nenhuma atividade ainda',
