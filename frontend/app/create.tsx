@@ -1,6 +1,7 @@
 import {useCallback, useEffect, useMemo, useState} from "react";
 import {View, Text, TextInput, TouchableOpacity, StyleSheet, ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView, FlatList, Modal} from "react-native";
 import {LinearGradient} from "expo-linear-gradient";
+import {Feather} from "@expo/vector-icons";
 import {useRouter, useLocalSearchParams} from "expo-router";
 import {SplitMode, User} from "@lavaca/types";
 import * as Contacts from 'expo-contacts';
@@ -54,10 +55,10 @@ export default function CreateScreen() {
     {key: "EUR", symbol: "🇪🇺 EUR"},
   ];
 
-  const SPLIT_MODES: {key: SplitMode; label: string; emoji: string; desc: string}[] = [
-    {key: "equal", label: translate("create.equalParts"), emoji: "⚖️", desc: translate("create.equalPartsDesc")},
-    {key: "percentage", label: translate("create.percentage"), emoji: "📊", desc: translate("create.percentageDesc")},
-    {key: "roulette", label: translate("create.roulette"), emoji: "🎰", desc: translate("create.rouletteDesc")},
+  const SPLIT_MODES: {key: SplitMode; label: string; icon: keyof typeof Feather.glyphMap; desc: string}[] = [
+    {key: "equal", label: translate("create.equalParts"), icon: "pie-chart", desc: translate("create.equalPartsDesc")},
+    {key: "percentage", label: translate("create.percentage"), icon: "bar-chart-2", desc: translate("create.percentageDesc")},
+    {key: "roulette", label: translate("create.roulette"), icon: "shuffle", desc: translate("create.rouletteDesc")},
   ];
 
   // Pre-load participants from prefill
@@ -273,7 +274,9 @@ export default function CreateScreen() {
               onPress={() => setSplitMode(mode.key)}
               activeOpacity={0.8}
             >
-              <Text style={styles.splitModeEmoji}>{mode.emoji}</Text>
+              <View style={styles.splitModeIconWrap}>
+                <Feather name={mode.icon} size={22} color={splitMode === mode.key ? colors.primary : colors.textSecondary} />
+              </View>
               <Text style={[styles.splitModeLabel, splitMode === mode.key && { color: colors.primary }]}>
                 {mode.label}
               </Text>
@@ -307,8 +310,8 @@ export default function CreateScreen() {
             <View style={styles.modalHandle} />
             <View style={styles.searchModalHeader}>
               <Text style={styles.modalTitle}>{translate("session.addParticipants")}</Text>
-              <TouchableOpacity onPress={() => setShowAddParticipantModal(false)} style={styles.modalCloseBtn}>
-                <Text style={styles.modalCloseBtnText}>✕</Text>
+              <TouchableOpacity onPress={() => setShowAddParticipantModal(false)} style={styles.modalCloseBtn} accessibilityRole='button' accessibilityLabel={translate('common.cancel')}>
+                <Feather name='x' size={16} color={colors.textMuted} />
               </TouchableOpacity>
             </View>
 
@@ -320,7 +323,12 @@ export default function CreateScreen() {
             >
               {loadingContacts
                 ? <ActivityIndicator size="small" color={colors.primary} />
-                : <Text style={styles.fromContactsButtonText}>📱 {translate('create.fromContacts')}</Text>
+                : (
+                  <View style={styles.fromContactsButtonInner}>
+                    <Feather name='smartphone' size={16} color={colors.primary} />
+                    <Text style={styles.fromContactsButtonText}>{translate('create.fromContacts')}</Text>
+                  </View>
+                )
               }
             </TouchableOpacity>
 
@@ -383,7 +391,9 @@ export default function CreateScreen() {
                         <Text style={styles.userName}>{item.displayName}</Text>
                         <Text style={styles.userMeta}>@{item.username}</Text>
                       </View>
-                      <View style={[styles.checkCircle, isSelected && styles.checkCircleActive]}>{isSelected && <Text style={styles.checkMark}>✓</Text>}</View>
+                      <View style={[styles.checkCircle, isSelected && styles.checkCircleActive]}>
+                        {isSelected ? <Feather name='check' size={12} color={colors.background} /> : null}
+                      </View>
                     </TouchableOpacity>
                   );
                 }}
@@ -406,7 +416,9 @@ export default function CreateScreen() {
                         <Text style={styles.userName}>{foundUser.displayName}</Text>
                         <Text style={styles.userMeta}>@{foundUser.username}</Text>
                       </View>
-                      <View style={[styles.checkCircle, isSelected && styles.checkCircleActive]}>{isSelected && <Text style={styles.checkMark}>✓</Text>}</View>
+                      <View style={[styles.checkCircle, isSelected && styles.checkCircleActive]}>
+                        {isSelected ? <Feather name='check' size={12} color={colors.background} /> : null}
+                      </View>
                     </TouchableOpacity>
                   );
                 }}
@@ -516,8 +528,15 @@ const createStyles = (colors: ThemeColors) =>
       borderColor: colors.primary,
       backgroundColor: colors.primary + '12',
     },
-    splitModeEmoji: {
-      fontSize: 28,
+    splitModeIconWrap: {
+      width: 40,
+      height: 40,
+      borderRadius: borderRadius.full,
+      borderWidth: 1,
+      borderColor: colors.surfaceBorder,
+      backgroundColor: colors.surface3,
+      alignItems: 'center',
+      justifyContent: 'center',
       marginBottom: spacing.xs,
     },
     splitModeLabel: {
@@ -536,6 +555,11 @@ const createStyles = (colors: ThemeColors) =>
       borderColor: colors.primary + '50',
       backgroundColor: colors.primary + '10',
       marginBottom: spacing.md,
+    },
+    fromContactsButtonInner: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: spacing.xs,
     },
     fromContactsButtonText: {
       fontSize: fontSize.sm,
@@ -635,10 +659,6 @@ const createStyles = (colors: ThemeColors) =>
       alignItems: "center",
       justifyContent: "center",
     },
-    modalCloseBtnText: {
-      fontSize: fontSize.sm,
-      color: colors.textMuted,
-    },
     searchInput: {
       backgroundColor: colors.surface2,
       borderRadius: borderRadius.md,
@@ -713,11 +733,6 @@ const createStyles = (colors: ThemeColors) =>
     checkCircleActive: {
       backgroundColor: colors.primary,
       borderColor: colors.primary,
-    },
-    checkMark: {
-      fontSize: 12,
-      color: colors.background,
-      fontWeight: fontWeight.bold,
     },
     // Selected chips row
     chipsScroll: {

@@ -13,6 +13,7 @@ import {
   StatusBar,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import { Feather } from '@expo/vector-icons';
 import { CameraView } from 'expo-camera';
 import { useRouter } from 'expo-router';
 import { api } from '../src/services/api';
@@ -97,18 +98,20 @@ export default function JoinScreen() {
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
       <LinearGradient
-        colors={['#0f0f23', '#1a1a2e', '#16213e']}
+        colors={[colors.gradientStart, colors.gradientMid, colors.gradientEnd]}
         style={styles.background}
       >
         <View style={styles.content}>
-          <Text style={styles.emoji}>🔗</Text>
+          <View style={styles.heroIconWrap}>
+            <Feather name='link-2' size={30} color={colors.accent} />
+          </View>
           <Text style={styles.title}>{translate('join.title')}</Text>
           <Text style={styles.subtitle}>{translate('join.subtitle')}</Text>
 
           {/* QR Scan button */}
           <TouchableOpacity style={styles.scanButton} onPress={handleOpenScanner} activeOpacity={0.8}>
             <GlassCard style={styles.scanButtonInner}>
-              <Text style={styles.scanIcon}>📷</Text>
+              <Feather name='camera' size={20} color={colors.primary} />
               <Text style={styles.scanButtonText}>{translate('join.scanQR')}</Text>
             </GlassCard>
           </TouchableOpacity>
@@ -151,7 +154,7 @@ export default function JoinScreen() {
                 style={styles.joinButton}
               >
                 {loading ? (
-                  <ActivityIndicator color="#fff" />
+                  <ActivityIndicator color={colors.white} />
                 ) : (
                   <Text style={styles.joinButtonText}>{translate('join.joinButton')}</Text>
                 )}
@@ -220,19 +223,26 @@ const createStyles = (colors: ThemeColors) =>
       justifyContent: 'center',
       alignItems: 'center',
     },
-    emoji: {
-      fontSize: 56,
+    heroIconWrap: {
+      width: 74,
+      height: 74,
+      borderRadius: borderRadius.full,
+      backgroundColor: colors.surface3,
+      borderWidth: 1,
+      borderColor: colors.surfaceBorder,
+      alignItems: 'center',
+      justifyContent: 'center',
       marginBottom: spacing.md,
     },
     title: {
       fontSize: fontSize.xl,
       fontWeight: fontWeight.bold,
-      color: '#fff',
+      color: colors.text,
       marginBottom: spacing.sm,
     },
     subtitle: {
       fontSize: fontSize.md,
-      color: 'rgba(255,255,255,0.65)',
+      color: colors.textSecondary,
       marginBottom: spacing.xl,
       textAlign: 'center',
     },
@@ -263,10 +273,10 @@ const createStyles = (colors: ThemeColors) =>
     dividerLine: {
       flex: 1,
       height: 1,
-      backgroundColor: 'rgba(255,255,255,0.15)',
+      backgroundColor: colors.surfaceBorder,
     },
     dividerText: {
-      color: 'rgba(255,255,255,0.4)',
+      color: colors.textMuted,
       fontSize: fontSize.sm,
       marginHorizontal: spacing.md,
     },
@@ -278,12 +288,12 @@ const createStyles = (colors: ThemeColors) =>
     codeInput: {
       fontSize: fontSize.xxl,
       fontWeight: fontWeight.bold,
-      color: '#fff',
-      backgroundColor: 'rgba(255,255,255,0.08)',
+      color: colors.text,
+      backgroundColor: colors.surface3,
       borderRadius: borderRadius.md,
       padding: spacing.lg,
       borderWidth: 1,
-      borderColor: 'rgba(255,255,255,0.12)',
+      borderColor: colors.surfaceBorder,
       textAlign: 'center',
       width: '100%',
       marginBottom: spacing.md,
@@ -291,12 +301,12 @@ const createStyles = (colors: ThemeColors) =>
     },
     nameInput: {
       fontSize: fontSize.md,
-      color: '#fff',
-      backgroundColor: 'rgba(255,255,255,0.08)',
+      color: colors.text,
+      backgroundColor: colors.surface3,
       borderRadius: borderRadius.md,
       padding: spacing.md,
       borderWidth: 1,
-      borderColor: 'rgba(255,255,255,0.12)',
+      borderColor: colors.surfaceBorder,
       textAlign: 'center',
       width: '100%',
       marginBottom: spacing.lg,
@@ -310,12 +320,12 @@ const createStyles = (colors: ThemeColors) =>
     joinButtonText: {
       fontSize: fontSize.lg,
       fontWeight: fontWeight.bold,
-      color: '#fff',
+      color: colors.white,
     },
     // ── Scanner ──────────────────────────────────────────
     scannerContainer: {
       flex: 1,
-      backgroundColor: '#000',
+      backgroundColor: colors.overlayStrong,
     },
     scanOverlayTop: {
       flex: 1,
@@ -376,21 +386,21 @@ const createStyles = (colors: ThemeColors) =>
       gap: spacing.md,
     },
     scanHintText: {
-      color: 'rgba(255,255,255,0.8)',
+      color: colors.text,
       fontSize: fontSize.md,
       textAlign: 'center',
       paddingHorizontal: spacing.xl,
     },
     cancelScanButton: {
-      backgroundColor: 'rgba(255,255,255,0.12)',
+      backgroundColor: colors.surface3,
       paddingHorizontal: spacing.xl,
       paddingVertical: spacing.sm,
       borderRadius: borderRadius.full,
       borderWidth: 1,
-      borderColor: 'rgba(255,255,255,0.2)',
+      borderColor: colors.surfaceBorder,
     },
     cancelScanText: {
-      color: '#fff',
+      color: colors.text,
       fontSize: fontSize.md,
       fontWeight: fontWeight.semibold,
     },

@@ -6,6 +6,7 @@ import {
   StyleSheet,
   RefreshControl,
 } from 'react-native';
+import { Feather } from '@expo/vector-icons';
 import { spacing, borderRadius, fontSize, type ThemeColors } from '../../src/constants/theme';
 import { GlassCard, SkeletonCard, EmptyState, ErrorState } from '../../src/components';
 import { useI18n } from '../../src/i18n';
@@ -14,21 +15,20 @@ import { api } from '../../src/services/api';
 import { FeedEvent } from '@lavaca/types';
 
 import { getErrorMessage } from '../../src/utils/errorMessage';
-const EVENT_EMOJI: Record<FeedEvent['type'], string> = {
-  roulette_win: '🎰',
-  roulette_coward: '🐔',
-  fast_payer: '⚡',
-  session_closed: '✅',
-  debt_reminder: '💸',
+const EVENT_ICON: Record<FeedEvent['type'], keyof typeof Feather.glyphMap> = {
+  roulette_win: 'award',
+  roulette_coward: 'shield-off',
+  fast_payer: 'zap',
+  session_closed: 'check-circle',
+  debt_reminder: 'dollar-sign',
 };
 
-// Left accent strip color per event type
-const EVENT_ACCENT: Record<string, string> = {
-  roulette_win: '#a78bfa',
-  roulette_coward: '#f59e0b',
-  fast_payer: '#60a5fa',
-  session_closed: '#4ade80',
-  debt_reminder: '#f472b6',
+const getEventAccent = (type: FeedEvent['type'], colors: ThemeColors): string => {
+  if (type === 'roulette_win') return colors.eventRouletteWin;
+  if (type === 'roulette_coward') return colors.eventRouletteCoward;
+  if (type === 'fast_payer') return colors.eventFastPayer;
+  if (type === 'session_closed') return colors.eventSessionClosed;
+  return colors.eventDebtReminder;
 };
 
 function timeAgo(date: Date | string): string {
@@ -97,16 +97,18 @@ export default function FeedTab() {
         }
         ListEmptyComponent={
           <View style={styles.emptyWrapper}>
-            <EmptyState emoji="📰" title={translate('feed.empty')} hint={translate('feed.emptyHint')} />
+            <EmptyState iconName='activity' title={translate('feed.empty')} hint={translate('feed.emptyHint')} />
           </View>
         }
         renderItem={({ item }) => (
           <GlassCard style={styles.card}>
             {/* Left accent strip */}
-            <View style={[styles.accentStrip, { backgroundColor: EVENT_ACCENT[item.type] || colors.primary }]} />
+            <View style={[styles.accentStrip, { backgroundColor: getEventAccent(item.type, colors) }]} />
             <View style={styles.cardInner}>
               <View style={styles.cardHeader}>
-                <Text style={styles.eventEmoji}>{EVENT_EMOJI[item.type] || '📝'}</Text>
+                <View style={[styles.eventIconWrap, { backgroundColor: colors.surface3, borderColor: colors.surfaceBorder }]}>
+                  <Feather name={EVENT_ICON[item.type] || 'activity'} size={16} color={colors.accent} />
+                </View>
                 <Text style={styles.timeAgo}>{timeAgo(item.createdAt)}</Text>
               </View>
               <Text style={styles.eventMessage}>{item.message}</Text>
@@ -144,7 +146,14 @@ const createStyles = (colors: ThemeColors) =>
       alignItems: 'center',
       marginBottom: spacing.xs,
     },
-    eventEmoji: { fontSize: 22 },
+    eventIconWrap: {
+      width: 30,
+      height: 30,
+      borderRadius: borderRadius.full,
+      borderWidth: 1,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
     timeAgo: { fontSize: fontSize.xs, color: colors.textMuted },
     eventMessage: { fontSize: fontSize.md, color: colors.text, lineHeight: 22 },
   });

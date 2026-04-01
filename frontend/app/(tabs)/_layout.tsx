@@ -1,6 +1,7 @@
 import { Tabs } from 'expo-router';
 import { useEffect } from 'react';
 import { Platform, StyleSheet, Text, View } from 'react-native';
+import { Feather } from '@expo/vector-icons';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -12,7 +13,7 @@ import { useTheme } from '../../src/theme';
 import { useI18n } from '../../src/i18n';
 
 interface TabIconProps {
-  icon: string;
+  icon: keyof typeof Feather.glyphMap;
   label: string;
   focused: boolean;
   activeColor: string;
@@ -59,7 +60,9 @@ function TabIcon({ icon, label, focused, activeColor, inactiveColor, accent }: T
   return (
     <View style={styles.iconWrapper}>
       <Animated.View style={[styles.iconPill, pillStyle]}>
-        <Animated.Text style={[styles.emoji, emojiStyle]}>{icon}</Animated.Text>
+        <Animated.View style={emojiStyle}>
+          <Feather name={icon} size={16} color={focused ? activeColor : inactiveColor} />
+        </Animated.View>
       </Animated.View>
       <Text
         style={[
@@ -93,7 +96,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'transparent',
   },
-  emoji: { fontSize: 17, lineHeight: 22 },
   iconLabel: { fontSize: 10, fontWeight: '500', letterSpacing: 0.1 },
   iconLabelActive: { fontWeight: '700' },
   // Golden dorado dot — the signature accent on active tabs
@@ -112,23 +114,30 @@ export default function TabLayout() {
   const tabContent = (
     <Tabs
       screenOptions={{
+        lazy: true,
+        freezeOnBlur: true,
         headerStyle: { backgroundColor: colors.surface },
         headerTintColor: colors.primary,
         headerTitleStyle: { fontWeight: '700', color: colors.text },
         headerShadowVisible: false,
+        sceneStyle: { backgroundColor: colors.background },
         tabBarShowLabel: false,
         tabBarStyle: {
-          backgroundColor: colors.surface,
+          backgroundColor: colors.tabBar,
           borderTopWidth: 1,
-          borderTopColor: colors.surfaceBorder,
+          borderTopColor: colors.glassBorder,
           elevation: 0,
           height: Platform.OS === 'ios' ? 82 : 64,
           paddingBottom: Platform.OS === 'ios' ? 20 : 6,
           paddingTop: 4,
-          shadowColor: '#000',
-          shadowOffset: { width: 0, height: -4 },
-          shadowOpacity: 0.2,
-          shadowRadius: 16,
+          ...(Platform.OS === 'web'
+            ? { boxShadow: '0px -4px 16px rgba(0,0,0,0.34)' }
+            : {
+                shadowColor: colors.cardGlow,
+                shadowOffset: { width: 0, height: -4 },
+                shadowOpacity: 0.34,
+                shadowRadius: 16,
+              }),
         },
         tabBarActiveTintColor: colors.primary,
         tabBarInactiveTintColor: colors.textMuted,
@@ -141,7 +150,7 @@ export default function TabLayout() {
           headerShown: false,
           tabBarIcon: ({ focused }) => (
             <TabIcon
-              icon="🏠" label={translate('tabs.home')} focused={focused}
+              icon='home' label={translate('tabs.home')} focused={focused}
               activeColor={colors.primary} inactiveColor={colors.textMuted} accent={colors.accent}
             />
           ),
@@ -153,7 +162,7 @@ export default function TabLayout() {
           title: translate('tabs.groups'),
           tabBarIcon: ({ focused }) => (
             <TabIcon
-              icon="👥" label={translate('tabs.groups')} focused={focused}
+              icon='users' label={translate('tabs.groups')} focused={focused}
               activeColor={colors.primary} inactiveColor={colors.textMuted} accent={colors.accent}
             />
           ),
@@ -165,7 +174,7 @@ export default function TabLayout() {
           title: translate('tabs.history'),
           tabBarIcon: ({ focused }) => (
             <TabIcon
-              icon="📋" label={translate('tabs.history')} focused={focused}
+              icon='file-text' label={translate('tabs.history')} focused={focused}
               activeColor={colors.primary} inactiveColor={colors.textMuted} accent={colors.accent}
             />
           ),
@@ -177,7 +186,7 @@ export default function TabLayout() {
           title: translate('tabs.feed'),
           tabBarIcon: ({ focused }) => (
             <TabIcon
-              icon="📰" label={translate('tabs.feed')} focused={focused}
+              icon='activity' label={translate('tabs.feed')} focused={focused}
               activeColor={colors.primary} inactiveColor={colors.textMuted} accent={colors.accent}
             />
           ),
@@ -189,7 +198,7 @@ export default function TabLayout() {
           title: translate('tabs.profile'),
           tabBarIcon: ({ focused }) => (
             <TabIcon
-              icon="👤" label={translate('tabs.profile')} focused={focused}
+              icon='user' label={translate('tabs.profile')} focused={focused}
               activeColor={colors.primary} inactiveColor={colors.textMuted} accent={colors.accent}
             />
           ),

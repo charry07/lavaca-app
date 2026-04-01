@@ -1,19 +1,27 @@
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Feather } from '@expo/vector-icons';
 import { useTheme } from '../../theme';
 import { borderRadius, fontSize, fontWeight, spacing } from '../../constants/theme';
 
 interface EmptyStateProps {
-  emoji: string;
+  emoji?: string;
+  iconName?: keyof typeof Feather.glyphMap;
   title: string;
   hint?: string;
   action?: { label: string; onPress: () => void };
 }
 
-export function EmptyState({ emoji, title, hint, action }: EmptyStateProps) {
+export function EmptyState({ emoji, iconName, title, hint, action }: EmptyStateProps) {
   const { colors } = useTheme();
   return (
     <View style={styles.container}>
-      <Text style={styles.emoji}>{emoji}</Text>
+      {iconName ? (
+        <View style={[styles.iconWrap, { backgroundColor: colors.surface2, borderColor: colors.surfaceBorder }]}>
+          <Feather name={iconName} size={26} color={colors.accent} />
+        </View>
+      ) : (
+        <Text style={styles.emoji}>{emoji || '•'}</Text>
+      )}
       <Text style={[styles.title, { color: colors.textSecondary }]}>{title}</Text>
       {hint && <Text style={[styles.hint, { color: colors.textMuted }]}>{hint}</Text>}
       {action && (
@@ -37,6 +45,15 @@ const styles = StyleSheet.create({
   },
   emoji: {
     fontSize: 48,
+    marginBottom: spacing.sm,
+  },
+  iconWrap: {
+    width: 62,
+    height: 62,
+    borderRadius: borderRadius.full,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
     marginBottom: spacing.sm,
   },
   title: {

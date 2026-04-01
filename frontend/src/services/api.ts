@@ -124,6 +124,23 @@ function throwWithFallback(message: string, fallback = 'Unknown error'): never {
   throw new Error(message || fallback);
 }
 
+function isPaymentAccountsTableMissingError(message?: string): boolean {
+  if (!message) return false;
+  const text = message.toLowerCase();
+  return (
+    text.includes('public.payment_accounts') &&
+    (
+      text.includes('schema cache') ||
+      text.includes('could not find the table') ||
+      text.includes('relation')
+    )
+  );
+}
+
+function throwPaymentAccountsUnavailable(): never {
+  throw new Error('Payment methods are not available yet. Apply the latest Supabase migrations and refresh the schema cache.');
+}
+
 function randomId(prefix: string): string {
   return `${prefix}-${Math.random().toString(36).slice(2, 12)}`;
 }
@@ -1102,7 +1119,10 @@ export const api = {
         .order('is_preferred', { ascending: false })
         .order('created_at', { ascending: false });
 
-      if (error) throwWithFallback(error.message, 'Could not load payment accounts');
+      if (error) {
+        if (isPaymentAccountsTableMissingError(error.message)) return [];
+        throwWithFallback(error.message, 'Could not load payment accounts');
+      }
       return ((data || []) as PaymentAccountRow[]).map(rowToPaymentAccount);
     }
 
@@ -1145,6 +1165,7 @@ export const api = {
         .select('*')
         .single();
 
+      if (error && isPaymentAccountsTableMissingError(error.message)) throwPaymentAccountsUnavailable();
       if (error || !created) throwWithFallback(error?.message || 'Could not create payment account');
       return rowToPaymentAccount(created as PaymentAccountRow);
     }
@@ -1192,6 +1213,7 @@ export const api = {
         .select('*')
         .single();
 
+      if (error && isPaymentAccountsTableMissingError(error.message)) throwPaymentAccountsUnavailable();
       if (error || !updated) throwWithFallback(error?.message || 'Could not update payment account');
       return rowToPaymentAccount(updated as PaymentAccountRow);
     }
@@ -1207,6 +1229,7 @@ export const api = {
         .eq('id', accountId)
         .eq('user_id', userId);
 
+      if (error && isPaymentAccountsTableMissingError(error.message)) throwPaymentAccountsUnavailable();
       if (error) throwWithFallback(error.message, 'Could not delete payment account');
       return;
     }
@@ -1223,6 +1246,7 @@ export const api = {
         .eq('user_id', userId)
         .eq('is_active', true);
 
+      if (error && isPaymentAccountsTableMissingError(error.message)) throwPaymentAccountsUnavailable();
       if (error) throwWithFallback(error.message, 'Could not set preferred account');
       return;
     }
@@ -1253,7 +1277,9 @@ export const api = {
         .order('is_preferred', { ascending: false })
         .order('created_at', { ascending: false });
 
-      if (accountErr) throwWithFallback(accountErr.message, 'Could not load creditor accounts');
+      if (accountErr && !isPaymentAccountsTableMissingError(accountErr.message)) {
+        throwWithFallback(accountErr.message, 'Could not load creditor accounts');
+      }
 
       return [{
         sessionId: session.id,

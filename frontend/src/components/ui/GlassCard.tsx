@@ -28,7 +28,7 @@ export function GlassCard({
           styles.base,
           {
             borderRadius: radius,
-            backgroundColor: colors.surface2,
+            backgroundColor: colors.glass,
             borderColor: colors.glassBorder,
           },
           style,
@@ -47,6 +47,7 @@ export function GlassCard({
         styles.base,
         {
           borderRadius: radius,
+          backgroundColor: colors.glass,
           borderColor: colors.glassBorder,
         },
         style,
@@ -61,5 +62,7 @@ const styles = StyleSheet.create({
   base: {
     overflow: 'hidden',
     borderWidth: 1,
+    boxShadow: '0px 8px 22px rgba(0,0,0,0.22)',
+    elevation: 9,
   },
 });

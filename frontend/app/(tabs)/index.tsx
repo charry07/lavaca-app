@@ -1,6 +1,7 @@
 import {useState, useCallback} from "react";
 import {View, Text, TouchableOpacity, StyleSheet, FlatList, RefreshControl} from "react-native";
 import {LinearGradient} from "expo-linear-gradient";
+import { Feather } from '@expo/vector-icons';
 import {useRouter} from "expo-router";
 import {useFocusEffect} from "@react-navigation/native";
 import {PaymentSession, formatCOP} from "@lavaca/types";
@@ -74,9 +75,13 @@ export default function HomeTab() {
               {hasPendingApproval && <StatusPill variant='warning' label='⏳' />}
               <StatusPill variant={statusPillVariant} label={statusLabel} />
             </View>
-            <Text style={styles.modeBadge}>
-              {item.splitMode === 'equal' ? '⚖️' : item.splitMode === 'percentage' ? '📊' : '🎰'}
-            </Text>
+            <View style={styles.modeBadge}>
+              <Feather
+                name={item.splitMode === 'equal' ? 'pie-chart' : item.splitMode === 'percentage' ? 'bar-chart-2' : 'shuffle'}
+                size={16}
+                color={colors.textSecondary}
+              />
+            </View>
           </View>
           <View style={styles.sessionCardBody}>
             <Text style={styles.sessionAmount}>{formatCOP(item.totalAmount)}</Text>
@@ -141,13 +146,13 @@ export default function HomeTab() {
           <View style={styles.actions}>
             <TouchableOpacity style={styles.createButtonWrap} onPress={() => router.push("/create")} activeOpacity={0.85}>
               <LinearGradient colors={[colors.primary, colors.primaryDark]} start={{x: 0, y: 0}} end={{x: 1, y: 0}} style={styles.createButton}>
-                <Text style={styles.createButtonIcon}>🍽️</Text>
+                <Feather name='plus-circle' size={18} color={colors.background} />
                 <Text style={styles.createButtonText}>{translate("home.createTable")}</Text>
               </LinearGradient>
             </TouchableOpacity>
 
             <TouchableOpacity style={styles.joinButton} onPress={() => router.push("/join")} activeOpacity={0.8}>
-              <Text style={styles.joinButtonIcon}>🔗</Text>
+              <Feather name='link-2' size={18} color={colors.primary} />
               <Text style={styles.joinButtonText}>{translate("home.joinTable")}</Text>
             </TouchableOpacity>
           </View>
@@ -231,7 +236,6 @@ const createStyles = (colors: ThemeColors) =>
       paddingVertical: spacing.md + 2,
       gap: spacing.sm,
     },
-    createButtonIcon: {fontSize: 18},
     createButtonText: {
       fontSize: fontSize.md,
       fontWeight: fontWeight.bold,
@@ -249,7 +253,6 @@ const createStyles = (colors: ThemeColors) =>
       borderRadius: borderRadius.md,
       gap: spacing.sm,
     },
-    joinButtonIcon: {fontSize: 18},
     joinButtonText: {
       fontSize: fontSize.md,
       fontWeight: fontWeight.semibold,
@@ -376,9 +379,16 @@ const createStyles = (colors: ThemeColors) =>
       lineHeight: 20,
     },
     modeBadge: {
-      fontSize: fontSize.md,
+      width: 30,
+      height: 30,
+      borderRadius: borderRadius.full,
+      backgroundColor: colors.surface3,
+      borderWidth: 1,
+      borderColor: colors.surfaceBorder,
+      alignItems: 'center',
+      justifyContent: 'center',
       position: 'absolute',
-      top: spacing.sm,
-      right: spacing.sm,
+      top: spacing.xs,
+      right: spacing.xs,
     },
   });

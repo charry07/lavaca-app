@@ -15,6 +15,7 @@ import {
   Animated,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import { Feather } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { DebtSummary, PaymentSession, Participant, User, formatCOP } from '@lavaca/types';
 import { api } from '../../src/services/api';
@@ -445,6 +446,14 @@ export default function SessionScreen() {
     }
   };
 
+  const getSessionStatusLabel = (status: string) => {
+    switch (status) {
+      case 'open': return translate('common.open');
+      case 'closed': return translate('common.closed');
+      default: return translate('home.cancelled');
+    }
+  };
+
   const renderParticipant = ({ item, index }: { item: Participant; index: number }) => {
     const isPaid = item.status === 'confirmed';
     const isReported = item.status === 'reported';
@@ -481,11 +490,19 @@ export default function SessionScreen() {
         <View style={styles.participantRow}>
           <Avatar displayName={item.displayName} size={36} />
           <View style={styles.participantInfo}>
-            <Text style={styles.participantName}>
-              {item.displayName}
-              {isWinner ? ' 🎰' : ''}
-              {isCoward ? ' 🐔' : ''}
-            </Text>
+            <View style={styles.participantNameRow}>
+              <Text style={styles.participantName}>{item.displayName}</Text>
+              {isWinner ? (
+                <View style={styles.participantFlag}>
+                  <Feather name='shuffle' size={12} color={colors.accent} />
+                </View>
+              ) : null}
+              {isCoward ? (
+                <View style={styles.participantFlag}>
+                  <Feather name='shield-off' size={12} color={colors.warning} />
+                </View>
+              ) : null}
+            </View>
             <StatusPill variant={statusPillVariant} label={statusLabel} />
           </View>
           <View style={styles.participantRight}>
@@ -498,17 +515,17 @@ export default function SessionScreen() {
               </TouchableOpacity>
             )}
             {isReported && isAdmin && (
-              <TouchableOpacity style={styles.approveButton} onPress={() => handleApprovePaid(item.userId)}>
-                <Text style={styles.approveButtonText}>{translate('session.approvePaidButton')}</Text>
-              </TouchableOpacity>
-            )}
-            {isReported && isAdmin && (
-              <TouchableOpacity
-                style={styles.rejectButton}
-                onPress={() => handleRejectPaid(item.userId)}
-              >
-                <Text style={styles.rejectButtonText}>{translate('session.rejectPaidButton')}</Text>
-              </TouchableOpacity>
+              <View style={styles.adminActionsRow}>
+                <TouchableOpacity style={styles.approveButton} onPress={() => handleApprovePaid(item.userId)}>
+                  <Text style={styles.approveButtonText}>{translate('session.approvePaidButton')}</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.rejectButton}
+                  onPress={() => handleRejectPaid(item.userId)}
+                >
+                  <Text style={styles.rejectButtonText}>{translate('session.rejectPaidButton')}</Text>
+                </TouchableOpacity>
+              </View>
             )}
             {isReported && !isAdmin && isMe && (
               <Text style={styles.waitingApprovalText}>{translate('session.waitingApproval')}</Text>
@@ -530,15 +547,16 @@ export default function SessionScreen() {
       <View style={styles.header}>
         <View style={styles.codeRow}>
           <Text style={styles.joinCodeLabel}>{translate('session.code')}</Text>
-          <TouchableOpacity onPress={handleCopyCode} activeOpacity={0.6} style={{ flex: 1 }}>
-            <Text style={styles.joinCode}>{session.joinCode} 📋</Text>
+          <TouchableOpacity onPress={handleCopyCode} activeOpacity={0.6} style={styles.joinCodeWrap}>
+            <Text style={styles.joinCode}>{session.joinCode}</Text>
+            <Feather name='copy' size={14} color={colors.accent} />
           </TouchableOpacity>
           <TouchableOpacity onPress={() => setShowShareModal(true)} style={styles.shareButton}>
             <Text style={styles.shareButtonText}>{translate('session.share')}</Text>
           </TouchableOpacity>
           <View style={[styles.statusBadge, { backgroundColor: statusStyle.bg }]}>
             <Text style={[styles.statusBadgeText, { color: statusStyle.color }]}>
-              {session.status}
+              {getSessionStatusLabel(session.status)}
             </Text>
           </View>
         </View>
@@ -590,9 +608,6 @@ export default function SessionScreen() {
                 />
               </Animated.View>
             </View>
-            <Text style={styles.progressText}>
-              {translate('session.paidCount', { paid: displayPaidCount, total: displayTotalCount })}
-            </Text>
           </View>
         )}
 
@@ -623,7 +638,9 @@ export default function SessionScreen() {
         contentContainerStyle={styles.list}
         ListEmptyComponent={
           <View style={styles.emptyState}>
-            <Text style={styles.emptyEmoji}>👥</Text>
+            <View style={styles.emptyIconWrap}>
+              <Feather name='users' size={24} color={colors.textSecondary} />
+            </View>
             <Text style={styles.emptyText}>{translate('session.noParticipants')}</Text>
           </View>
         }
@@ -651,7 +668,7 @@ export default function SessionScreen() {
               style={styles.splitButton}
             >
               {splitting ? (
-                <ActivityIndicator color="#fff" />
+                <ActivityIndicator color={colors.white} />
               ) : (
                 <Text style={styles.splitButtonText}>{splitActionLabel}</Text>
               )}
@@ -742,7 +759,7 @@ export default function SessionScreen() {
               <View style={styles.searchModalHeader}>
                 <Text style={styles.shareModalTitle}>{translate('session.addParticipants')}</Text>
                 <TouchableOpacity onPress={() => setShowAddParticipantModal(false)}>
-                  <Text style={styles.searchModalClose}>✕</Text>
+                  <Feather name='x' size={18} color={colors.textMuted} />
                 </TouchableOpacity>
               </View>
 
@@ -799,7 +816,7 @@ export default function SessionScreen() {
                           disabled={isAdding}
                         >
                           {isAdding ? (
-                            <ActivityIndicator size="small" color="#fff" />
+                            <ActivityIndicator size="small" color={colors.white} />
                           ) : (
                             <Text style={styles.addUserButtonText}>{translate('groups.addButton')}</Text>
                           )}
@@ -904,6 +921,12 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     letterSpacing: 2,
     flex: 1,
   },
+  joinCodeWrap: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+  },
   statusBadge: {
     paddingHorizontal: spacing.sm,
     paddingVertical: 3,
@@ -970,12 +993,6 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     borderRadius: borderRadius.full,
     overflow: 'hidden',
   },
-  progressText: {
-    fontSize: fontSize.xs,
-    color: colors.textMuted,
-    marginTop: spacing.xs,
-    textAlign: 'right',
-  },
   addParticipantButton: {
     marginTop: spacing.md,
     flexDirection: 'row',
@@ -1016,13 +1033,29 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     flex: 1,
     gap: spacing.xs,
   },
+  participantNameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+  },
   participantName: {
     fontSize: fontSize.md,
     fontWeight: fontWeight.semibold,
     color: colors.text,
   },
+  participantFlag: {
+    width: 20,
+    height: 20,
+    borderRadius: borderRadius.full,
+    borderWidth: 1,
+    borderColor: colors.surfaceBorder,
+    backgroundColor: colors.surface3,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   participantRight: {
     alignItems: 'flex-end',
+    gap: spacing.xs,
   },
   participantAmount: {
     fontSize: fontSize.lg,
@@ -1046,7 +1079,6 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     paddingVertical: 5,
     paddingHorizontal: spacing.sm,
     borderRadius: borderRadius.sm,
-    marginTop: spacing.xs,
   },
   approveButtonText: {
     fontSize: fontSize.xs,
@@ -1075,8 +1107,15 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     alignItems: 'center',
     paddingVertical: spacing.xxl,
   },
-  emptyEmoji: {
-    fontSize: 44,
+  emptyIconWrap: {
+    width: 58,
+    height: 58,
+    borderRadius: borderRadius.full,
+    backgroundColor: colors.surface3,
+    borderWidth: 1,
+    borderColor: colors.surfaceBorder,
+    alignItems: 'center',
+    justifyContent: 'center',
     marginBottom: spacing.md,
   },
   emptyText: {
@@ -1086,13 +1125,19 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     lineHeight: 22,
   },
   rejectButton: {
-    marginTop: spacing.xs,
     paddingHorizontal: spacing.sm,
     paddingVertical: 4,
     borderRadius: borderRadius.sm,
     borderWidth: 1,
     borderColor: colors.danger + '60',
     alignItems: 'center',
+  },
+  adminActionsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+    gap: spacing.xs,
+    flexWrap: 'wrap',
   },
   rejectButtonText: {
     fontSize: fontSize.xs,
@@ -1192,11 +1237,6 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: spacing.md,
-  },
-  searchModalClose: {
-    fontSize: 20,
-    color: colors.textMuted,
-    paddingHorizontal: spacing.xs,
   },
   searchInput: {
     backgroundColor: colors.surface,

@@ -9,6 +9,7 @@ import {
   ActivityIndicator,
   Alert,
 } from 'react-native';
+import { Feather } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { GlassCard, Avatar, PaymentAccountCard, PaymentAccountForm, type PaymentAccountInput, useToast } from '../../src/components';
 import { spacing, borderRadius, fontSize, fontWeight, type ThemeColors } from '../../src/constants/theme';
@@ -70,7 +71,11 @@ export default function ProfileTab() {
     return { totalSessions, totalAmount, asAdmin, asParticipant, favoriteMode, thisMonth };
   }, [sessions, user?.id]);
 
-  const MODE_EMOJI: Record<SplitMode, string> = { equal: '⚖️', percentage: '📊', roulette: '🎰' };
+  const MODE_ICON: Record<SplitMode, keyof typeof Feather.glyphMap> = {
+    equal: 'pie-chart',
+    percentage: 'bar-chart-2',
+    roulette: 'shuffle',
+  };
 
   const loadPaymentAccounts = useMemo(
     () => async (targetUserId: string) => {
@@ -261,10 +266,10 @@ export default function ProfileTab() {
             <TouchableOpacity style={styles.saveBtn} onPress={saveEdit} disabled={saving}>
               {saving
                 ? <ActivityIndicator size="small" color={colors.background} />
-                : <Text style={styles.saveBtnText}>✓</Text>}
+                : <Feather name='check' size={16} color={colors.background} />}
             </TouchableOpacity>
             <TouchableOpacity style={styles.cancelBtn} onPress={cancelEdit}>
-              <Text style={styles.cancelBtnText}>✕</Text>
+              <Feather name='x' size={16} color={colors.textMuted} />
             </TouchableOpacity>
           </View>
         ) : (
@@ -273,9 +278,10 @@ export default function ProfileTab() {
             onPress={() => editable && startEdit(field, value)}
             disabled={!editable}
           >
-            <Text style={styles.value}>
-              {value || '—'} {editable ? ' ✏️' : ''}
-            </Text>
+            <View style={styles.valueRow}>
+              <Text style={styles.value}>{value || '—'}</Text>
+              {editable ? <Feather name='edit-2' size={13} color={colors.textMuted} /> : null}
+            </View>
           </TouchableOpacity>
         )}
       </View>
@@ -316,7 +322,7 @@ export default function ProfileTab() {
             </View>
             {stats.favoriteMode && (
               <View style={styles.statItem}>
-                <Text style={styles.statNumber}>{MODE_EMOJI[stats.favoriteMode]}</Text>
+                <Feather name={MODE_ICON[stats.favoriteMode]} size={20} color={colors.text} />
                 <Text style={styles.statLabel}>{translate('profile.favoriteMode')}</Text>
               </View>
             )}
@@ -330,7 +336,7 @@ export default function ProfileTab() {
         <View style={styles.cameraIcon}>
           {uploadingAvatar
             ? <ActivityIndicator size="small" color={colors.primary} />
-            : <Text style={styles.cameraText}>📷</Text>}
+            : <Feather name='camera' size={15} color={colors.textSecondary} />}
         </View>
       </TouchableOpacity>
       <Text style={styles.profileName}>{user.displayName}</Text>
@@ -398,7 +404,10 @@ export default function ProfileTab() {
       {/* Delete account */}
       {confirmDelete ? (
         <GlassCard style={styles.deleteConfirmBox}>
-          <Text style={styles.deleteConfirmTitle}>{translate('profile.deleteTitle')} ⚠️</Text>
+          <View style={styles.deleteConfirmTitleRow}>
+            <Feather name='alert-triangle' size={16} color={colors.danger} />
+            <Text style={styles.deleteConfirmTitle}>{translate('profile.deleteTitle')}</Text>
+          </View>
           <Text style={styles.deleteConfirmMessage}>{translate('profile.deleteMessage')}</Text>
           <View style={styles.deleteConfirmRow}>
             <TouchableOpacity
@@ -414,7 +423,7 @@ export default function ProfileTab() {
               disabled={deletingAccount}
             >
               {deletingAccount
-                ? <ActivityIndicator color="#fff" size="small" />
+                ? <ActivityIndicator color={colors.white} size="small" />
                 : <Text style={styles.deleteConfirmBtnText}>{translate('profile.deleteConfirm')}</Text>}
             </TouchableOpacity>
           </View>
@@ -463,7 +472,11 @@ const createStyles = (colors: ThemeColors) =>
       borderWidth: 1,
       borderColor: colors.surfaceBorder,
     },
-    cameraText: { fontSize: 15 },
+    valueRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: spacing.xs,
+    },
     card: {
       padding: 0,
       borderRadius: borderRadius.lg,
@@ -508,7 +521,6 @@ const createStyles = (colors: ThemeColors) =>
       justifyContent: 'center',
       alignItems: 'center',
     },
-    saveBtnText: { color: colors.background, fontSize: fontSize.md, fontWeight: fontWeight.bold },
     cancelBtn: {
       marginLeft: spacing.xs,
       backgroundColor: colors.surface,
@@ -520,7 +532,6 @@ const createStyles = (colors: ThemeColors) =>
       borderWidth: 1,
       borderColor: colors.surfaceBorder,
     },
-    cancelBtnText: { color: colors.textMuted, fontSize: fontSize.md, fontWeight: fontWeight.bold },
     logoutButton: {
       marginTop: spacing.md,
       paddingVertical: spacing.md,
@@ -558,6 +569,11 @@ const createStyles = (colors: ThemeColors) =>
       fontSize: fontSize.md,
       fontWeight: fontWeight.bold,
       color: colors.danger,
+    },
+    deleteConfirmTitleRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: spacing.xs,
       marginBottom: spacing.sm,
     },
     deleteConfirmMessage: {
@@ -590,7 +606,7 @@ const createStyles = (colors: ThemeColors) =>
     deleteConfirmBtnText: {
       fontSize: fontSize.sm,
       fontWeight: fontWeight.bold,
-      color: '#fff',
+      color: colors.white,
     },
     statsCard: {
       marginBottom: spacing.md,

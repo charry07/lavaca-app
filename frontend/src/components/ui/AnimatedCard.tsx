@@ -2,7 +2,7 @@ import { useEffect } from 'react';
 import { StyleSheet, ViewStyle } from 'react-native';
 import Animated, { useSharedValue, useAnimatedStyle, withTiming, withDelay, Easing } from 'react-native-reanimated';
 import { useTheme } from '../../theme';
-import { borderRadius, shadow, type ThemeColors } from '../../constants/theme';
+import { borderRadius, type ThemeColors } from '../../constants/theme';
 
 interface AnimatedCardProps {
   children: React.ReactNode;
@@ -33,7 +33,12 @@ export function AnimatedCard({ children, index = 0, style }: AnimatedCardProps) 
 const createStyles = (colors: ThemeColors) =>
   StyleSheet.create({
     card: {
-      backgroundColor: colors.surface2, borderRadius: borderRadius.lg,
-      borderWidth: 1, borderColor: colors.surfaceBorder, padding: 16, ...shadow.sm,
+      backgroundColor: colors.surface2,
+      borderRadius: borderRadius.lg,
+      borderWidth: 1,
+      borderColor: colors.glassBorder,
+      padding: 16,
+      boxShadow: '0px 6px 16px rgba(0,0,0,0.18)',
+      elevation: 6,
     },
   });

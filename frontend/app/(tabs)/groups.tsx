@@ -11,6 +11,7 @@ import {
   ActivityIndicator,
   RefreshControl,
 } from 'react-native';
+import { Feather } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { spacing, borderRadius, fontSize, fontWeight, type ThemeColors } from '../../src/constants/theme';
@@ -32,11 +33,18 @@ interface GroupWithMembers {
 }
 
 // Deterministic accent color from group name for the left strip
-function nameToAccent(name: string): string {
-  const ACCENTS = ['#4ade80', '#60a5fa', '#f59e0b', '#a78bfa', '#f472b6', '#34d399'];
+function nameToAccent(name: string, colors: ThemeColors): string {
+  const accents = [
+    colors.eventSessionClosed,
+    colors.eventFastPayer,
+    colors.eventRouletteCoward,
+    colors.eventRouletteWin,
+    colors.eventDebtReminder,
+    colors.primary,
+  ];
   let hash = 0;
   for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
-  return ACCENTS[Math.abs(hash) % ACCENTS.length];
+  return accents[Math.abs(hash) % accents.length];
 }
 
 export default function GroupsTab() {
@@ -52,10 +60,29 @@ export default function GroupsTab() {
   const [refreshing, setRefreshing] = useState(false);
   const [showCreate, setShowCreate] = useState(false);
   const [newGroupName, setNewGroupName] = useState('');
-  const [newGroupIcon, setNewGroupIcon] = useState('👥');
+  const [newGroupIcon, setNewGroupIcon] = useState<keyof typeof Feather.glyphMap>('users');
   const [creating, setCreating] = useState(false);
 
-  const ICONS = ['👥', '🏠', '🍕', '🎉', '💼', '🏋️', '⚽', '🎓', '🍺', '✈️'];
+  const ICONS: (keyof typeof Feather.glyphMap)[] = ['users', 'home', 'coffee', 'star', 'briefcase', 'activity', 'target', 'book-open', 'truck', 'send'];
+
+  const LEGACY_ICON_MAP: Record<string, keyof typeof Feather.glyphMap> = {
+    '👥': 'users',
+    '🏠': 'home',
+    '🍕': 'coffee',
+    '🎉': 'star',
+    '💼': 'briefcase',
+    '🏋️': 'activity',
+    '⚽': 'target',
+    '🎓': 'book-open',
+    '🍺': 'truck',
+    '✈️': 'send',
+  };
+
+  const resolveGroupIcon = (icon?: string): keyof typeof Feather.glyphMap => {
+    if (!icon) return 'users';
+    if (icon in Feather.glyphMap) return icon as keyof typeof Feather.glyphMap;
+    return LEGACY_ICON_MAP[icon] || 'users';
+  };
 
   const fetchGroups = useCallback(async () => {
     if (!user) return;
@@ -90,7 +117,7 @@ export default function GroupsTab() {
       });
       setShowCreate(false);
       setNewGroupName('');
-      setNewGroupIcon('👥');
+      setNewGroupIcon('users');
       fetchGroups();
     } catch (err: unknown) {
       showError(getErrorMessage(err, translate('create.errorCreating')));
@@ -122,7 +149,7 @@ export default function GroupsTab() {
   };
 
   const renderGroup = ({ item }: { item: GroupWithMembers }) => {
-    const accent = nameToAccent(item.name);
+    const accent = nameToAccent(item.name, colors);
     return (
       <TouchableOpacity
         onPress={() => router.push(`/group/${item.id}` as any)}
@@ -131,7 +158,9 @@ export default function GroupsTab() {
         <GlassCard style={styles.groupCard}>
           {/* Left accent strip */}
           <View style={[styles.accentStrip, { backgroundColor: accent }]} />
-          <Text style={styles.groupIcon}>{item.icon || '👥'}</Text>
+          <View style={styles.groupIconWrap}>
+            <Feather name={resolveGroupIcon(item.icon)} size={20} color={colors.accent} />
+          </View>
           <View style={styles.groupInfo}>
             <Text style={styles.groupName}>{item.name}</Text>
             <Text style={styles.groupMembers}>
@@ -158,8 +187,10 @@ export default function GroupsTab() {
             style={styles.deleteBtn}
             onPress={() => handleDeleteGroup(item.id, item.name)}
             hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            accessibilityRole='button'
+            accessibilityLabel={translate('groups.deleteTitle')}
           >
-            <Text style={styles.deleteBtnText}>🗑️</Text>
+            <Feather name='trash-2' size={16} color={colors.danger} />
           </TouchableOpacity>
         </GlassCard>
       </TouchableOpacity>
@@ -181,7 +212,7 @@ export default function GroupsTab() {
       {groups.length === 0 ? (
         <View style={styles.emptyWrapper}>
           <EmptyState
-            emoji="👥"
+            iconName='users'
             title={translate('groups.empty')}
             hint={translate('groups.emptyHint')}
             action={{ label: translate('groups.createButton'), onPress: () => setShowCreate(true) }}
@@ -239,7 +270,7 @@ export default function GroupsTab() {
                   style={[styles.iconOption, newGroupIcon === icon && styles.iconSelected]}
                   onPress={() => setNewGroupIcon(icon)}
                 >
-                  <Text style={styles.iconText}>{icon}</Text>
+                  <Feather name={icon} size={18} color={newGroupIcon === icon ? colors.primary : colors.textSecondary} />
                 </TouchableOpacity>
               ))}
             </View>
@@ -260,7 +291,7 @@ export default function GroupsTab() {
                   style={styles.createButton}
                 >
                   {creating ? (
-                    <ActivityIndicator color="#fff" size="small" />
+                    <ActivityIndicator color={colors.white} size="small" />
                   ) : (
                     <Text style={styles.createButtonText}>{translate('groups.createButton')}</Text>
                   )}
@@ -293,7 +324,17 @@ const createStyles = (colors: ThemeColors) =>
       borderRadius: 2,
       marginRight: spacing.md,
     },
-    groupIcon: { fontSize: 36, marginRight: spacing.md },
+    groupIconWrap: {
+      width: 46,
+      height: 46,
+      borderRadius: borderRadius.full,
+      backgroundColor: colors.surface2,
+      borderWidth: 1,
+      borderColor: colors.surfaceBorder,
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginRight: spacing.md,
+    },
     groupInfo: { flex: 1 },
     groupName: { fontSize: fontSize.lg, fontWeight: fontWeight.bold, color: colors.text },
     groupMembers: { fontSize: fontSize.sm, color: colors.textSecondary, marginTop: 2 },
@@ -318,7 +359,6 @@ const createStyles = (colors: ThemeColors) =>
       color: colors.accent,
     },
     deleteBtn: { padding: spacing.sm, marginLeft: spacing.sm },
-    deleteBtnText: { fontSize: 20 },
     fab: {
       position: 'absolute',
       bottom: spacing.xl,
@@ -338,7 +378,7 @@ const createStyles = (colors: ThemeColors) =>
       justifyContent: 'center',
       alignItems: 'center',
     },
-    fabText: { fontSize: 28, fontWeight: fontWeight.bold, color: '#fff', marginTop: -2 },
+    fabText: { fontSize: 28, fontWeight: fontWeight.bold, color: colors.white, marginTop: -2 },
     modalOverlay: {
       flex: 1,
       justifyContent: 'flex-end',
@@ -395,7 +435,6 @@ const createStyles = (colors: ThemeColors) =>
       borderColor: colors.primary,
       backgroundColor: colors.primary + '22',
     },
-    iconText: { fontSize: 22 },
     modalButtons: {
       flexDirection: 'row',
       marginTop: spacing.lg,
@@ -423,6 +462,6 @@ const createStyles = (colors: ThemeColors) =>
     createButtonText: {
       fontSize: fontSize.md,
       fontWeight: fontWeight.bold,
-      color: '#fff',
+      color: colors.white,
     },
   });

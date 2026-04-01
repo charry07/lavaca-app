@@ -6,6 +6,9 @@ import { useTheme } from '../../theme';
 import { borderRadius, fontSize, fontWeight, spacing, type ThemeColors } from '../../constants/theme';
 import { useToast } from '../feedback/Toast';
 
+const LLAVE_DETAIL_PREFIX = 'LLAVE_DETAIL::';
+const LLAVE_TYPE_PREFIX = 'LLAVE_TYPE::';
+
 interface PaymentAccountCardProps {
   account: PaymentAccount;
   onEdit?: (account: PaymentAccount) => void;
@@ -49,7 +52,20 @@ export function PaymentAccountCard({ account, onEdit, onDelete, onSetPreferred, 
     showSuccess(translate('payment.copied'));
   };
 
-  const bankLine = [account.bankName, account.accountType].filter(Boolean).join(' · ');
+  const accountTypeLabel =
+    account.accountType === 'ahorros'
+      ? translate('payment.accountTypeSavings')
+      : account.accountType === 'corriente'
+        ? translate('payment.accountTypeChecking')
+        : '';
+
+  const bankLine = [account.bankName, accountTypeLabel].filter(Boolean).join(' · ');
+  const noteLines = (account.notes || '').split('\n').filter(Boolean);
+  const noteDetail = noteLines
+    .filter((line) => !line.startsWith(LLAVE_DETAIL_PREFIX) && !line.startsWith(LLAVE_TYPE_PREFIX))
+    .join(' · ')
+    .trim();
+  const transferKeyValue = account.llave || account.accountNumber || '';
 
   return (
     <View style={[styles.card, account.isPreferred && styles.preferredCard]}>
@@ -62,24 +78,10 @@ export function PaymentAccountCard({ account, onEdit, onDelete, onSetPreferred, 
 
       {!!bankLine && <Text style={styles.meta}>{bankLine}</Text>}
 
-      {!!account.accountNumber && (
-        <TouchableOpacity style={styles.copyRow} onPress={() => copyValue(account.accountNumber || '')}>
-          <Text style={styles.copyLabel}>{translate('payment.accountLabel')}</Text>
-          <Text style={styles.copyValue}>{account.accountNumber}</Text>
-        </TouchableOpacity>
-      )}
-
-      {!!account.phone && (
-        <TouchableOpacity style={styles.copyRow} onPress={() => copyValue(account.phone || '')}>
-          <Text style={styles.copyLabel}>{translate('payment.phoneLabel')}</Text>
-          <Text style={styles.copyValue}>{account.phone}</Text>
-        </TouchableOpacity>
-      )}
-
-      {!!account.llave && (
-        <TouchableOpacity style={styles.copyRow} onPress={() => copyValue(account.llave || '')}>
-          <Text style={styles.copyLabel}>{translate('payment.llaveLabel')}</Text>
-          <Text style={styles.copyValue}>{account.llave}</Text>
+      {!!transferKeyValue && (
+        <TouchableOpacity style={styles.copyRow} onPress={() => copyValue(transferKeyValue)}>
+          <Text style={styles.copyLabel}>{translate('payment.accountOrLlaveLabel')}</Text>
+          <Text style={styles.copyValue}>{transferKeyValue}</Text>
         </TouchableOpacity>
       )}
 
@@ -88,6 +90,13 @@ export function PaymentAccountCard({ account, onEdit, onDelete, onSetPreferred, 
           <Text style={styles.copyLabel}>{translate('payment.documentLabel')}</Text>
           <Text style={styles.copyValue}>{account.documentId}</Text>
         </TouchableOpacity>
+      )}
+
+      {!!noteDetail && (
+        <View style={styles.detailRow}>
+          <Text style={styles.copyLabel}>{translate('payment.bankDetailLabel')}</Text>
+          <Text style={styles.detailText}>{noteDetail}</Text>
+        </View>
       )}
 
       {editable && (
@@ -164,6 +173,15 @@ const createStyles = (colors: ThemeColors) =>
       fontSize: fontSize.sm,
       color: colors.text,
       fontWeight: fontWeight.semibold,
+    },
+    detailRow: {
+      gap: 2,
+      paddingVertical: spacing.xs,
+    },
+    detailText: {
+      fontSize: fontSize.sm,
+      color: colors.textSecondary,
+      lineHeight: 20,
     },
     actions: {
       flexDirection: 'row',

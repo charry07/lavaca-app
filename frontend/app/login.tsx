@@ -449,6 +449,10 @@ function RegisterStep() {
   const [pin, setPin] = useState("");
   const [confirmPin, setConfirmPin] = useState("");
   const [loading, setLoading] = useState(false);
+  const hasPin = pin.length > 0;
+  const pinNeedsLength = hasPin && pin.length < 6;
+  const pinTooWeak = pin.length === 6 && isWeakPin(pin);
+  const pinMismatch = confirmPin.length > 0 && pin !== confirmPin;
 
   const handleRegister = async () => {
     if (!name.trim()) {
@@ -553,7 +557,28 @@ function RegisterStep() {
         <Text style={styles.fieldLabel}>{translate("auth.pinSetLabel")}</Text>
         <Text style={styles.required}>*</Text>
       </View>
-      <TextInput style={styles.input} placeholder='••••••' placeholderTextColor={colors.textMuted} keyboardType='number-pad' maxLength={6} secureTextEntry value={pin} onChangeText={setPin} />
+      <TextInput
+        style={styles.input}
+        placeholder='••••••'
+        placeholderTextColor={colors.textMuted}
+        keyboardType='number-pad'
+        maxLength={6}
+        secureTextEntry
+        value={pin}
+        onChangeText={(text) => setPin(text.replace(/\D/g, "").slice(0, 6))}
+      />
+      <Text
+        style={[
+          styles.inlineHint,
+          (pinNeedsLength || pinTooWeak) && styles.inlineHintError,
+        ]}
+      >
+        {pinNeedsLength
+          ? translate("auth.invalidPin")
+          : pinTooWeak
+            ? translate("auth.weakPin")
+            : translate("auth.pinHint")}
+      </Text>
 
       <View style={styles.labelRow}>
         <Text style={styles.fieldLabel}>{translate("auth.pinConfirmLabel")}</Text>
@@ -567,8 +592,9 @@ function RegisterStep() {
         maxLength={6}
         secureTextEntry
         value={confirmPin}
-        onChangeText={setConfirmPin}
+        onChangeText={(text) => setConfirmPin(text.replace(/\D/g, "").slice(0, 6))}
       />
+      {pinMismatch ? <Text style={[styles.inlineHint, styles.inlineHintError]}>{translate("auth.pinMismatch")}</Text> : null}
 
       <TouchableOpacity style={[styles.button, loading && styles.buttonDisabled]} onPress={handleRegister} disabled={loading}>
         <LinearGradient colors={[colors.primary, colors.primaryDark]} start={{x: 0, y: 0}} end={{x: 1, y: 0}} style={styles.buttonGradient}>
@@ -585,11 +611,11 @@ function RegisterStep() {
 
 // ── Main Login Screen ───────────────────────────────────
 export default function LoginScreen() {
-  const {colors, isDark} = useTheme();
+  const {colors} = useTheme();
   const {authStep} = useAuth();
   const styles = createStyles(colors);
 
-  const gradientColors: [string, string, string] = isDark ? ["#0c0a06", "#131008", "#1a1510"] : ["#fdf8f0", "#f5ede0", "#eee0cb"];
+  const gradientColors: [string, string, string] = [colors.gradientStart, colors.gradientMid, colors.gradientEnd];
 
   return (
     <LinearGradient colors={gradientColors} style={styles.container}>
@@ -882,5 +908,15 @@ const createStyles = (colors: ThemeColors) =>
       fontSize: fontSize.xs,
       color: colors.textMuted,
       fontStyle: "italic",
+    },
+    inlineHint: {
+      width: "100%",
+      fontSize: fontSize.xs,
+      color: colors.textMuted,
+      marginTop: -spacing.xs,
+      marginBottom: spacing.sm,
+    },
+    inlineHintError: {
+      color: colors.danger,
     },
   });

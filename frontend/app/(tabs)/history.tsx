@@ -7,6 +7,7 @@ import {
   FlatList,
   RefreshControl,
 } from 'react-native';
+import { Feather } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { PaymentSession , formatCOP } from '@lavaca/types';
 import { spacing, borderRadius, fontSize, fontWeight, type ThemeColors } from '../../src/constants/theme';
@@ -17,10 +18,10 @@ import { useAuth } from '../../src/auth';
 import { api } from '../../src/services/api';
 import { getSessionAccentColor, getSessionPillVariant } from '../../src/utils/sessionStatus';
 
-const MODE_EMOJI: Record<string, string> = {
-  equal: '⚖️',
-  percentage: '📊',
-  roulette: '🎰',
+const MODE_ICON: Record<string, keyof typeof Feather.glyphMap> = {
+  equal: 'pie-chart',
+  percentage: 'bar-chart-2',
+  roulette: 'shuffle',
 };
 
 
@@ -94,7 +95,9 @@ export default function HistoryTab() {
               <Text style={styles.cardTime}>{timeAgo(item.createdAt, translate('common.now'))}</Text>
             </View>
             <View style={styles.cardHeaderRight}>
-              <Text style={styles.modeEmoji}>{MODE_EMOJI[item.splitMode] || '⚖️'}</Text>
+              <View style={styles.modeIconWrap}>
+                <Feather name={MODE_ICON[item.splitMode] || 'pie-chart'} size={14} color={colors.textSecondary} />
+              </View>
               <StatusPill variant={statusPillVariant} label={statusLabel} />
             </View>
           </View>
@@ -125,11 +128,12 @@ export default function HistoryTab() {
               styles.rolePill,
               { backgroundColor: isAdmin ? colors.accent + '20' : colors.primary + '15' }
             ]}>
+              <Feather name={isAdmin ? 'shield' : 'user'} size={12} color={isAdmin ? colors.accent : colors.primary} />
               <Text style={[
                 styles.rolePillText,
                 { color: isAdmin ? colors.accent : colors.primary }
               ]}>
-                {isAdmin ? '👑 ' + translate('history.organizer') : '👤 ' + translate('history.participant')}
+                {isAdmin ? translate('history.organizer') : translate('history.participant')}
               </Text>
             </View>
             {myParticipation && (
@@ -158,7 +162,7 @@ export default function HistoryTab() {
     <View style={styles.container}>
       {sessions.length === 0 ? (
         <View style={styles.emptyWrapper}>
-          <EmptyState emoji="📋" title={translate('history.empty')} hint={translate('history.emptyHint')} />
+          <EmptyState iconName='file-text' title={translate('history.empty')} hint={translate('history.emptyHint')} />
         </View>
       ) : (
         <FlatList
@@ -208,7 +212,16 @@ const createStyles = (colors: ThemeColors) =>
       marginBottom: 2,
     },
     cardTime: { fontSize: fontSize.xs, color: colors.textMuted },
-    modeEmoji: { fontSize: 18 },
+    modeIconWrap: {
+      width: 28,
+      height: 28,
+      borderRadius: borderRadius.full,
+      borderWidth: 1,
+      borderColor: colors.surfaceBorder,
+      backgroundColor: colors.surface2,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
     cardBody: {
       flexDirection: 'row',
       alignItems: 'center',
@@ -234,6 +247,9 @@ const createStyles = (colors: ThemeColors) =>
     },
     roleTag: { fontSize: fontSize.xs, color: colors.textSecondary },
     rolePill: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 4,
       paddingHorizontal: spacing.sm,
       paddingVertical: 3,
       borderRadius: borderRadius.full,
