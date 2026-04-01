@@ -11,6 +11,7 @@ import {
   ActivityIndicator,
   RefreshControl,
 } from 'react-native';
+import { Feather } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useLocalSearchParams, useNavigation, useRouter } from 'expo-router';
 import { User } from '@lavaca/types';
@@ -38,6 +39,25 @@ interface GroupDetail {
   createdBy: string;
   createdAt: Date;
   members: GroupMember[];
+}
+
+const LEGACY_ICON_MAP: Record<string, keyof typeof Feather.glyphMap> = {
+  '👥': 'users',
+  '🏠': 'home',
+  '🍕': 'coffee',
+  '🎉': 'star',
+  '💼': 'briefcase',
+  '🏋️': 'activity',
+  '⚽': 'target',
+  '🎓': 'book-open',
+  '🍺': 'truck',
+  '✈️': 'send',
+};
+
+function resolveGroupIcon(icon?: string): keyof typeof Feather.glyphMap {
+  if (!icon) return 'users';
+  if (icon in Feather.glyphMap) return icon as keyof typeof Feather.glyphMap;
+  return LEGACY_ICON_MAP[icon] || 'users';
 }
 
 export default function GroupDetailScreen() {
@@ -73,12 +93,14 @@ export default function GroupDetailScreen() {
           }}
           style={styles.headerBackButton}
           hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          accessibilityRole='button'
+          accessibilityLabel={translate('common.cancel')}
         >
-          <Text style={styles.headerBackText}>←</Text>
+          <Feather name='arrow-left' size={20} color={colors.primary} />
         </TouchableOpacity>
       ),
     });
-  }, [navigation, router, styles.headerBackButton, styles.headerBackText]);
+  }, [colors.primary, navigation, router, styles.headerBackButton, styles.headerBackText, translate]);
 
   const fetchGroup = useCallback(async () => {
     if (!id) return;
@@ -147,7 +169,7 @@ export default function GroupDetailScreen() {
       await api.addGroupMembers(group.id, [userToAdd.id]);
       await fetchGroup();
       setSearchResults((prev) => prev.filter((u) => u.id !== userToAdd.id));
-      Alert.alert('✅', translate('groups.memberAdded', { name: userToAdd.displayName }));
+      Alert.alert(translate('common.confirmed'), translate('groups.memberAdded', { name: userToAdd.displayName }));
     } catch (err: unknown) {
       Alert.alert(translate('common.error'), getErrorMessage(err));
     } finally {
@@ -202,8 +224,6 @@ export default function GroupDetailScreen() {
     }
   }, [group, user, translate, showError, router]);
 
-  const isAdmin = group?.createdBy === user?.id;
-
   const renderMember = ({ item }: { item: GroupMember }) => {
     const isCreator = item.id === group?.createdBy;
     const isMe = item.id === user?.id;
@@ -227,7 +247,7 @@ export default function GroupDetailScreen() {
         )}
         {isAdmin && !isCreator && (
           <TouchableOpacity style={styles.removeButton} onPress={() => handleRemoveMember(item)}>
-            <Text style={styles.removeText}>✕</Text>
+            <Feather name='x' size={16} color={colors.danger} />
           </TouchableOpacity>
         )}
       </GlassCard>
@@ -252,6 +272,8 @@ export default function GroupDetailScreen() {
     );
   }
 
+  const isAdmin = group.createdBy === user?.id;
+
   return (
     <View style={styles.container}>
       {/* Header */}
@@ -262,7 +284,7 @@ export default function GroupDetailScreen() {
           end={{ x: 0.5, y: 1 }}
           style={StyleSheet.absoluteFill}
         />
-        <Text style={styles.headerIcon}>{group.icon || '👥'}</Text>
+        <Feather name={resolveGroupIcon(group.icon)} size={56} color={colors.accent} />
         <Text style={styles.headerName}>{group.name}</Text>
         <Text style={styles.headerCount}>{group.members.length} {translate('groups.members')}</Text>
       </GlassCard>
@@ -279,12 +301,13 @@ export default function GroupDetailScreen() {
             end={{ x: 1, y: 0 }}
             style={styles.createSessionBtn}
           >
-            <Text style={styles.createSessionText}>{translate('groups.createSession')} 🐄</Text>
+            <Text style={styles.createSessionText}>{translate('groups.createSession')}</Text>
           </LinearGradient>
         </TouchableOpacity>
 
         <TouchableOpacity style={styles.addMemberBtn} onPress={openAddModal}>
-          <Text style={styles.addMemberBtnText}>➕ {translate('groups.addMembers')}</Text>
+          <Feather name='plus' size={16} color={colors.primary} />
+          <Text style={styles.addMemberBtnText}>{translate('groups.addMembers')}</Text>
         </TouchableOpacity>
 
         <TouchableOpacity
@@ -294,7 +317,10 @@ export default function GroupDetailScreen() {
         >
           {repeatLoading
             ? <ActivityIndicator size="small" color={colors.accent} />
-            : <Text style={styles.repeatBtnText}>🔁 {translate('groups.repeatSession')}</Text>
+            : <View style={styles.actionRow}>
+                <Feather name='rotate-ccw' size={16} color={colors.accent} />
+                <Text style={styles.repeatBtnText}>{translate('groups.repeatSession')}</Text>
+              </View>
           }
         </TouchableOpacity>
       </View>
@@ -306,7 +332,7 @@ export default function GroupDetailScreen() {
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>{translate('groups.addMembers')}</Text>
               <TouchableOpacity onPress={() => setShowAddModal(false)}>
-                <Text style={styles.modalClose}>✕</Text>
+                <Feather name='x' size={18} color={colors.textMuted} />
               </TouchableOpacity>
             </View>
 
@@ -423,6 +449,11 @@ const createStyles = (colors: ThemeColors) =>
       fontSize: fontSize.md,
       fontWeight: fontWeight.semibold,
       color: colors.accent,
+    },
+    actionRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: spacing.xs,
     },
     headerCount: { fontSize: fontSize.md, color: colors.textSecondary },
     actionsRow: {

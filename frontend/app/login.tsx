@@ -9,6 +9,7 @@ import {VacaLogo, HeaderControls, useToast} from "../src/components";
 import {getErrorMessage} from "../src/utils/errorMessage";
 import {fetchCountries, getCountriesSync} from "../src/services/countries";
 import type {Country} from "@lavaca/types";
+import { Feather } from '@expo/vector-icons';
 
 // ── Weak PIN blacklist ───────────────────────────────────
 const WEAK_PINS = new Set(["123456", "654321", "000000", "111111", "222222", "333333", "444444", "555555", "666666", "777777", "888888", "999999", "112233", "121212", "123123", "010101"]);
@@ -111,8 +112,10 @@ function PhoneStep() {
                 onPress={() => {
                   setShowPicker(false);
                   setSearch("");
-                }}>
-                <Text style={styles.modalClose}>✕</Text>
+                }}
+                accessibilityRole='button'
+                accessibilityLabel={translate('common.cancel')}>
+                <Feather name='x' size={18} color={colors.textMuted} />
               </TouchableOpacity>
             </View>
 

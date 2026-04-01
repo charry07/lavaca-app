@@ -27,6 +27,10 @@ import { useAuth } from '../../src/auth';
 import { useSessionSocket } from '../../src/hooks/useSessionSocket';
 
 import { getErrorMessage } from '../../src/utils/errorMessage';
+
+const TOTAL_SUGGESTED_PARTICIPANTS = 8;
+const MAX_RELATED_PARTICIPANTS = 5;
+
 export default function SessionScreen() {
   const { joinCode } = useLocalSearchParams<{ joinCode: string }>();
   const router = useRouter();
@@ -51,7 +55,10 @@ export default function SessionScreen() {
   const [showAddParticipantModal, setShowAddParticipantModal] = useState(false);
   const [participantSearchQuery, setParticipantSearchQuery] = useState('');
   const [participantResults, setParticipantResults] = useState<User[]>([]);
+  const [frequentParticipants, setFrequentParticipants] = useState<User[]>([]);
+  const [suggestedParticipants, setSuggestedParticipants] = useState<User[]>([]);
   const [searchingUsers, setSearchingUsers] = useState(false);
+  const [loadingSuggestions, setLoadingSuggestions] = useState(false);
   const [addingParticipantId, setAddingParticipantId] = useState<string | null>(null);
   const [debts, setDebts] = useState<DebtSummary[]>([]);
   const [loadingDebts, setLoadingDebts] = useState(false);
@@ -133,7 +140,11 @@ export default function SessionScreen() {
       setSearchingUsers(true);
       try {
         const results = await api.searchUsers(query);
-        setParticipantResults(results);
+        const existingIds = new Set((session?.participants || []).map((p) => p.userId));
+        const filtered = results
+          .filter((r) => r.id !== user?.id)
+          .filter((r) => !existingIds.has(r.id));
+        setParticipantResults(filtered.slice(0, TOTAL_SUGGESTED_PARTICIPANTS));
       } catch {
         setParticipantResults([]);
       } finally {
@@ -142,7 +153,7 @@ export default function SessionScreen() {
     }, 300);
 
     return () => clearTimeout(timer);
-  }, [participantSearchQuery, showAddParticipantModal]);
+  }, [participantSearchQuery, session?.participants, showAddParticipantModal, user?.id]);
 
   const handleSplit = async () => {
     if (!joinCode || !session) return;
@@ -370,11 +381,41 @@ export default function SessionScreen() {
     );
   };
 
-  const openAddParticipantModal = () => {
+  const openAddParticipantModal = async () => {
     setParticipantSearchQuery('');
     setParticipantResults([]);
+    setFrequentParticipants([]);
+    setSuggestedParticipants([]);
     setSearchingUsers(false);
     setShowAddParticipantModal(true);
+
+    if (!user?.id) return;
+
+    setLoadingSuggestions(true);
+    try {
+      const existingIds = new Set((session?.participants || []).map((p) => p.userId));
+
+      const relatedRaw = await api.getFrequentUsers(user.id, MAX_RELATED_PARTICIPANTS);
+      const related = relatedRaw
+        .filter((p) => p.id !== user.id)
+        .filter((p) => !existingIds.has(p.id))
+        .slice(0, MAX_RELATED_PARTICIPANTS);
+
+      setFrequentParticipants(related);
+
+      const randomCount = related.length === 0
+        ? TOTAL_SUGGESTED_PARTICIPANTS
+        : TOTAL_SUGGESTED_PARTICIPANTS - related.length;
+
+      const excludeIds = [user.id, ...Array.from(existingIds), ...related.map((p) => p.id)];
+      const random = await api.getRandomUsers(randomCount, excludeIds);
+      setSuggestedParticipants(random.slice(0, randomCount));
+    } catch {
+      setFrequentParticipants([]);
+      setSuggestedParticipants([]);
+    } finally {
+      setLoadingSuggestions(false);
+    }
   };
 
   const handleAddParticipant = async (userToAdd: User) => {
@@ -387,6 +428,8 @@ export default function SessionScreen() {
       });
       setSession(updated);
       setParticipantResults((prev) => prev.filter((u) => u.id !== userToAdd.id));
+      setFrequentParticipants((prev) => prev.filter((u) => u.id !== userToAdd.id));
+      setSuggestedParticipants((prev) => prev.filter((u) => u.id !== userToAdd.id));
       showSuccess(translate('session.memberAdded', { name: userToAdd.displayName }));
     } catch (err: unknown) {
       showError(getErrorMessage(err, translate('common.error')));
@@ -622,8 +665,9 @@ export default function SessionScreen() {
         )}
 
         {canAddParticipants && (
-          <TouchableOpacity style={styles.addParticipantButton} onPress={openAddParticipantModal}>
-            <Text style={styles.addParticipantButtonText}>➕ {translate('session.addParticipants')}</Text>
+          <TouchableOpacity style={styles.addParticipantButton} onPress={openAddParticipantModal} accessibilityRole='button' accessibilityLabel={translate('session.addParticipants')}>
+            <Feather name='plus' size={16} color={colors.primary} />
+            <Text style={styles.addParticipantButtonText}>{translate('session.addParticipants')}</Text>
           </TouchableOpacity>
         )}
       </View>
@@ -758,7 +802,7 @@ export default function SessionScreen() {
             <View style={styles.searchModalInner}>
               <View style={styles.searchModalHeader}>
                 <Text style={styles.shareModalTitle}>{translate('session.addParticipants')}</Text>
-                <TouchableOpacity onPress={() => setShowAddParticipantModal(false)}>
+                <TouchableOpacity onPress={() => setShowAddParticipantModal(false)} accessibilityRole='button' accessibilityLabel={translate('common.cancel')}>
                   <Feather name='x' size={18} color={colors.textMuted} />
                 </TouchableOpacity>
               </View>
@@ -774,12 +818,16 @@ export default function SessionScreen() {
                 autoCorrect={false}
               />
 
+              {loadingSuggestions && participantSearchQuery.trim().length < 2 && (
+                <ActivityIndicator size="small" color={colors.primary} style={styles.searchLoading} />
+              )}
+
               {searchingUsers && (
                 <ActivityIndicator size="small" color={colors.primary} style={styles.searchLoading} />
               )}
 
-              {!searchingUsers && participantSearchQuery.trim().length < 2 && (
-                <Text style={styles.searchHintText}>{translate('session.searchPeopleHint')}</Text>
+              {!loadingSuggestions && !searchingUsers && participantSearchQuery.trim().length < 2 && frequentParticipants.length === 0 && suggestedParticipants.length === 0 && (
+                <Text style={styles.searchHintText}>{translate('create.noFrequentPeople')}</Text>
               )}
 
               {!searchingUsers && participantSearchQuery.trim().length >= 2 && participantResults.length === 0 && (
@@ -787,10 +835,24 @@ export default function SessionScreen() {
               )}
 
               <FlatList
-                data={participantResults}
+                data={participantSearchQuery.trim().length >= 2
+                  ? participantResults
+                  : [
+                    ...(frequentParticipants.length > 0
+                      ? [{ id: '__related__', type: 'label', label: translate('create.frequentPeopleHint') as string }, ...frequentParticipants]
+                      : []),
+                    ...(suggestedParticipants.length > 0
+                      ? [{ id: '__suggested__', type: 'label', label: translate('create.suggestedPeople') as string }, ...suggestedParticipants]
+                      : []),
+                  ]}
                 keyExtractor={(item) => item.id}
                 keyboardShouldPersistTaps="handled"
-                renderItem={({ item: foundUser }) => {
+                renderItem={({ item }) => {
+                  if ((item as { type?: string }).type === 'label') {
+                    return <Text style={styles.searchSectionLabel}>{(item as { label: string }).label}</Text>;
+                  }
+
+                  const foundUser = item as User;
                   const alreadyInTable = session.participants.some((p) => p.userId === foundUser.id);
                   const isAdding = addingParticipantId === foundUser.id;
 
@@ -1256,6 +1318,14 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     color: colors.textMuted,
     textAlign: 'center',
     paddingVertical: spacing.md,
+  },
+  searchSectionLabel: {
+    fontSize: fontSize.xs,
+    color: colors.textMuted,
+    textTransform: 'uppercase',
+    letterSpacing: 0.7,
+    marginTop: spacing.md,
+    marginBottom: spacing.xs,
   },
   searchResultCard: {
     flexDirection: 'row',

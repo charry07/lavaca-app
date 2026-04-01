@@ -72,7 +72,7 @@ export default function HomeTab() {
               {item.description || translate("history.untitled")}
             </Text>
             <View style={styles.badgeRow}>
-              {hasPendingApproval && <StatusPill variant='warning' label='⏳' />}
+              {hasPendingApproval && <StatusPill variant='warning' label={translate('common.pending')} />}
               <StatusPill variant={statusPillVariant} label={statusLabel} />
             </View>
             <View style={styles.modeBadge}>
@@ -145,14 +145,14 @@ export default function HomeTab() {
           {/* Action buttons */}
           <View style={styles.actions}>
             <TouchableOpacity style={styles.createButtonWrap} onPress={() => router.push("/create")} activeOpacity={0.85}>
-              <LinearGradient colors={[colors.primary, colors.primaryDark]} start={{x: 0, y: 0}} end={{x: 1, y: 0}} style={styles.createButton}>
+              <LinearGradient colors={[colors.primary, colors.primaryDark]} start={{x: 0, y: 0}} end={{x: 1, y: 0}} style={styles.createButton} accessibilityRole='button' accessibilityLabel={translate('home.createTable')}>
                 <Feather name='plus-circle' size={18} color={colors.background} />
                 <Text style={styles.createButtonText}>{translate("home.createTable")}</Text>
               </LinearGradient>
             </TouchableOpacity>
 
             <TouchableOpacity style={styles.joinButton} onPress={() => router.push("/join")} activeOpacity={0.8}>
-              <Feather name='link-2' size={18} color={colors.primary} />
+              <Feather name='link-2' size={18} color={colors.primary} accessibilityRole='button' accessibilityLabel={translate('home.joinTable')} />
               <Text style={styles.joinButtonText}>{translate("home.joinTable")}</Text>
             </TouchableOpacity>
           </View>
@@ -188,7 +188,7 @@ export default function HomeTab() {
 
           {!loadingSessions && !fetchError && filteredSessions.length === 0 && (
             <View style={styles.emptyContainer}>
-              <Text style={styles.emptyEmoji}>🐄</Text>
+              <Feather name='coffee' size={44} color={colors.accent} />
               <Text style={styles.emptyLabel}>{translate("home.noTables")}</Text>
               <Text style={styles.emptyHint}>{translate("home.noTablesHint")}</Text>
             </View>
