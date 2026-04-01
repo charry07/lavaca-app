@@ -586,13 +586,15 @@ export const api = {
 
   getRandomUsers: async (limit: number, excludeIds: string[]) => {
     if (supabase) {
-      const exclude = unique(excludeIds.filter(Boolean));
-      const { data, error } = exclude.length
-        ? await supabase.from('users').select('*').not('id', 'in', `(${exclude.join(',')})`)
-        : await supabase.from('users').select('*');
+      const exclude = new Set(unique(excludeIds.filter(Boolean)));
+      const { data, error } = await supabase.from('users').select('*');
 
       if (error) throwWithFallback(error.message, 'Could not load random users');
-      return shuffle(((data || []) as UserRow[]).map(rowToUser)).slice(0, limit);
+      const available = ((data || []) as UserRow[])
+        .filter((u) => !exclude.has(u.id))
+        .map(rowToUser);
+
+      return shuffle(available).slice(0, limit);
     }
 
     throwWithFallback(SUPABASE_REQUIRED_ERROR);

@@ -13,6 +13,10 @@ import {useAuth} from "../src/auth";
 import {useToast} from "../src/components";
 
 import {getErrorMessage} from "../src/utils/errorMessage";
+
+const TOTAL_SUGGESTED_PARTICIPANTS = 8;
+const MAX_RELATED_PARTICIPANTS = 5;
+
 export default function CreateScreen() {
   const router = useRouter();
   const {translate} = useI18n();
@@ -168,22 +172,28 @@ export default function CreateScreen() {
 
     if (!user?.id) {
       setFrequentParticipants([]);
+      try {
+        const random = await api.getRandomUsers(TOTAL_SUGGESTED_PARTICIPANTS, []);
+        setSuggestedParticipants(random);
+      } catch {
+        setSuggestedParticipants([]);
+      }
       return;
     }
 
     setLoadingFrequent(true);
     try {
-      const frequent = await api.getFrequentUsers(user.id, 7);
-      const frequentSlice = frequent.slice(0, 7);
-      setFrequentParticipants(frequentSlice);
+      const related = (await api.getFrequentUsers(user.id, MAX_RELATED_PARTICIPANTS)).slice(0, MAX_RELATED_PARTICIPANTS);
+      setFrequentParticipants(related);
 
-      // Fill remaining slots (up to 7 total) with random users
-      const remaining = 7 - frequentSlice.length;
-      if (remaining > 0) {
-        const excludeIds = [user.id, ...frequentSlice.map((u) => u.id)];
-        const random = await api.getRandomUsers(remaining, excludeIds);
-        setSuggestedParticipants(random);
-      }
+      // Always show 8 in total; if there are no related users, fill all 8 with random users.
+      const randomCount = related.length === 0
+        ? TOTAL_SUGGESTED_PARTICIPANTS
+        : TOTAL_SUGGESTED_PARTICIPANTS - related.length;
+
+      const excludeIds = [user.id, ...related.map((u) => u.id)];
+      const random = await api.getRandomUsers(randomCount, excludeIds);
+      setSuggestedParticipants(random.slice(0, randomCount));
     } catch {
       setFrequentParticipants([]);
       setSuggestedParticipants([]);
@@ -227,7 +237,7 @@ export default function CreateScreen() {
           if (ra !== rb) return ra - rb;
           return a.displayName.localeCompare(b.displayName);
         });
-        setParticipantResults(sorted.slice(0, 7));
+        setParticipantResults(sorted.slice(0, TOTAL_SUGGESTED_PARTICIPANTS));
       } catch {
         setParticipantResults([]);
       } finally {
@@ -364,40 +374,42 @@ export default function CreateScreen() {
             {!loadingFrequent && !searchingUsers && isSearching && displayedParticipants.length === 0 && <Text style={styles.searchHintText}>{translate("session.noUserResults")}</Text>}
 
             {!loadingFrequent && !isSearching && (
-              <FlatList
-                data={
-                  [
-                    ...(frequentParticipants.length > 0
-                      ? [{type: "label", id: "__recent__", label: translate("create.frequentPeopleHint")}, ...frequentParticipants.map((u) => ({type: "user", ...u}))]
-                      : []),
-                    ...(suggestedParticipants.length > 0
-                      ? [{type: "label", id: "__suggested__", label: translate("create.suggestedPeople")}, ...suggestedParticipants.map((u) => ({type: "user", ...u}))]
-                      : []),
-                  ] as any[]
-                }
-                keyExtractor={(item) => item.id}
-                keyboardShouldPersistTaps='handled'
-                renderItem={({item}) => {
-                  if (item.type === "label") {
-                    return <Text style={styles.searchSectionLabel}>{item.label}</Text>;
+              ((frequentParticipants.length === 0 && suggestedParticipants.length === 0)
+                ? <Text style={styles.searchHintText}>{translate("create.noFrequentPeople")}</Text>
+                : <FlatList
+                  data={
+                    [
+                      ...(frequentParticipants.length > 0
+                        ? [{type: "label", id: "__recent__", label: translate("create.frequentPeopleHint")}, ...frequentParticipants.map((u) => ({type: "user", ...u}))]
+                        : []),
+                      ...(suggestedParticipants.length > 0
+                        ? [{type: "label", id: "__suggested__", label: translate("create.suggestedPeople")}, ...suggestedParticipants.map((u) => ({type: "user", ...u}))]
+                        : []),
+                    ] as any[]
                   }
-                  const isSelected = selectedIds.has(item.id);
-                  return (
-                    <TouchableOpacity style={[styles.userRow, isSelected && styles.userRowSelected]} onPress={() => toggleParticipant(item as User)} activeOpacity={0.7}>
-                      <View style={[styles.avatar, isSelected && {backgroundColor: colors.primary}]}>
-                        <Text style={styles.avatarText}>{item.displayName.charAt(0).toUpperCase()}</Text>
-                      </View>
-                      <View style={styles.userInfo}>
-                        <Text style={styles.userName}>{item.displayName}</Text>
-                        <Text style={styles.userMeta}>@{item.username}</Text>
-                      </View>
-                      <View style={[styles.checkCircle, isSelected && styles.checkCircleActive]}>
-                        {isSelected ? <Feather name='check' size={12} color={colors.background} /> : null}
-                      </View>
-                    </TouchableOpacity>
-                  );
-                }}
-              />
+                  keyExtractor={(item) => item.id}
+                  keyboardShouldPersistTaps='handled'
+                  renderItem={({item}) => {
+                    if (item.type === "label") {
+                      return <Text style={styles.searchSectionLabel}>{item.label}</Text>;
+                    }
+                    const isSelected = selectedIds.has(item.id);
+                    return (
+                      <TouchableOpacity style={[styles.userRow, isSelected && styles.userRowSelected]} onPress={() => toggleParticipant(item as User)} activeOpacity={0.7}>
+                        <View style={[styles.avatar, isSelected && {backgroundColor: colors.primary}]}>
+                          <Text style={styles.avatarText}>{item.displayName.charAt(0).toUpperCase()}</Text>
+                        </View>
+                        <View style={styles.userInfo}>
+                          <Text style={styles.userName}>{item.displayName}</Text>
+                          <Text style={styles.userMeta}>@{item.username}</Text>
+                        </View>
+                        <View style={[styles.checkCircle, isSelected && styles.checkCircleActive]}>
+                          {isSelected ? <Feather name='check' size={12} color={colors.background} /> : null}
+                        </View>
+                      </TouchableOpacity>
+                    );
+                  }}
+                />)
             )}
 
             {!loadingFrequent && isSearching && (
