@@ -61,6 +61,12 @@ const es = {
   'create.noFrequentPeople': 'Aun no tienes mesas compartidas com otras pessoas',
   'create.frequentPeopleHint': 'Recientes',
   'create.suggestedPeople': 'Sugeridos',
+  'create.fromContacts': 'Importar contactos',
+  'create.contactsPermission': 'Se necesita permiso para acceder a tus contactos',
+  'create.noContactsMatched': 'Ninguno de tus contactos usa La Vaca aún',
+  'create.equalPartsDesc': 'Dividir en partes iguales',
+  'create.percentageDesc': 'Cada uno paga su %',
+  'create.rouletteDesc': 'La suerte decide',
 
   // Join
   'join.title': 'Unirme a una mesa',
@@ -135,6 +141,8 @@ const es = {
   'session.noUserResults': 'No se encontraron usuarios',
   'session.alreadyInTable': 'Ya está en la mesa',
   'session.memberAdded': '{{name}} fue agregado a la mesa',
+  'session.rejectPaidButton': 'Rechazar',
+  'session.paymentRejected': 'Pago rechazado',
 
   // Roulette
   'roulette.title': '🎰 Ruleta de La Vaca',
@@ -257,6 +265,45 @@ const es = {
   'profile.deleteConfirm': 'Si, eliminar',
   'profile.deleteCancel': 'Cancelar',
   'profile.deleteError': 'No se pudo eliminar la cuenta. Intentalo de nuevo.',
+  'profile.stats': 'Mis estadísticas',
+  'profile.totalSessions': 'Mesas totales',
+  'profile.totalAmount': 'Total pagado',
+  'profile.asAdmin': 'Como admin',
+  'profile.asParticipant': 'Como participante',
+  'profile.favoriteMode': 'Modo favorito',
+  'profile.thisMonth': 'Este mes',
+  'profile.personalInfo': 'Información personal',
+
+  // Payment Methods
+  'payment.methods': 'Métodos de Pago',
+  'payment.noMethods': 'Sin métodos de pago',
+  'payment.noMethodsHint': 'Agrega tus cuentas para facilitar el pago',
+  'payment.addMethod': 'Agregar método de pago',
+  'payment.addAnother': 'Agregar otro método',
+  'payment.editMethod': 'Editar método de pago',
+  'payment.deleteAction': 'Eliminar',
+  'payment.deleteConfirm': '¿Eliminar este método?',
+  'payment.deleteSuccess': 'Método eliminado',
+  'payment.saveSuccess': 'Método guardado',
+  'payment.setPreferredSuccess': 'Método preferido actualizado',
+  'payment.preferred': 'Preferida',
+  'payment.setPreferred': 'Marcar como preferida',
+  'payment.typeLabel': 'Tipo de método',
+  'payment.holderLabel': 'Nombre del titular',
+  'payment.bankLabel': 'Banco',
+  'payment.accountLabel': 'Número de cuenta',
+  'payment.llaveLabel': 'Llave',
+  'payment.phoneLabel': 'Teléfono',
+  'payment.documentLabel': 'Cédula',
+  'payment.copied': 'Copiado',
+  
+  // Debt Payment
+  'debt.yourPayments': 'Tus pagos pendientes',
+  'debt.youOwe': 'Debes pagar a',
+  'debt.availableMethods': 'Métodos de pago disponibles',
+  'debt.noMethods': 'aún no ha agregado métodos de pago',
+  'debt.markPaid': 'Marcar como pagado',
+  'debt.marked': 'Pago reportado',
 
   // Groups
   'groups.empty': 'No tienes grupos aun',
@@ -285,6 +332,8 @@ const es = {
   'groups.admin': 'Admin',
   'groups.noMembers': 'Aun no hay miembros',
   'groups.groupNotFound': 'Grupo no encontrado',
+  'groups.repeatSession': 'Repetir última mesa',
+  'groups.noHistory': 'No hay historial de mesas con este grupo',
 
   // History
   'history.empty': 'No tienes historial aun',
@@ -340,6 +389,12 @@ const en: TranslationKeys = {
   'create.noFrequentPeople': 'You do not have shared tables with other people yet',
   'create.frequentPeopleHint': 'Recent',
   'create.suggestedPeople': 'Suggested',
+  'create.fromContacts': 'From contacts',
+  'create.contactsPermission': 'Contacts permission is required',
+  'create.noContactsMatched': 'None of your contacts use La Vaca yet',
+  'create.equalPartsDesc': 'Split equally',
+  'create.percentageDesc': 'Each pays their %',
+  'create.rouletteDesc': 'Let luck decide',
 
   // Join
   'join.title': 'Join a table',
@@ -414,6 +469,8 @@ const en: TranslationKeys = {
   'session.noUserResults': 'No users found',
   'session.alreadyInTable': 'Already in table',
   'session.memberAdded': '{{name}} was added to the table',
+  'session.rejectPaidButton': 'Reject',
+  'session.paymentRejected': 'Payment rejected',
 
   // Roulette
   'roulette.title': '🎰 La Vaca Roulette',
@@ -536,6 +593,45 @@ const en: TranslationKeys = {
   'profile.deleteConfirm': 'Yes, delete',
   'profile.deleteCancel': 'Cancel',
   'profile.deleteError': 'Could not delete account. Please try again.',
+  'profile.stats': 'My stats',
+  'profile.totalSessions': 'Total tables',
+  'profile.totalAmount': 'Total paid',
+  'profile.asAdmin': 'As admin',
+  'profile.asParticipant': 'As participant',
+  'profile.favoriteMode': 'Favorite mode',
+  'profile.thisMonth': 'This month',
+  'profile.personalInfo': 'Personal info',
+
+  // Payment Methods
+  'payment.methods': 'Payment Methods',
+  'payment.noMethods': 'No payment methods',
+  'payment.noMethodsHint': 'Add your accounts to make payments easier',
+  'payment.addMethod': 'Add payment method',
+  'payment.addAnother': 'Add another method',
+  'payment.editMethod': 'Edit payment method',
+  'payment.deleteAction': 'Delete',
+  'payment.deleteConfirm': 'Delete this method?',
+  'payment.deleteSuccess': 'Method deleted',
+  'payment.saveSuccess': 'Method saved',
+  'payment.setPreferredSuccess': 'Preferred method updated',
+  'payment.preferred': 'Preferred',
+  'payment.setPreferred': 'Set as preferred',
+  'payment.typeLabel': 'Method type',
+  'payment.holderLabel': 'Account holder name',
+  'payment.bankLabel': 'Bank',
+  'payment.accountLabel': 'Account number',
+  'payment.llaveLabel': 'Llave',
+  'payment.phoneLabel': 'Phone',
+  'payment.documentLabel': 'ID Document',
+  'payment.copied': 'Copied',
+  
+  // Debt Payment
+  'debt.yourPayments': 'Your pending payments',
+  'debt.youOwe': 'You owe',
+  'debt.availableMethods': 'Available payment methods',
+  'debt.noMethods': 'has not added payment methods yet',
+  'debt.markPaid': 'Mark as paid',
+  'debt.marked': 'Payment reported',
 
   // Groups
   'groups.empty': 'No groups yet',
@@ -564,6 +660,8 @@ const en: TranslationKeys = {
   'groups.admin': 'Admin',
   'groups.noMembers': 'No members yet',
   'groups.groupNotFound': 'Group not found',
+  'groups.repeatSession': 'Repeat last session',
+  'groups.noHistory': 'No session history with this group',
 
   // History
   'history.empty': 'No history yet',
@@ -619,6 +717,12 @@ const pt: TranslationKeys = {
   'create.noFrequentPeople': 'Você ainda não tem mesas compartilhadas com outras pessoas',
   'create.frequentPeopleHint': 'Recentes',
   'create.suggestedPeople': 'Sugeridos',
+  'create.fromContacts': 'Dos contatos',
+  'create.contactsPermission': 'Permissão de contatos necessária',
+  'create.noContactsMatched': 'Nenhum dos seus contatos usa La Vaca ainda',
+  'create.equalPartsDesc': 'Dividir igualmente',
+  'create.percentageDesc': 'Cada um paga seu %',
+  'create.rouletteDesc': 'A sorte decide',
 
   // Join
   'join.title': 'Entrar numa mesa',
@@ -693,6 +797,8 @@ const pt: TranslationKeys = {
   'session.noUserResults': 'Nenhum usuário encontrado',
   'session.alreadyInTable': 'Já está na mesa',
   'session.memberAdded': '{{name}} foi adicionado à mesa',
+  'session.rejectPaidButton': 'Rejeitar',
+  'session.paymentRejected': 'Pagamento rejeitado',
 
   // Roulette
   'roulette.title': '🎰 Roleta da La Vaca',
@@ -815,6 +921,45 @@ const pt: TranslationKeys = {
   'profile.deleteConfirm': 'Sim, excluir',
   'profile.deleteCancel': 'Cancelar',
   'profile.deleteError': 'Não foi possível excluir a conta. Tente novamente.',
+  'profile.stats': 'Minhas estatísticas',
+  'profile.totalSessions': 'Total de mesas',
+  'profile.totalAmount': 'Total pago',
+  'profile.asAdmin': 'Como admin',
+  'profile.asParticipant': 'Como participante',
+  'profile.favoriteMode': 'Modo favorito',
+  'profile.thisMonth': 'Este mês',
+  'profile.personalInfo': 'Informações pessoais',
+
+  // Payment Methods
+  'payment.methods': 'Métodos de Pagamento',
+  'payment.noMethods': 'Sem métodos de pagamento',
+  'payment.noMethodsHint': 'Adicione suas contas para facilitar o pagamento',
+  'payment.addMethod': 'Adicionar método de pagamento',
+  'payment.addAnother': 'Adicionar outro método',
+  'payment.editMethod': 'Editar método de pagamento',
+  'payment.deleteAction': 'Excluir',
+  'payment.deleteConfirm': 'Excluir este método?',
+  'payment.deleteSuccess': 'Método excluído',
+  'payment.saveSuccess': 'Método salvo',
+  'payment.setPreferredSuccess': 'Método preferido atualizado',
+  'payment.preferred': 'Preferido',
+  'payment.setPreferred': 'Marcar como preferido',
+  'payment.typeLabel': 'Tipo de método',
+  'payment.holderLabel': 'Nome do titular',
+  'payment.bankLabel': 'Banco',
+  'payment.accountLabel': 'Número da conta',
+  'payment.llaveLabel': 'Chave',
+  'payment.phoneLabel': 'Telefone',
+  'payment.documentLabel': 'Documento',
+  'payment.copied': 'Copiado',
+  
+  // Debt Payment
+  'debt.yourPayments': 'Seus pagamentos pendentes',
+  'debt.youOwe': 'Você deve',
+  'debt.availableMethods': 'Métodos de pagamento disponíveis',
+  'debt.noMethods': 'ainda não adicionou métodos de pagamento',
+  'debt.markPaid': 'Marcar como pago',
+  'debt.marked': 'Pagamento reportado',
 
   // Groups
   'groups.empty': 'Nenhum grupo ainda',
@@ -843,6 +988,8 @@ const pt: TranslationKeys = {
   'groups.admin': 'Admin',
   'groups.noMembers': 'Nenhum membro ainda',
   'groups.groupNotFound': 'Grupo não encontrado',
+  'groups.repeatSession': 'Repetir última mesa',
+  'groups.noHistory': 'Sem histórico de mesas com este grupo',
 
   // History
   'history.empty': 'Nenhum histórico ainda',
@@ -898,6 +1045,12 @@ const de: TranslationKeys = {
   'create.noFrequentPeople': 'Sie haben noch keine Tische mit anderen Personen geteilt',
   'create.frequentPeopleHint': 'Kürzlich',
   'create.suggestedPeople': 'Vorgeschlagen',
+  'create.fromContacts': 'Aus Kontakten',
+  'create.contactsPermission': 'Kontaktzugriff erforderlich',
+  'create.noContactsMatched': 'Keine deiner Kontakte nutzt La Vaca',
+  'create.equalPartsDesc': 'Gleichmäßig teilen',
+  'create.percentageDesc': 'Jeder zahlt seinen %',
+  'create.rouletteDesc': 'Das Glück entscheidet',
 
   // Join
   'join.title': 'Einem Tisch beitreten',
@@ -972,6 +1125,8 @@ const de: TranslationKeys = {
   'session.noUserResults': 'Keine Benutzer gefunden',
   'session.alreadyInTable': 'Bereits am Tisch',
   'session.memberAdded': '{{name}} wurde dem Tisch hinzugefügt',
+  'session.rejectPaidButton': 'Ablehnen',
+  'session.paymentRejected': 'Zahlung abgelehnt',
 
   // Roulette
   'roulette.title': '🎰 La Vaca Roulette',
@@ -1094,6 +1249,45 @@ const de: TranslationKeys = {
   'profile.deleteConfirm': 'Ja, löschen',
   'profile.deleteCancel': 'Abbrechen',
   'profile.deleteError': 'Konto konnte nicht gelöscht werden. Bitte versuche es erneut.',
+  'profile.stats': 'Meine Statistiken',
+  'profile.totalSessions': 'Tische gesamt',
+  'profile.totalAmount': 'Gesamt bezahlt',
+  'profile.asAdmin': 'Als Admin',
+  'profile.asParticipant': 'Als Teilnehmer',
+  'profile.favoriteMode': 'Lieblingsmodus',
+  'profile.thisMonth': 'Diesen Monat',
+  'profile.personalInfo': 'Persönliche Infos',
+
+  // Payment Methods
+  'payment.methods': 'Zahlungsmethoden',
+  'payment.noMethods': 'Keine Zahlungsmethoden',
+  'payment.noMethodsHint': 'Füge deine Konten hinzu, um Zahlungen zu erleichtern',
+  'payment.addMethod': 'Zahlungsmethode hinzufügen',
+  'payment.addAnother': 'Weitere Methode hinzufügen',
+  'payment.editMethod': 'Zahlungsmethode bearbeiten',
+  'payment.deleteAction': 'Löschen',
+  'payment.deleteConfirm': 'Diese Methode löschen?',
+  'payment.deleteSuccess': 'Methode gelöscht',
+  'payment.saveSuccess': 'Methode gespeichert',
+  'payment.setPreferredSuccess': 'Bevorzugte Methode aktualisiert',
+  'payment.preferred': 'Bevorzugt',
+  'payment.setPreferred': 'Als bevorzugt markieren',
+  'payment.typeLabel': 'Methodentyp',
+  'payment.holderLabel': 'Kontoinhaber',
+  'payment.bankLabel': 'Bank',
+  'payment.accountLabel': 'Kontonummer',
+  'payment.llaveLabel': 'Schlüssel',
+  'payment.phoneLabel': 'Telefon',
+  'payment.documentLabel': 'Ausweis',
+  'payment.copied': 'Kopiert',
+  
+  // Debt Payment
+  'debt.yourPayments': 'Deine ausstehenden Zahlungen',
+  'debt.youOwe': 'Du schuldest',
+  'debt.availableMethods': 'Verfügbare Zahlungsmethoden',
+  'debt.noMethods': 'hat noch keine Zahlungsmethoden hinzugefügt',
+  'debt.markPaid': 'Als bezahlt markieren',
+  'debt.marked': 'Zahlung gemeldet',
 
   // Groups
   'groups.empty': 'Noch keine Gruppen',
@@ -1122,6 +1316,8 @@ const de: TranslationKeys = {
   'groups.admin': 'Admin',
   'groups.noMembers': 'Noch keine Mitglieder',
   'groups.groupNotFound': 'Gruppe nicht gefunden',
+  'groups.repeatSession': 'Letzte Sitzung wiederholen',
+  'groups.noHistory': 'Kein Sitzungsverlauf mit dieser Gruppe',
 
   // History
   'history.empty': 'Noch kein Verlauf',

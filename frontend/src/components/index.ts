@@ -19,3 +19,8 @@ export { HeaderControls } from './layout/HeaderControls';
 export { QRCode } from './brand/QRCode';
 export { RouletteWheel } from './brand/RouletteWheel';
 export { VacaLogo } from './brand/VacaLogo';
+
+// Payments
+export { PaymentAccountCard } from './payments/PaymentAccountCard';
+export { PaymentAccountForm, type PaymentAccountInput } from './payments/PaymentAccountForm';
+export { DebtPaymentInstructions } from './payments/DebtPaymentInstructions';

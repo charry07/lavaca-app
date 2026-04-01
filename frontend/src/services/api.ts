@@ -1,9 +1,13 @@
 import {
+  AccountType,
+  BankAccountType,
+  DebtSummary,
   FeedEvent,
   formatCOP,
   generateJoinCode,
   Group,
   Participant,
+  PaymentAccount,
   PaymentSession,
   SplitMode,
   splitByPercentage,
@@ -98,6 +102,23 @@ type FeedEventRow = {
   created_at: string;
 };
 
+type PaymentAccountRow = {
+  id: string;
+  user_id: string;
+  method_type: AccountType;
+  account_holder_name: string;
+  bank_name?: string | null;
+  account_number?: string | null;
+  account_type?: BankAccountType | null;
+  llave?: string | null;
+  phone?: string | null;
+  document_id?: string | null;
+  notes?: string | null;
+  is_preferred: boolean;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+};
 
 function throwWithFallback(message: string, fallback = 'Unknown error'): never {
   throw new Error(message || fallback);
@@ -171,6 +192,26 @@ function rowToFeedEvent(row: FeedEventRow, userIds: string[]): FeedEvent {
     message: row.message,
     userIds,
     createdAt: new Date(row.created_at),
+  };
+}
+
+function rowToPaymentAccount(row: PaymentAccountRow): PaymentAccount {
+  return {
+    id: row.id,
+    userId: row.user_id,
+    methodType: row.method_type,
+    accountHolderName: row.account_holder_name,
+    bankName: row.bank_name ?? undefined,
+    accountNumber: row.account_number ?? undefined,
+    accountType: row.account_type ?? undefined,
+    llave: row.llave ?? undefined,
+    phone: row.phone ?? undefined,
+    documentId: row.document_id ?? undefined,
+    notes: row.notes ?? undefined,
+    isPreferred: row.is_preferred,
+    isActive: row.is_active,
+    createdAt: new Date(row.created_at),
+    updatedAt: new Date(row.updated_at),
   };
 }
 
@@ -809,7 +850,19 @@ export const api = {
         if (error) throwWithFallback(error.message, 'Could not join session');
       }
 
-      return getSessionFromSupabase(joinCode);
+      const updatedSession = await getSessionFromSupabase(joinCode);
+
+      // fire-and-forget — notify admin that someone joined
+      supabase.functions.invoke('send-notification', {
+        body: {
+          userId: updatedSession.adminId,
+          title: '👤 Nuevo participante',
+          body: `${data.displayName} se unió a la mesa.`,
+          data: { joinCode },
+        },
+      }).catch(() => {});
+
+      return updatedSession;
     }
 
     throwWithFallback(SUPABASE_REQUIRED_ERROR);
@@ -926,10 +979,48 @@ export const api = {
 
       const updated = await getSessionFromSupabase(joinCode);
       await closeSessionIfAllPaid(updated);
+
+      // fire-and-forget — notify participant their payment was approved
+      supabase.functions.invoke('send-notification', {
+        body: {
+          userId: data.userId,
+          title: '✅ Pago aprobado',
+          body: 'El admin aprobó tu pago.',
+          data: { joinCode },
+        },
+      }).catch(() => {});
+
       return getSessionFromSupabase(joinCode);
     }
 
     throwWithFallback(SUPABASE_REQUIRED_ERROR);
+  },
+
+  rejectPaid: async (joinCode: string, data: { userId: string; adminId: string }) => {
+    if (supabase) {
+      const session = await api.getSession(joinCode);
+      if (session.adminId !== data.adminId) throwWithFallback('Only admin can reject payments', 'Only admin can reject payments');
+
+      const { error } = await supabase
+        .from('participants')
+        .update({ status: 'rejected' })
+        .eq('join_code', joinCode)
+        .eq('user_id', data.userId);
+      if (error) throwWithFallback(error.message, 'Could not reject payment');
+
+      // fire-and-forget — notify participant their payment was rejected
+      supabase.functions.invoke('send-notification', {
+        body: {
+          userId: data.userId,
+          title: '❌ Pago rechazado',
+          body: 'El admin rechazó tu pago. Vuelve a intentarlo.',
+          data: { joinCode },
+        },
+      }).catch(() => {});
+
+      return api.getSession(joinCode);
+    }
+    throwWithFallback(SUPABASE_REQUIRED_ERROR, SUPABASE_REQUIRED_ERROR);
   },
 
   closeSession: async (joinCode: string) => {
@@ -977,4 +1068,208 @@ export const api = {
     });
     return { unsubscribe: () => subscription.unsubscribe() };
   },
+
+  updatePushToken: async (userId: string, token: string) => {
+    if (supabase) {
+      const { error } = await supabase
+        .from('users')
+        .update({ push_token: token })
+        .eq('id', userId);
+      if (error) console.warn('Could not save push token:', error.message);
+    }
+  },
+
+  getUserById: async (userId: string): Promise<User | null> => {
+    if (supabase) {
+      const { data, error } = await supabase
+        .from('users')
+        .select('*')
+        .eq('id', userId)
+        .maybeSingle();
+      if (error || !data) return null;
+      return rowToUser(data as UserRow);
+    }
+    return null;
+  },
+
+  getPaymentAccounts: async (userId: string): Promise<PaymentAccount[]> => {
+    if (supabase) {
+      const { data, error } = await supabase
+        .from('payment_accounts')
+        .select('*')
+        .eq('user_id', userId)
+        .eq('is_active', true)
+        .order('is_preferred', { ascending: false })
+        .order('created_at', { ascending: false });
+
+      if (error) throwWithFallback(error.message, 'Could not load payment accounts');
+      return ((data || []) as PaymentAccountRow[]).map(rowToPaymentAccount);
+    }
+
+    throwWithFallback(SUPABASE_REQUIRED_ERROR);
+  },
+
+  createPaymentAccount: async (
+    userId: string,
+    data: {
+      methodType: AccountType;
+      accountHolderName: string;
+      bankName?: string;
+      accountNumber?: string;
+      accountType?: BankAccountType;
+      llave?: string;
+      phone?: string;
+      documentId?: string;
+      notes?: string;
+      isPreferred?: boolean;
+    }
+  ): Promise<PaymentAccount> => {
+    if (supabase) {
+      const payload = {
+        user_id: userId,
+        method_type: data.methodType,
+        account_holder_name: data.accountHolderName,
+        bank_name: data.bankName || null,
+        account_number: data.accountNumber || null,
+        account_type: data.accountType || null,
+        llave: data.llave || null,
+        phone: data.phone || null,
+        document_id: data.documentId || null,
+        notes: data.notes || null,
+        is_preferred: !!data.isPreferred,
+      };
+
+      const { data: created, error } = await supabase
+        .from('payment_accounts')
+        .insert(payload)
+        .select('*')
+        .single();
+
+      if (error || !created) throwWithFallback(error?.message || 'Could not create payment account');
+      return rowToPaymentAccount(created as PaymentAccountRow);
+    }
+
+    throwWithFallback(SUPABASE_REQUIRED_ERROR);
+  },
+
+  updatePaymentAccount: async (
+    accountId: string,
+    userId: string,
+    data: {
+      methodType?: AccountType;
+      accountHolderName?: string;
+      bankName?: string;
+      accountNumber?: string;
+      accountType?: BankAccountType;
+      llave?: string;
+      phone?: string;
+      documentId?: string;
+      notes?: string;
+      isPreferred?: boolean;
+      isActive?: boolean;
+    }
+  ): Promise<PaymentAccount> => {
+    if (supabase) {
+      const payload = {
+        method_type: data.methodType,
+        account_holder_name: data.accountHolderName,
+        bank_name: data.bankName,
+        account_number: data.accountNumber,
+        account_type: data.accountType,
+        llave: data.llave,
+        phone: data.phone,
+        document_id: data.documentId,
+        notes: data.notes,
+        is_preferred: data.isPreferred,
+        is_active: data.isActive,
+      };
+
+      const { data: updated, error } = await supabase
+        .from('payment_accounts')
+        .update(payload)
+        .eq('id', accountId)
+        .eq('user_id', userId)
+        .select('*')
+        .single();
+
+      if (error || !updated) throwWithFallback(error?.message || 'Could not update payment account');
+      return rowToPaymentAccount(updated as PaymentAccountRow);
+    }
+
+    throwWithFallback(SUPABASE_REQUIRED_ERROR);
+  },
+
+  deletePaymentAccount: async (accountId: string, userId: string): Promise<void> => {
+    if (supabase) {
+      const { error } = await supabase
+        .from('payment_accounts')
+        .update({ is_active: false, is_preferred: false })
+        .eq('id', accountId)
+        .eq('user_id', userId);
+
+      if (error) throwWithFallback(error.message, 'Could not delete payment account');
+      return;
+    }
+
+    throwWithFallback(SUPABASE_REQUIRED_ERROR);
+  },
+
+  setPreferredPaymentAccount: async (accountId: string, userId: string): Promise<void> => {
+    if (supabase) {
+      const { error } = await supabase
+        .from('payment_accounts')
+        .update({ is_preferred: true })
+        .eq('id', accountId)
+        .eq('user_id', userId)
+        .eq('is_active', true);
+
+      if (error) throwWithFallback(error.message, 'Could not set preferred account');
+      return;
+    }
+
+    throwWithFallback(SUPABASE_REQUIRED_ERROR);
+  },
+
+  getSessionDebts: async (joinCode: string, debtorId: string): Promise<DebtSummary[]> => {
+    if (supabase) {
+      const session = await getSessionFromSupabase(joinCode);
+      const debtor = session.participants.find((participant) => participant.userId === debtorId);
+      if (!debtor || debtor.amount <= 0 || debtor.status === 'confirmed') return [];
+
+      let creditorId = session.adminId;
+      if (session.splitMode === 'roulette') {
+        const winner = session.participants.find((participant) => participant.isRouletteWinner);
+        if (winner) creditorId = winner.userId;
+      }
+
+      if (creditorId === debtorId) return [];
+
+      const creditor = session.participants.find((participant) => participant.userId === creditorId);
+      const { data: accountRows, error: accountErr } = await supabase
+        .from('payment_accounts')
+        .select('*')
+        .eq('user_id', creditorId)
+        .eq('is_active', true)
+        .order('is_preferred', { ascending: false })
+        .order('created_at', { ascending: false });
+
+      if (accountErr) throwWithFallback(accountErr.message, 'Could not load creditor accounts');
+
+      return [{
+        sessionId: session.id,
+        joinCode: session.joinCode,
+        debtorId,
+        debtorDisplayName: debtor.displayName,
+        creditorId,
+        creditorDisplayName: creditor?.displayName || 'Admin',
+        amount: debtor.amount,
+        currency: session.currency,
+        debtorStatus: debtor.status,
+        creditorAccounts: ((accountRows || []) as PaymentAccountRow[]).map(rowToPaymentAccount),
+      }];
+    }
+
+    throwWithFallback(SUPABASE_REQUIRED_ERROR);
+  },
+
 };

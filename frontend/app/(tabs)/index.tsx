@@ -74,6 +74,9 @@ export default function HomeTab() {
               {hasPendingApproval && <StatusPill variant='warning' label='⏳' />}
               <StatusPill variant={statusPillVariant} label={statusLabel} />
             </View>
+            <Text style={styles.modeBadge}>
+              {item.splitMode === 'equal' ? '⚖️' : item.splitMode === 'percentage' ? '📊' : '🎰'}
+            </Text>
           </View>
           <View style={styles.sessionCardBody}>
             <Text style={styles.sessionAmount}>{formatCOP(item.totalAmount)}</Text>
@@ -126,10 +129,13 @@ export default function HomeTab() {
             <HeaderControls />
           </View>
 
-          <View style={styles.hero}>
+          <LinearGradient
+            colors={[colors.primary + '08', 'transparent']}
+            style={styles.hero}
+          >
             <VacaLogo size='lg' style={{marginTop: spacing.md}} />
             <Text style={styles.tagline}>{translate("home.tagline")}</Text>
-          </View>
+          </LinearGradient>
 
           {/* Action buttons */}
           <View style={styles.actions}>
@@ -368,5 +374,11 @@ const createStyles = (colors: ThemeColors) =>
       color: colors.textMuted,
       textAlign: "center",
       lineHeight: 20,
+    },
+    modeBadge: {
+      fontSize: fontSize.md,
+      position: 'absolute',
+      top: spacing.sm,
+      right: spacing.sm,
     },
   });

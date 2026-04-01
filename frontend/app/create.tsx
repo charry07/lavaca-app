@@ -1,8 +1,9 @@
-import {useEffect, useMemo, useState} from "react";
+import {useCallback, useEffect, useMemo, useState} from "react";
 import {View, Text, TextInput, TouchableOpacity, StyleSheet, ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView, FlatList, Modal} from "react-native";
 import {LinearGradient} from "expo-linear-gradient";
-import {useRouter} from "expo-router";
+import {useRouter, useLocalSearchParams} from "expo-router";
 import {SplitMode, User} from "@lavaca/types";
+import * as Contacts from 'expo-contacts';
 import {api} from "../src/services/api";
 import {spacing, borderRadius, fontSize, fontWeight, type ThemeColors} from "../src/constants/theme";
 import {useI18n} from "../src/i18n";
@@ -19,11 +20,26 @@ export default function CreateScreen() {
   const {showError} = useToast();
   const styles = createStyles(colors);
 
-  const [amount, setAmount] = useState("");
-  const [description, setDescription] = useState("");
-  const [splitMode, setSplitMode] = useState<SplitMode>("equal");
-  const [currency, setCurrency] = useState<"COP" | "USD" | "EUR">("COP");
+  const {
+    prefillAmount,
+    prefillCurrency,
+    prefillSplitMode,
+    prefillDescription,
+    prefillParticipantIds,
+  } = useLocalSearchParams<{
+    prefillAmount?: string;
+    prefillCurrency?: string;
+    prefillSplitMode?: string;
+    prefillDescription?: string;
+    prefillParticipantIds?: string;
+  }>();
+
+  const [amount, setAmount] = useState(prefillAmount || "");
+  const [description, setDescription] = useState(prefillDescription || "");
+  const [splitMode, setSplitMode] = useState<SplitMode>((prefillSplitMode as SplitMode) || "equal");
+  const [currency, setCurrency] = useState<"COP" | "USD" | "EUR">((prefillCurrency as "COP" | "USD" | "EUR") || "COP");
   const [loading, setLoading] = useState(false);
+  const [loadingContacts, setLoadingContacts] = useState(false);
   const [showAddParticipantModal, setShowAddParticipantModal] = useState(false);
   const [participantSearchQuery, setParticipantSearchQuery] = useState("");
   const [participantResults, setParticipantResults] = useState<User[]>([]);
@@ -39,10 +55,73 @@ export default function CreateScreen() {
   ];
 
   const SPLIT_MODES: {key: SplitMode; label: string; emoji: string; desc: string}[] = [
-    {key: "equal", label: translate("create.equalParts"), emoji: "⚖️", desc: "Todos pagan igual"},
-    {key: "percentage", label: translate("create.percentage"), emoji: "📊", desc: "Por porcentaje"},
-    {key: "roulette", label: translate("create.roulette"), emoji: "🎰", desc: "A la suerte"},
+    {key: "equal", label: translate("create.equalParts"), emoji: "⚖️", desc: translate("create.equalPartsDesc")},
+    {key: "percentage", label: translate("create.percentage"), emoji: "📊", desc: translate("create.percentageDesc")},
+    {key: "roulette", label: translate("create.roulette"), emoji: "🎰", desc: translate("create.rouletteDesc")},
   ];
+
+  // Pre-load participants from prefill
+  useEffect(() => {
+    if (!prefillParticipantIds || !user) return;
+    const ids = prefillParticipantIds.split(',').filter(Boolean);
+    if (ids.length === 0) return;
+    Promise.allSettled(ids.map(id => api.getUserById(id)))
+      .then(results => {
+        const users = results
+          .filter((r): r is PromiseFulfilledResult<User | null> => r.status === 'fulfilled' && r.value !== null)
+          .map(r => r.value as User)
+          .filter(u => u.id !== user.id);
+        if (users.length > 0) setSelectedParticipants(users);
+      });
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const handleImportContacts = useCallback(async () => {
+    if (Platform.OS === 'web') {
+      showError(translate('common.error'));
+      return;
+    }
+    setLoadingContacts(true);
+    try {
+      const { status } = await Contacts.requestPermissionsAsync();
+      if (status !== 'granted') {
+        showError(translate('create.contactsPermission'));
+        return;
+      }
+      const { data } = await Contacts.getContactsAsync({
+        fields: [Contacts.Fields.PhoneNumbers],
+      });
+      const phones: string[] = [];
+      for (const contact of data) {
+        for (const phone of (contact.phoneNumbers || [])) {
+          const normalized = phone.number?.replace(/\s+/g, '').replace(/[^+0-9]/g, '');
+          if (normalized && normalized.length >= 7) phones.push(normalized);
+        }
+      }
+      if (phones.length === 0) {
+        showError(translate('create.noContactsMatched'));
+        return;
+      }
+      const matched = await api.lookupByPhones(phones);
+      if (matched.length === 0) {
+        showError(translate('create.noContactsMatched'));
+        return;
+      }
+      const currentIds = new Set([
+        ...selectedParticipants.map(u => u.id),
+        ...(user ? [user.id] : []),
+      ]);
+      const newUsers = matched.filter(u => !currentIds.has(u.id));
+      setSuggestedParticipants(prev => {
+        const existingIds = new Set(prev.map(u => u.id));
+        return [...prev, ...newUsers.filter(u => !existingIds.has(u.id))];
+      });
+      setShowAddParticipantModal(true);
+    } catch (err: unknown) {
+      showError(getErrorMessage(err, translate('common.error')));
+    } finally {
+      setLoadingContacts(false);
+    }
+  }, [selectedParticipants, user, translate, showError]);
 
   const handleCreate = async () => {
     const numAmount = Number(amount.replace(/[^0-9]/g, ""));
@@ -186,12 +265,18 @@ export default function CreateScreen() {
 
         {/* Split mode selector */}
         <Text style={styles.sectionLabel}>{translate("create.howToSplit")}</Text>
-        <View style={styles.modeRow}>
+        <View style={styles.splitModeRow}>
           {SPLIT_MODES.map((mode) => (
-            <TouchableOpacity key={mode.key} style={[styles.modeCard, splitMode === mode.key && styles.modeCardActive]} onPress={() => setSplitMode(mode.key)}>
-              {splitMode === mode.key && <View style={styles.modeActiveBar} />}
-              <Text style={styles.modeEmoji}>{mode.emoji}</Text>
-              <Text style={[styles.modeLabel, splitMode === mode.key && styles.modeLabelActive]}>{mode.label}</Text>
+            <TouchableOpacity
+              key={mode.key}
+              style={[styles.splitModeCard, splitMode === mode.key && styles.splitModeCardActive]}
+              onPress={() => setSplitMode(mode.key)}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.splitModeEmoji}>{mode.emoji}</Text>
+              <Text style={[styles.splitModeLabel, splitMode === mode.key && { color: colors.primary }]}>
+                {mode.label}
+              </Text>
             </TouchableOpacity>
           ))}
         </View>
@@ -226,6 +311,18 @@ export default function CreateScreen() {
                 <Text style={styles.modalCloseBtnText}>✕</Text>
               </TouchableOpacity>
             </View>
+
+            {/* From contacts button */}
+            <TouchableOpacity
+              style={styles.fromContactsButton}
+              onPress={handleImportContacts}
+              disabled={loadingContacts}
+            >
+              {loadingContacts
+                ? <ActivityIndicator size="small" color={colors.primary} />
+                : <Text style={styles.fromContactsButtonText}>📱 {translate('create.fromContacts')}</Text>
+              }
+            </TouchableOpacity>
 
             <TextInput
               style={styles.searchInput}
@@ -398,45 +495,52 @@ const createStyles = (colors: ThemeColors) =>
     currencyPillTextActive: {
       color: colors.primary,
     },
-    modeRow: {
-      flexDirection: "row",
+    splitModeRow: {
+      flexDirection: 'row',
       gap: spacing.sm,
       marginBottom: spacing.lg,
     },
-    modeCard: {
+    splitModeCard: {
       flex: 1,
+      paddingVertical: spacing.md,
+      paddingHorizontal: spacing.sm,
+      borderRadius: borderRadius.lg,
       backgroundColor: colors.surface2,
-      borderRadius: borderRadius.md,
-      padding: spacing.md,
-      alignItems: "center",
-      borderWidth: 1,
+      borderWidth: 1.5,
       borderColor: colors.surfaceBorder,
-      overflow: "hidden",
-      position: "relative",
+      alignItems: 'center',
+      minHeight: 90,
+      justifyContent: 'center',
     },
-    modeCardActive: {
-      borderColor: colors.primary + "60",
-      backgroundColor: colors.primary + "0e",
+    splitModeCardActive: {
+      borderColor: colors.primary,
+      backgroundColor: colors.primary + '12',
     },
-    // Active bar — thin top accent line (signature element variant)
-    modeActiveBar: {
-      position: "absolute",
-      top: 0,
-      left: 0,
-      right: 0,
-      height: 2,
-      backgroundColor: colors.primary,
+    splitModeEmoji: {
+      fontSize: 28,
+      marginBottom: spacing.xs,
     },
-    modeEmoji: {fontSize: 26, marginBottom: spacing.xs},
-    modeLabel: {
+    splitModeLabel: {
       fontSize: fontSize.xs,
-      color: colors.textSecondary,
-      textAlign: "center",
-      fontWeight: fontWeight.medium,
+      fontWeight: fontWeight.bold,
+      color: colors.text,
+      textAlign: 'center',
     },
-    modeLabelActive: {
-      color: colors.primary,
+    fromContactsButton: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingVertical: spacing.sm,
+      borderRadius: borderRadius.md,
+      borderWidth: 1,
+      borderColor: colors.primary + '50',
+      backgroundColor: colors.primary + '10',
+      marginBottom: spacing.md,
+    },
+    fromContactsButtonText: {
+      fontSize: fontSize.sm,
       fontWeight: fontWeight.semibold,
+      color: colors.primary,
     },
     addParticipantButton: {
       flexDirection: "row",

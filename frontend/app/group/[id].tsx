@@ -15,7 +15,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useLocalSearchParams, useNavigation, useRouter } from 'expo-router';
 import { User } from '@lavaca/types';
 import { spacing, borderRadius, fontSize, fontWeight, type ThemeColors } from '../../src/constants/theme';
-import { GlassCard, SkeletonCard, ErrorState } from '../../src/components';
+import { GlassCard, SkeletonCard, ErrorState, useToast } from '../../src/components';
 import { useI18n } from '../../src/i18n';
 import { useTheme } from '../../src/theme';
 import { useAuth } from '../../src/auth';
@@ -47,12 +47,14 @@ export default function GroupDetailScreen() {
   const { user } = useAuth();
   const router = useRouter();
   const navigation = useNavigation();
+  const { showError } = useToast();
   const styles = createStyles(colors);
 
   const [group, setGroup] = useState<GroupDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [fetchError, setFetchError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
+  const [repeatLoading, setRepeatLoading] = useState(false);
 
   const [showAddModal, setShowAddModal] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -159,6 +161,47 @@ export default function GroupDetailScreen() {
     setShowAddModal(true);
   };
 
+  const handleRepeatSession = useCallback(async () => {
+    if (!group || !user) return;
+    setRepeatLoading(true);
+    try {
+      const history = await api.getUserHistory(user.id);
+      const groupMemberIds = new Set(group.memberIds);
+      const matched = history
+        .filter(s => {
+          const sessionUserIds = new Set(s.participants.map(p => p.userId));
+          return [...groupMemberIds].every(id => sessionUserIds.has(id));
+        })
+        .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+
+      if (matched.length === 0) {
+        showError(translate('groups.noHistory'));
+        return;
+      }
+
+      const last = matched[0];
+      const participantIds = last.participants
+        .map(p => p.userId)
+        .filter(pid => pid !== user.id)
+        .join(',');
+
+      router.push({
+        pathname: '/create' as never,
+        params: {
+          prefillAmount: String(last.totalAmount),
+          prefillCurrency: last.currency,
+          prefillSplitMode: last.splitMode,
+          prefillDescription: last.description || '',
+          prefillParticipantIds: participantIds,
+        },
+      } as never);
+    } catch (err: unknown) {
+      showError(getErrorMessage(err, translate('common.error')));
+    } finally {
+      setRepeatLoading(false);
+    }
+  }, [group, user, translate, showError, router]);
+
   const isAdmin = group?.createdBy === user?.id;
 
   const renderMember = ({ item }: { item: GroupMember }) => {
@@ -242,6 +285,17 @@ export default function GroupDetailScreen() {
 
         <TouchableOpacity style={styles.addMemberBtn} onPress={openAddModal}>
           <Text style={styles.addMemberBtnText}>➕ {translate('groups.addMembers')}</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[styles.repeatBtn, repeatLoading && { opacity: 0.5 }]}
+          onPress={handleRepeatSession}
+          disabled={repeatLoading}
+        >
+          {repeatLoading
+            ? <ActivityIndicator size="small" color={colors.accent} />
+            : <Text style={styles.repeatBtnText}>🔁 {translate('groups.repeatSession')}</Text>
+          }
         </TouchableOpacity>
       </View>
 
@@ -352,9 +406,23 @@ const createStyles = (colors: ThemeColors) =>
     headerIcon: { fontSize: 56, marginBottom: spacing.sm },
     headerName: {
       fontSize: fontSize.xl,
-      fontWeight: fontWeight.bold,
+      fontWeight: fontWeight.black,
       color: colors.text,
       marginBottom: spacing.xs,
+    },
+    repeatBtn: {
+      borderWidth: 1,
+      borderColor: colors.accent + '50',
+      backgroundColor: colors.glass,
+      paddingVertical: spacing.sm,
+      paddingHorizontal: spacing.lg,
+      borderRadius: borderRadius.md,
+      alignItems: 'center',
+    },
+    repeatBtnText: {
+      fontSize: fontSize.md,
+      fontWeight: fontWeight.semibold,
+      color: colors.accent,
     },
     headerCount: { fontSize: fontSize.md, color: colors.textSecondary },
     actionsRow: {

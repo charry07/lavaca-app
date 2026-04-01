@@ -4,6 +4,9 @@ export type SplitMode = 'equal' | 'percentage' | 'roulette';
 export type PaymentStatus = 'pending' | 'reported' | 'confirmed' | 'failed' | 'rejected';
 export type SessionStatus = 'open' | 'closed' | 'cancelled';
 export type PaymentMethod = 'nequi' | 'daviplata' | 'pse' | 'transfiya' | 'cash' | 'other';
+export type AccountType = 'nequi' | 'daviplata' | 'pse' | 'transfiya' | 'bank_account' | 'cash' | 'other';
+export type BankAccountType = 'ahorros' | 'corriente';
+export type NotificationType = 'debt_reminder' | 'payment_received' | 'payment_approved' | 'payment_rejected' | 'session_closed';
 
 export interface Country {
   flag: string;
@@ -83,4 +86,35 @@ export interface FeedEvent {
   message: string;
   userIds: string[];
   createdAt: Date;
+}
+
+export interface PaymentAccount {
+  id: string;
+  userId: string;
+  methodType: AccountType;
+  accountHolderName: string;
+  bankName?: string;
+  accountNumber?: string;
+  accountType?: BankAccountType;
+  llave?: string;
+  phone?: string;
+  documentId?: string;
+  notes?: string;
+  isPreferred: boolean;
+  isActive: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface DebtSummary {
+  sessionId: string;
+  joinCode: string;
+  debtorId: string;
+  debtorDisplayName: string;
+  creditorId: string;
+  creditorDisplayName: string;
+  amount: number;
+  currency: string;
+  debtorStatus: PaymentStatus;
+  creditorAccounts: PaymentAccount[];
 }

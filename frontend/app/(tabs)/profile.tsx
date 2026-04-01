@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import {
   View,
   Text,
@@ -7,14 +7,17 @@ import {
   StyleSheet,
   ScrollView,
   ActivityIndicator,
+  Alert,
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
-import { GlassCard, Avatar, useToast } from '../../src/components';
+import { GlassCard, Avatar, PaymentAccountCard, PaymentAccountForm, type PaymentAccountInput, useToast } from '../../src/components';
 import { spacing, borderRadius, fontSize, fontWeight, type ThemeColors } from '../../src/constants/theme';
 import { useI18n } from '../../src/i18n';
 import { useTheme } from '../../src/theme';
 import { useAuth } from '../../src/auth';
 import { getErrorMessage } from '../../src/utils/errorMessage';
+import { formatCOP, type PaymentAccount, type PaymentSession, type SplitMode } from '@lavaca/types';
+import { api } from '../../src/services/api';
 export default function ProfileTab() {
   const { translate } = useI18n();
   const { colors } = useTheme();
@@ -29,6 +32,65 @@ export default function ProfileTab() {
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [deletingAccount, setDeletingAccount] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [sessions, setSessions] = useState<PaymentSession[]>([]);
+  const [loadingStats, setLoadingStats] = useState(false);
+  const [paymentAccounts, setPaymentAccounts] = useState<PaymentAccount[]>([]);
+  const [loadingPaymentAccounts, setLoadingPaymentAccounts] = useState(false);
+  const [savingPaymentAccount, setSavingPaymentAccount] = useState(false);
+  const [showPaymentForm, setShowPaymentForm] = useState(false);
+  const [editingPaymentAccount, setEditingPaymentAccount] = useState<PaymentAccount | undefined>(undefined);
+  
+  useEffect(() => {
+    if (!user) return;
+    setLoadingStats(true);
+    api.getUserHistory(user.id)
+      .then(setSessions)
+      .catch(() => {})
+      .finally(() => setLoadingStats(false));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id]);
+  
+  const stats = useMemo(() => {
+    const totalSessions = sessions.length;
+    const totalAmount = sessions.reduce((sum, s) => {
+      const my = s.participants.find(p => p.userId === user?.id);
+      return sum + (my?.amount || 0);
+    }, 0);
+    const asAdmin = sessions.filter(s => s.adminId === user?.id).length;
+    const asParticipant = totalSessions - asAdmin;
+    const modeCount: Partial<Record<SplitMode, number>> = {};
+    sessions.forEach(s => { modeCount[s.splitMode] = (modeCount[s.splitMode] || 0) + 1; });
+    const favoriteMode = (Object.entries(modeCount) as [SplitMode, number][])
+      .sort((a, b) => b[1] - a[1])[0]?.[0];
+    const now = new Date();
+    const thisMonth = sessions.filter(s => {
+      const d = new Date(s.createdAt);
+      return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+    }).length;
+    return { totalSessions, totalAmount, asAdmin, asParticipant, favoriteMode, thisMonth };
+  }, [sessions, user?.id]);
+
+  const MODE_EMOJI: Record<SplitMode, string> = { equal: '⚖️', percentage: '📊', roulette: '🎰' };
+
+  const loadPaymentAccounts = useMemo(
+    () => async (targetUserId: string) => {
+      setLoadingPaymentAccounts(true);
+      try {
+        const accounts = await api.getPaymentAccounts(targetUserId);
+        setPaymentAccounts(accounts);
+      } catch (err: unknown) {
+        showError(getErrorMessage(err, translate('common.error')));
+      } finally {
+        setLoadingPaymentAccounts(false);
+      }
+    },
+    [showError, translate]
+  );
+
+  useEffect(() => {
+    if (!user) return;
+    loadPaymentAccounts(user.id);
+  }, [user, loadPaymentAccounts]);
 
   const startEdit = (field: string, currentValue: string) => {
     setEditingField(field);
@@ -113,6 +175,74 @@ export default function ProfileTab() {
     }
   };
 
+  const handleOpenPaymentForm = (account?: PaymentAccount) => {
+    setEditingPaymentAccount(account);
+    setShowPaymentForm(true);
+  };
+
+  const handleClosePaymentForm = () => {
+    if (savingPaymentAccount) return;
+    setShowPaymentForm(false);
+    setEditingPaymentAccount(undefined);
+  };
+
+  const handleSavePaymentAccount = async (payload: PaymentAccountInput) => {
+    if (!user) return;
+    setSavingPaymentAccount(true);
+    try {
+      if (editingPaymentAccount) {
+        await api.updatePaymentAccount(editingPaymentAccount.id, user.id, payload);
+      } else {
+        await api.createPaymentAccount(user.id, payload);
+      }
+
+      await loadPaymentAccounts(user.id);
+      setShowPaymentForm(false);
+      setEditingPaymentAccount(undefined);
+      showSuccess(translate('payment.saveSuccess'));
+    } catch (err: unknown) {
+      showError(getErrorMessage(err, translate('common.error')));
+    } finally {
+      setSavingPaymentAccount(false);
+    }
+  };
+
+  const handleDeletePaymentAccount = async (accountId: string) => {
+    if (!user) return;
+
+    Alert.alert(
+      translate('payment.methods'),
+      translate('payment.deleteConfirm'),
+      [
+        { text: translate('common.cancel'), style: 'cancel' },
+        {
+          text: translate('payment.deleteAction'),
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await api.deletePaymentAccount(accountId, user.id);
+              await loadPaymentAccounts(user.id);
+              showSuccess(translate('payment.deleteSuccess'));
+            } catch (err: unknown) {
+              showError(getErrorMessage(err, translate('common.error')));
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  const handleSetPreferredAccount = async (accountId: string) => {
+    if (!user) return;
+    try {
+      await api.setPreferredPaymentAccount(accountId, user.id);
+      await loadPaymentAccounts(user.id);
+      showSuccess(translate('payment.setPreferredSuccess'));
+    } catch (err: unknown) {
+      showError(getErrorMessage(err, translate('common.error')));
+    }
+  };
+  
   if (!user) return null;
 
   const renderField = (label: string, field: string, value: string, editable = true) => (
@@ -159,16 +289,55 @@ export default function ProfileTab() {
       contentContainerStyle={styles.scrollContent}
       keyboardShouldPersistTaps="handled"
     >
+      {/* Stats Card */}
+      {!loadingStats && stats.totalSessions > 0 && (
+        <GlassCard style={styles.statsCard}>
+          <Text style={styles.statsTitle}>{translate('profile.stats')}</Text>
+          <View style={styles.statsGrid}>
+            <View style={styles.statItem}>
+              <Text style={styles.statNumber}>{stats.totalSessions}</Text>
+              <Text style={styles.statLabel}>{translate('profile.totalSessions')}</Text>
+            </View>
+            <View style={styles.statItem}>
+              <Text style={[styles.statNumber, { color: colors.accent }]}>{formatCOP(stats.totalAmount)}</Text>
+              <Text style={styles.statLabel}>{translate('profile.totalAmount')}</Text>
+            </View>
+            <View style={styles.statItem}>
+              <Text style={styles.statNumber}>{stats.asAdmin}</Text>
+              <Text style={styles.statLabel}>{translate('profile.asAdmin')}</Text>
+            </View>
+            <View style={styles.statItem}>
+              <Text style={styles.statNumber}>{stats.asParticipant}</Text>
+              <Text style={styles.statLabel}>{translate('profile.asParticipant')}</Text>
+            </View>
+            <View style={styles.statItem}>
+              <Text style={styles.statNumber}>{stats.thisMonth}</Text>
+              <Text style={styles.statLabel}>{translate('profile.thisMonth')}</Text>
+            </View>
+            {stats.favoriteMode && (
+              <View style={styles.statItem}>
+                <Text style={styles.statNumber}>{MODE_EMOJI[stats.favoriteMode]}</Text>
+                <Text style={styles.statLabel}>{translate('profile.favoriteMode')}</Text>
+              </View>
+            )}
+          </View>
+        </GlassCard>
+      )}
+
       {/* Avatar with accent ring */}
       <TouchableOpacity style={styles.avatarContainer} onPress={handlePickImage} activeOpacity={0.7}>
-        <Avatar displayName={user.displayName} avatarUrl={user.avatarUrl} size={80} showRing />
+        <Avatar displayName={user.displayName} avatarUrl={user.avatarUrl} size={90} showRing />
         <View style={styles.cameraIcon}>
           {uploadingAvatar
             ? <ActivityIndicator size="small" color={colors.primary} />
             : <Text style={styles.cameraText}>📷</Text>}
         </View>
       </TouchableOpacity>
+      <Text style={styles.profileName}>{user.displayName}</Text>
+      <Text style={styles.profileUsername}>@{user.username}</Text>
+
       {/* User info card */}
+      <Text style={styles.sectionLabel}>{translate('profile.personalInfo')}</Text>
       <GlassCard style={styles.card}>
         {renderField(translate('profile.name'), 'displayName', user.displayName)}
         {renderField(translate('profile.username'), 'username', user.username || '', true)}
@@ -182,6 +351,36 @@ export default function ProfileTab() {
             <Text style={styles.value}>{new Date(user.createdAt).toLocaleDateString()}</Text>
           </View>
         </View>
+      </GlassCard>
+
+      <Text style={styles.sectionLabel}>{translate('payment.methods')}</Text>
+      <GlassCard style={styles.paymentCard}>
+        {loadingPaymentAccounts ? (
+          <ActivityIndicator color={colors.primary} />
+        ) : paymentAccounts.length === 0 ? (
+          <View style={styles.emptyPaymentState}>
+            <Text style={styles.emptyPaymentTitle}>{translate('payment.noMethods')}</Text>
+            <Text style={styles.emptyPaymentHint}>{translate('payment.noMethodsHint')}</Text>
+          </View>
+        ) : (
+          <View style={styles.paymentList}>
+            {paymentAccounts.map((account) => (
+              <PaymentAccountCard
+                key={account.id}
+                account={account}
+                onEdit={handleOpenPaymentForm}
+                onDelete={handleDeletePaymentAccount}
+                onSetPreferred={handleSetPreferredAccount}
+              />
+            ))}
+          </View>
+        )}
+
+        <TouchableOpacity style={styles.addPaymentBtn} onPress={() => handleOpenPaymentForm()}>
+          <Text style={styles.addPaymentBtnText}>
+            {paymentAccounts.length === 0 ? translate('payment.addMethod') : translate('payment.addAnother')}
+          </Text>
+        </TouchableOpacity>
       </GlassCard>
 
       {/* Logout */}
@@ -230,6 +429,14 @@ export default function ProfileTab() {
           <Text style={styles.deleteButtonText}>{translate('profile.deleteAccount')}</Text>
         </TouchableOpacity>
       )}
+
+      <PaymentAccountForm
+        visible={showPaymentForm}
+        loading={savingPaymentAccount}
+        initialValue={editingPaymentAccount}
+        onClose={handleClosePaymentForm}
+        onSubmit={handleSavePaymentAccount}
+      />
     </ScrollView>
   );
 }
@@ -384,5 +591,105 @@ const createStyles = (colors: ThemeColors) =>
       fontSize: fontSize.sm,
       fontWeight: fontWeight.bold,
       color: '#fff',
+    },
+    statsCard: {
+      marginBottom: spacing.md,
+      padding: spacing.md,
+    },
+    statsTitle: {
+      fontSize: fontSize.xs,
+      fontWeight: fontWeight.bold,
+      color: colors.textSecondary,
+      textTransform: 'uppercase',
+      letterSpacing: 0.8,
+      marginBottom: spacing.md,
+    },
+    statsGrid: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: spacing.sm,
+    },
+    statItem: {
+      flex: 1,
+      minWidth: '28%',
+      alignItems: 'center',
+      backgroundColor: colors.surface,
+      borderRadius: borderRadius.md,
+      padding: spacing.sm,
+      borderWidth: 1,
+      borderColor: colors.surfaceBorder,
+    },
+    statNumber: {
+      fontSize: fontSize.lg,
+      fontWeight: fontWeight.black,
+      color: colors.text,
+    },
+    statLabel: {
+      fontSize: fontSize.xs,
+      color: colors.textMuted,
+      textAlign: 'center',
+      marginTop: 2,
+    },
+    profileName: {
+      fontSize: fontSize.xl,
+      fontWeight: fontWeight.black,
+      color: colors.text,
+      marginTop: spacing.sm,
+      textAlign: 'center',
+    },
+    profileUsername: {
+      fontSize: fontSize.sm,
+      color: colors.textSecondary,
+      marginTop: 2,
+      textAlign: 'center',
+    },
+    sectionLabel: {
+      fontSize: fontSize.xs,
+      fontWeight: fontWeight.bold,
+      color: colors.textMuted,
+      textTransform: 'uppercase',
+      letterSpacing: 0.8,
+      marginBottom: spacing.sm,
+      marginTop: spacing.md,
+    },
+    paymentCard: {
+      padding: spacing.md,
+      gap: spacing.sm,
+      borderRadius: borderRadius.lg,
+      backgroundColor: colors.surface2,
+      borderWidth: 1,
+      borderColor: colors.surfaceBorder,
+    },
+    emptyPaymentState: {
+      alignItems: 'center',
+      paddingVertical: spacing.md,
+      gap: spacing.xs,
+    },
+    emptyPaymentTitle: {
+      color: colors.text,
+      fontSize: fontSize.md,
+      fontWeight: fontWeight.semibold,
+    },
+    emptyPaymentHint: {
+      color: colors.textSecondary,
+      fontSize: fontSize.sm,
+      textAlign: 'center',
+    },
+    paymentList: {
+      gap: spacing.sm,
+    },
+    addPaymentBtn: {
+      borderWidth: 1,
+      borderColor: colors.primary + '60',
+      borderRadius: borderRadius.md,
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingVertical: spacing.sm,
+      backgroundColor: colors.primary + '10',
+    },
+    addPaymentBtnText: {
+      color: colors.primary,
+      fontSize: fontSize.sm,
+      fontWeight: fontWeight.bold,
     },
   });

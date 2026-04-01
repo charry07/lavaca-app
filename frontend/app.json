@@ -16,7 +16,8 @@
     "ios": {
       "supportsTablet": true,
       "infoPlist": {
-        "NSCameraUsageDescription": "La Vaca needs camera to scan QR codes to join tables"
+        "NSCameraUsageDescription": "La Vaca needs camera to scan QR codes to join tables",
+        "NSContactsUsageDescription": "La Vaca uses your contacts to find friends already using the app"
       }
     },
     "android": {
@@ -34,7 +35,9 @@
     },
     "plugins": [
       "expo-router",
-      "expo-camera"
+      "expo-camera",
+      "expo-contacts",
+      ["expo-notifications", { "color": "#f0a830" }]
     ]
   }
 }

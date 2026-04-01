@@ -16,10 +16,10 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { PaymentSession, Participant, User, formatCOP } from '@lavaca/types';
+import { DebtSummary, PaymentSession, Participant, User, formatCOP } from '@lavaca/types';
 import { api } from '../../src/services/api';
 import { spacing, borderRadius, fontSize, fontWeight, type ThemeColors } from '../../src/constants/theme';
-import { SkeletonCard, ErrorState, Avatar, StatusPill, AnimatedCard, SplitBar, RouletteWheel, QRCode, useToast } from '../../src/components';
+import { SkeletonCard, ErrorState, Avatar, StatusPill, AnimatedCard, SplitBar, RouletteWheel, QRCode, DebtPaymentInstructions, useToast } from '../../src/components';
 import { useI18n } from '../../src/i18n';
 import { useTheme } from '../../src/theme';
 import { useAuth } from '../../src/auth';
@@ -52,6 +52,9 @@ export default function SessionScreen() {
   const [participantResults, setParticipantResults] = useState<User[]>([]);
   const [searchingUsers, setSearchingUsers] = useState(false);
   const [addingParticipantId, setAddingParticipantId] = useState<string | null>(null);
+  const [debts, setDebts] = useState<DebtSummary[]>([]);
+  const [loadingDebts, setLoadingDebts] = useState(false);
+  
   // Animated progress bar width
   const progressAnim = useRef(new Animated.Value(0)).current;
 
@@ -73,7 +76,28 @@ export default function SessionScreen() {
     fetchSession();
   }, [fetchSession]);
 
-  // Real-time updates via Socket.IO (replaces 3-second polling)
+  const fetchDebts = useCallback(async () => {
+    if (!joinCode || !user?.id) {
+      setDebts([]);
+      return;
+    }
+
+    setLoadingDebts(true);
+    try {
+      const data = await api.getSessionDebts(joinCode, user.id);
+      setDebts(data);
+    } catch {
+      setDebts([]);
+    } finally {
+      setLoadingDebts(false);
+    }
+  }, [joinCode, user?.id]);
+
+  useEffect(() => {
+    fetchDebts();
+  }, [fetchDebts, session?.participants]);
+  
+  // Real-time updates
   const handleSocketUpdate = useCallback((updated: PaymentSession) => {
     setSession(updated);
   }, []);
@@ -168,11 +192,13 @@ export default function SessionScreen() {
 
   const handleTextShare = async () => {
     if (!joinCode) return;
-    const link = getShareLink();
+    const webLink = `https://lavaca.app/join?code=${joinCode}`;
     try {
       await Share.share({
-        message: translate('session.shareMessage', { code: joinCode }),
-        url: link,
+        message: Platform.OS === 'android'
+          ? `${translate('session.shareMessage', { code: joinCode as string })}\n${webLink}`
+          : translate('session.shareMessage', { code: joinCode as string }),
+        url: Platform.OS === 'ios' ? webLink : undefined,
       });
     } catch {}
   };
@@ -212,6 +238,36 @@ export default function SessionScreen() {
       });
       setSession(updated);
       showSuccess(translate('session.paymentApproved'));
+    } catch (err: unknown) {
+      showError(getErrorMessage(err, translate('common.error')));
+    }
+  };
+
+  const handleRejectPaid = useCallback(async (userId: string) => {
+    if (!joinCode || !session) return;
+    try {
+      const updated = await api.rejectPaid(joinCode as string, {
+        userId,
+        adminId: session.adminId,
+      });
+      setSession(updated);
+      showSuccess(translate('session.paymentRejected'));
+    } catch (err: unknown) {
+      showError(getErrorMessage(err, translate('common.error')));
+    }
+  }, [joinCode, session, translate, showSuccess, showError]);
+  
+  const handleMarkPaid = async (debt: DebtSummary) => {
+    if (!joinCode || !user) return;
+    try {
+      const updated = await api.reportPaid(joinCode, {
+        userId: user.id,
+        reporterId: user.id,
+        paymentMethod: 'nequi',
+      });
+      setSession(updated);
+      setDebts((prev) => prev.filter((item) => item.debtorId !== debt.debtorId));
+      showSuccess(translate('debt.marked'));
     } catch (err: unknown) {
       showError(getErrorMessage(err, translate('common.error')));
     }
@@ -446,8 +502,19 @@ export default function SessionScreen() {
                 <Text style={styles.approveButtonText}>{translate('session.approvePaidButton')}</Text>
               </TouchableOpacity>
             )}
+            {isReported && isAdmin && (
+              <TouchableOpacity
+                style={styles.rejectButton}
+                onPress={() => handleRejectPaid(item.userId)}
+              >
+                <Text style={styles.rejectButtonText}>{translate('session.rejectPaidButton')}</Text>
+              </TouchableOpacity>
+            )}
             {isReported && !isAdmin && isMe && (
               <Text style={styles.waitingApprovalText}>{translate('session.waitingApproval')}</Text>
+            )}
+            {item.paymentMethod && item.paymentMethod !== 'other' && (
+              <Text style={styles.paymentMethodBadge}>{item.paymentMethod.toUpperCase()}</Text>
             )}
           </View>
         </View>
@@ -547,6 +614,8 @@ export default function SessionScreen() {
       </View>
 
       {/* Participants List */}
+      <DebtPaymentInstructions debts={debts} loading={loadingDebts} onMarkPaid={handleMarkPaid} />
+
       <FlatList
         data={session.participants}
         keyExtractor={(item) => item.userId}
@@ -1016,11 +1085,37 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     textAlign: 'center',
     lineHeight: 22,
   },
+  rejectButton: {
+    marginTop: spacing.xs,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 4,
+    borderRadius: borderRadius.sm,
+    borderWidth: 1,
+    borderColor: colors.danger + '60',
+    alignItems: 'center',
+  },
+  rejectButtonText: {
+    fontSize: fontSize.xs,
+    fontWeight: fontWeight.semibold,
+    color: colors.danger,
+  },
+  paymentMethodBadge: {
+    fontSize: fontSize.xs,
+    color: colors.accent,
+    fontWeight: fontWeight.semibold,
+    backgroundColor: colors.accent + '15',
+    paddingHorizontal: spacing.xs,
+    paddingVertical: 2,
+    borderRadius: borderRadius.sm,
+    marginTop: 2,
+    alignSelf: 'flex-start',
+  },
   bottomBar: {
     margin: spacing.md,
     marginTop: 0,
     padding: spacing.md,
     borderRadius: borderRadius.lg,
+    marginHorizontal: spacing.md,
     backgroundColor: colors.surface2,
     borderWidth: 1,
     borderColor: colors.surfaceBorder,

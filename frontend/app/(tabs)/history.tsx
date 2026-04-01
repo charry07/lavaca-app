@@ -121,9 +121,17 @@ export default function HistoryTab() {
 
           {/* Footer */}
           <View style={styles.cardFooter}>
-            <Text style={styles.roleTag}>
-              {isAdmin ? '👑 ' + translate('history.organizer') : '👤 ' + translate('history.participant')}
-            </Text>
+            <View style={[
+              styles.rolePill,
+              { backgroundColor: isAdmin ? colors.accent + '20' : colors.primary + '15' }
+            ]}>
+              <Text style={[
+                styles.rolePillText,
+                { color: isAdmin ? colors.accent : colors.primary }
+              ]}>
+                {isAdmin ? '👑 ' + translate('history.organizer') : '👤 ' + translate('history.participant')}
+              </Text>
+            </View>
             {myParticipation && (
               <StatusPill
                 variant={isPaid ? 'success' : 'warning'}
@@ -225,4 +233,13 @@ const createStyles = (colors: ThemeColors) =>
       marginTop: spacing.sm,
     },
     roleTag: { fontSize: fontSize.xs, color: colors.textSecondary },
+    rolePill: {
+      paddingHorizontal: spacing.sm,
+      paddingVertical: 3,
+      borderRadius: borderRadius.full,
+    },
+    rolePillText: {
+      fontSize: fontSize.xs,
+      fontWeight: fontWeight.semibold,
+    },
   });

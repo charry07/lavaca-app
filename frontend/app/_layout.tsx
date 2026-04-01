@@ -1,11 +1,13 @@
 import { Stack, useRouter, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { useEffect } from 'react';
+import { useCallback, useEffect } from 'react';
 import { ActivityIndicator, LogBox, View } from 'react-native';
+import * as Linking from 'expo-linking';
 import { I18nProvider, useI18n } from '../src/i18n';
 import { ThemeProvider, useTheme } from '../src/theme';
 import { AuthProvider, useAuth } from '../src/auth';
 import { HeaderControls, ToastProvider, AppErrorBoundary } from '../src/components';
+import { registerPushToken, addNotificationResponseListener } from '../src/services/notifications';
 
 // Suppress known library warnings from react-native-screens / react-navigation
 // that pass pointerEvents as a prop instead of in style (fixed in future versions)
@@ -46,6 +48,51 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
 function RootLayoutInner() {
   const { translate } = useI18n();
   const { colors, isDark } = useTheme();
+  const router = useRouter();
+  const { user } = useAuth();
+
+  const handleDeepLink = useCallback((url: string) => {
+    try {
+      const parsed = Linking.parse(url);
+      const code = parsed.queryParams?.code as string | undefined;
+      if (code) {
+        router.push(`/session/${code}` as never);
+      }
+    } catch {}
+  }, [router]);
+
+  // Cold-start deep link (app opened from closed state via link)
+  useEffect(() => {
+    Linking.getInitialURL().then((url) => {
+      if (url) handleDeepLink(url);
+    });
+  }, [handleDeepLink]);
+
+  // Warm-start deep link (app in background, link tapped)
+  useEffect(() => {
+    const subscription = Linking.addEventListener('url', ({ url }) => {
+      handleDeepLink(url);
+    });
+    return () => subscription.remove();
+  }, [handleDeepLink]);
+
+  // Register push token when user logs in
+  useEffect(() => {
+    if (user?.id) {
+      registerPushToken(user.id);
+    }
+  }, [user?.id]);
+
+  // Handle notification taps
+  useEffect(() => {
+    const subscription = addNotificationResponseListener((response) => {
+      const data = response.notification.request.content.data as { joinCode?: string };
+      if (data?.joinCode) {
+        router.push(`/session/${data.joinCode}` as never);
+      }
+    });
+    return () => subscription.remove();
+  }, [router]);
 
   return (
     <>

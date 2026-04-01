@@ -140,6 +140,19 @@ export default function GroupsTab() {
             <Text style={styles.groupMemberNames} numberOfLines={1}>
               {item.members.map((m) => m.displayName).join(', ')}
             </Text>
+            {/* Mini member avatar row */}
+            <View style={styles.memberAvatarRow}>
+              {item.members.slice(0, 3).map((m, i) => (
+                <View key={m.id} style={[styles.miniAvatar, { marginLeft: i === 0 ? 0 : -6 }]}>
+                  <Text style={styles.miniAvatarText}>{m.displayName.charAt(0).toUpperCase()}</Text>
+                </View>
+              ))}
+              {item.members.length > 3 && (
+                <View style={[styles.miniAvatar, { marginLeft: -6, backgroundColor: colors.surface }]}>
+                  <Text style={styles.miniAvatarText}>+{item.members.length - 3}</Text>
+                </View>
+              )}
+            </View>
           </View>
           <TouchableOpacity
             style={styles.deleteBtn}
@@ -285,6 +298,25 @@ const createStyles = (colors: ThemeColors) =>
     groupName: { fontSize: fontSize.lg, fontWeight: fontWeight.bold, color: colors.text },
     groupMembers: { fontSize: fontSize.sm, color: colors.textSecondary, marginTop: 2 },
     groupMemberNames: { fontSize: fontSize.xs, color: colors.textMuted, marginTop: 2 },
+    memberAvatarRow: {
+      flexDirection: 'row',
+      marginTop: spacing.xs,
+    },
+    miniAvatar: {
+      width: 22,
+      height: 22,
+      borderRadius: 11,
+      backgroundColor: colors.accent + '30',
+      borderWidth: 1,
+      borderColor: colors.surface2,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    miniAvatarText: {
+      fontSize: 9,
+      fontWeight: fontWeight.bold,
+      color: colors.accent,
+    },
     deleteBtn: { padding: spacing.sm, marginLeft: spacing.sm },
     deleteBtnText: { fontSize: 20 },
     fab: {
